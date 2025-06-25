@@ -1,2 +1,184 @@
 # PyQuake3D
 PyQuake3D: A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip
+=======
+# PyQuake3D_MPI
+![Alt Text](Logo-PyQuake3D.png)
+
+PyQuake3D is a Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
+
+Please refer to [Code Manual (PDF)](doc.pdf) for more details.
+
+## 🔧 Features
+
+-  3D non-planar quasi-dynamic earthquake cycle simulations
+-  Support for rate-and-state aging friction laws
+-  Support for Hierarchical matrix storage and calculation
+-  MPI acceleration support 
+-  Suitable for large model earthquake cycle simulation
+
+## 📦 Installation
+-  requirement of python library
+-  python>=3.8
+-  numpy>=1.2
+-  cupy=10.6.0
+-  matplotlib==3.2.2
+-  scipy==1.10.1
+-  joblib==0.16.0
+-  mpi4py==4.0.0
+-  ctypes == 1.1.0
+-  pyvista ==0.45.2
+
+  Use pip for the quick installation:
+```bash
+pip install -r dependences.txt
+```
+
+## Running the Script
+
+To run the PyQuake3D MPI script, use the following command:
+```bash
+mpirun -np 10 python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
+```
+Where 10 is the number of virtual cpus. Note that using the mpiexec instead in Windows environment.
+
+For example:
+```
+To execute benchmarks like BP5-QD, use:
+```bash
+In the PyQuake3D_MPI_master directory, To run the BP5-QD benchmark:
+mpirun -np 10 python src/main.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
+Ensure you modify the input parameter (`parameter.txt`) as follows:
+- `Corefunc directory`: `bp5t_core`
+- `InputHetoparamter`: `True`
+- `Inputparamter file`: `bp5tparam.dat`
+
+To run the HF-model:
+mpirun -np 10 python src/main.py -g examples/HF-model/HFmodel.msh -p examples/HF-model/parameter.txt
+
+To run the  EAFZ-model:
+mpirun -np 10 python src/main.py -g examples/EAFZ-model/turkey.msh -p examples/EAFZ-model/parameter.txt
+
+To run the  Lab-model:
+mpirun -np 10 python src/main.py -g examples/Lab-model/lab.msh -p examples/Lab-model/parameter.txt
+```
+
+
+## 📦 Parameters Setting
+The simulation parameters are implemented by modifying the parameter.txt file, rather than by changing the source code. The heterogeneous stress and friction parameters are imported from external files. 
+## 📦 General Parameters setting
+| Parameter                  | Default                   | Description                                                                                                            |
+|----------------------------|---------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `Corefunc directory`       |                           | The storage path for the kernel function matrix composed of stress Green's functions                                   |
+| `Hmatrix_mpi_plot`         | False                     | If `True`, draw the Hmatirx structure diagram, with different colors representing the sub-matrices calculated by different processes. Only availible for MPI verison. |
+| `Node_order`               | False                     | If `True`, the node order of the triangular element is clockwise                                                      |
+| `save Corefunc`            | False                     | If `True`, save corefuns Save the kernel function so that it does not need to be recalculated for the next time       |
+| `Scale_km`                 | True                      | If `True`, the coordinates will be scaled up by a factor of 1000, meaning they are modeled in kilometers, which is applicable to natural earthquakes; otherwise, the coordinates remain unchanged, meaning they are modeled in meters, which is applicable to laboratory earthquakes. |
+| `Input Hetoparamter`       | False                     | If `True`, the heterogeneous stress and friction parameters are imported from external files.                         |
+| `Inputparamter file`       |                           | The file name of imported heterogeneous stress and friction parameters                                                |
+| `Processors`               | 50                        | The number of processors in ProcessPoolExecutor to parallelize Green's function calculations. Only availible for GPU verison. |
+| `Batch_size`               | 1000                      | The number of batches in ProcessPoolExecutor to parallelize Green's function calculations. Only availible for GPU verison. |
+| `Lame constants`           | $0.32 \times 10^{11}$ Pa | The first Lame constant                                                                                                |
+| `Shear modulus`            | $0.32 \times 10^{11}$ Pa | Shear modulus                                                                                                          |
+| `Rock density`             | $2670\ \text{kg/m}^3$     | Rock mass density                                                                                                      |
+| `Reference slip rate`      | $1 \times 10^{-6}$        | Reference slip rate                                                                                                    |
+| `Reference friction coefficient` | 0.6                        | Reference friction coefficient                                                                                        |
+| `Plate loading rate`       | $1 \times 10^{-6}$        | Plate loading rate                                                                                                    |
+                                                                                                                                                                                                        |
+
+
+## 📦 Stress and Frition Settings
+| Parameter                                  | Default   | Description                                                                                         |
+|--------------------------------------------|-----------|-------------------------------------------------------------------------------------------------|
+| `Half space`                              | False     | If 'True', calculating half-space green's functions                                              |
+| `Fix_Tn`                                  | True      | If 'True',  fixed the normal stress                                                             |
+| `Vertical principal stress (ssv)`         | 1.0       | The vertical principal stress scale: the real vertical principal stress is obtained by multiplying the scale and the value |
+| `Maximum horizontal principal stress (ssh1)` | 1.6       | Maximum horizontal principal stress scale.                                                      |
+| `Minimum horizontal principal stress(ssh2)` | 0.6       | Minimum horizontal principal stress scale                                                       |
+| `Angle between ssh1 and X-axis`           | 30°       | Angle between maximum horizontal principal stress and X-axis.                                    |
+| `Vertical principal stress value`          | 50 MPa    | Vertical principal stress value                                                                  |
+| `Vertical principal stress value varies with depth` | True      | If True, Vertical principal stress value varies with depth                                      |
+| `Vertical principal stress value varies with depth` | True      | If vertical principal stress value, it maintains a constant value at the conversion depth, and the horizontal principal stress value also changes with depth simultaneously |
+| Turnning depth                            | 5000 m    | If Vertical principal stress value varies with depth is true, starting at this depth, the stress no longer changes with depth |
+| `Shear traction solved from stress tensor` | False     | If 'True', the non-uniform shear stress is projected onto the curved fault surface by the stress tensor |
+| `Rake solved from stress tensor`           | False     | If 'True', the non-uniform rakes are solved from the stress tensor.                              |
+| `Fix_rake`                                | 30°       | If 'True', Set fixed rakes if 'Rake solved from stress tensor' is 'False'.                      |
+| `Widths of VS region`                      | 5000 m    | The width of the velocity weakening region.                                                     |
+| `Widths of surface VS region`              | 2000 m    | Widths of surface VS region                                                                      |
+| `Transition region  from VS to VW region` | 3000 m    | Transition region width from VS to VW region                                                    |
+                                                                                                                                                              |
+
+
+
+## 📦 Nucleation and Friction Setting
+| Parameter                                           | Default   | Description                                                                                   |
+|-----------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
+| `Set_nucleation`                                    | False     | If True, sets a patch whose shear stress and sliding rate are significantly greater than the surrounding area to meet the nucleation requirements. |
+| `Radius of nucleation`                              | 8000 m    | The radius of the nucleation region                                                           |
+| `Nuclea_posx`                                       | 34000 m   | Posx of Nucleation                                                                            |
+| `Nuclea_posy`                                       | 15000 m   | Posy of Nucleation                                                                            |
+| `Nuclea_posz`                                       | -15000 m  | Posz of Nucleation                                                                            |
+| `Rate-and-state parameters a in VS region`          | 0.04      | Rate-and-state parameters a in VS region                                                      |
+| `Rate-and-state parameters b in VS region`          | 0.03      | Rate-and-state parameters a in VS region                                                      |
+| `Characteristic slip distance in VS region`         | 0.13 m    | Characteristic slip distance in VS region                                                     |
+| `Rate-and-state parameters a in VW region`          | 0.004     | Rate-and-state parameters a in VW region                                                      |
+| `Rate-and-state parameters a in VW region`          | 0.03      | Rate-and-state parameters a in VW region                                                      |
+| `Characteristic slip distance in VW region`         | 0.13 m    | Characteristic slip distance in VW regioN                                                     |
+| `Rate-and-state parameters a in nucleation region`  | 0.004     | Rate-and-state parameters a in nucleation region                                              |
+| `Rate-and-state parameters a in nucleation region`  | 0.03      | Rate-and-state parameters a in nucleation region                                              |
+| `Characteristic slip distance in nucleation  region`| 0.14 m    | Characteristic slip distance in nucleation  regioN                                            |
+| `Initial slip rate in nucleation region`            | 3e-2      | Initial slip rate in nucleation region                                                        |
+| `ChangefriA`                                        | False     | If True, a changes gradually b remains unchanged, vice versa                                  |
+| `Initlab`                                           | True      | If True, setting random non-uniform normal stress                                             |
+
+
+
+## 📦 Output Setting
+| Parameter           | Default | Description                                                             |
+|---------------------|---------|-------------------------------------------------------------------------|
+| `totaloutputsteps`  | 2000    | The number of calculating time steps.                                   |
+| `outsteps`          | 50      | The time step interval for outputting the VTK files.                    |
+| `outputSLIPV`       | False   | If True, output slip rate for each step.                                |
+| `outputTt`          | False   | If True, output shear stress for each step.                              |
+| `outputstv`         | True    | If True, the VTK files will be saved in out directroy.                  |
+| `outputmatrix`      | False   | If True, the matrix format txt files will be saved in out directroy.    |
+
+
+
+📧 Contact
+
+For questions, suggestions, or collaboration, please contact:
+
+## Contributing
+
+PyQuake3D was developed by Rongjiang Tang and Luca Dal Zilio, who implemented the core frame-work, including the Boundary Element Method for simulating seismic cycles on geometrically complex 3D faults governed by a regularized rate-and-state friction governed by aging law. We welcome contributions to PyQuake3D. Please ensure that you follow the contribution guidelines and maintain the consistency of the codebase.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
+## Acknowledgments
+
+We would like to thank all the contributors and the community for their support and feedback.
+
+We referred to the HBI code to develop original python-based BIEM algorithm:
+Ozawa, S., Ida, A., Hoshino, T., & Ando, R. (2023). Large-scale earthquake sequence simulations on 3-D non-planar faults using the boundary element method accelerated by lattice H-matrices. Geophysical Journal International, 232(3), 1471-1481.
+
+We referred to MATLAB code to develop the kernel function:
+Nikkhoo, M., & Walter, T. R. (2015). Triangular dislocation: an analytical, artefact-free solution. Geophysical Journal International, 201(2), 1119-1141.
+
+We would like to thank Associate Professor Ando Ryosuke and Dr.So Ozawa for their help in the code development, and Professor Steffen Börm for his assistance with HMatrix programming.
+
+
+
+📫 Email: 
+rongjiang@csj.uestc.edu.cn
+
+luca.dalzilio@ntu.edu.sg
+
+## Videos
+[Videos of 2023, Turkey earthquake sequence simulation](https://github.com/Rongjiang007/PyQuake3D/issues/1#issue-2984332698)
+
+[Videos of Earthquake cycle modeling of the Cascadia subduction zone](https://github.com/Rongjiang007/PyQuake3D/issues/2#issue)
+
+[Videos of Numerical simulation of main shock and aftershock](https://github.com/Rongjiang007/PyQuake3D/issues/4#issue)
+
