@@ -19,6 +19,10 @@ For questions, suggestions, or collaboration opportunities, feel free to reach o
 
 Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/blob/main/user_manual/user_manual.pdf)
 
+<p align="center">
+  <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/turkey_displacement.png" alt="Turkey Displacement">
+</p>
+
 ## Features
 
 -  3D non-planar quasi-dynamic earthquake cycle simulations
@@ -176,8 +180,14 @@ The implementation of the stress Green’s functions builds on MATLAB routines f
 **Nikkhoo, M., & Walter, T. R.** (2015). *Triangular dislocation: an analytical, artefact-free solution*. **Geophysical Journal International**, 201(2), 1119–1141.  
 [https://doi.org/10.1093/gji/ggv035](https://doi.org/10.1093/gji/ggv035)
 
-We sincerely thank Ryosuke Ando and So Ozawa for their valuable guidance in the development of the code. We also thanks Steffen Börm for his assistance with H-matrix implementation and T. Ben Thompson for his assistance with the H-matrix compression via Adaptive Cross Approximation (ACA).
+We sincerely thank Ryosuke Ando and So Ozawa for their valuable guidance in the development of the code. We also thank Steffen Börm for his assistance with H-matrix implementation and T. Ben Thompson for his assistance with the H-matrix compression via Adaptive Cross Approximation (ACA).
 
+## Examples
+
+Explore selected simulations performed with PyQuake3D:
+
+- [*Seismic cycles on a planar fault with frictional heterogeneity*](https://www.youtube.com/watch?v=N_yA4uY77C0)
+- [*Seismic cycles on the East Anatolian Fault Zone*](https://www.youtube.com/watch?v=oFy3FSLs3UQ)
 
 
 
