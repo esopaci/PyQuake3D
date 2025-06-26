@@ -176,6 +176,8 @@ The implementation of the stress Green’s functions builds on MATLAB routines f
 **Nikkhoo, M., & Walter, T. R.** (2015). *Triangular dislocation: an analytical, artefact-free solution*. **Geophysical Journal International**, 201(2), 1119–1141.  
 [https://doi.org/10.1093/gji/ggv035](https://doi.org/10.1093/gji/ggv035)
 
-We sincerely thank Ryosuke Ando and So Ozawa for their valuable guidance during code development, and Steffen Börm for his assistance with H-matrix implementation.
+We sincerely thank Ryosuke Ando and So Ozawa for their valuable guidance in the development of the code. We also thanks Steffen Börm for his assistance with H-matrix implementation and T. Ben Thompson for his assistance with the H-matrix compression via Adaptive Cross Approximation (ACA).
+
+
 
 
