@@ -17,7 +17,7 @@ For questions, suggestions, or collaboration opportunities, feel free to reach o
 -  rongjiang@csj.uestc.edu.cn  
 -  luca.dalzilio@ntu.edu.sg
 
-Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/raw/main/user_manual/user_manual.pdf)
+Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/blob/main/user_manual/user_manual.pdf)
 
 ## Features
 
