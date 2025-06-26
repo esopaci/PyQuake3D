@@ -1,22 +1,26 @@
-# PyQuake3D
-PyQuake3D: A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip
-=======
-# PyQuake3D_MPI
-![Alt Text](Logo-PyQuake3D.png)
+<p align="center">
+  <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/logo/PyQuake3D_grey.png" alt="PyQuake3D logo" style="width:100%;">
+</p>
 
-PyQuake3D is a Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
+<h1 align="center">PyQuake3D</h1>
+<h3 align="center">A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip</h3>
 
-Please refer to [Code Manual (PDF)](doc.pdf) for more details.
+PyQuake3D is a high-performance Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. It combines physics-based modeling with modern parallel computing tools (MPI, GPU acceleration via CuPy) to solve a variety of earthquake cycle and rupture problems. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
 
-## 🔧 Features
+Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/blob/main/user_manual/user_manual.pdf) for more details.
+
+## Features
 
 -  3D non-planar quasi-dynamic earthquake cycle simulations
 -  Support for rate-and-state aging friction laws
 -  Support for Hierarchical matrix storage and calculation
+-  Support for GPU acceleration via CuPy
 -  MPI acceleration support 
 -  Suitable for large model earthquake cycle simulation
 
-## 📦 Installation
+![examples](https://github.com/Computational-Geophysics/PyQuake3D/images/framework/framework.png)
+
+## Installation
 -  requirement of python library
 -  python>=3.8
 -  numpy>=1.2
@@ -63,9 +67,9 @@ mpirun -np 10 python src/main.py -g examples/Lab-model/lab.msh -p examples/Lab-m
 ```
 
 
-## 📦 Parameters Setting
+## Parameters Setting
 The simulation parameters are implemented by modifying the parameter.txt file, rather than by changing the source code. The heterogeneous stress and friction parameters are imported from external files. 
-## 📦 General Parameters setting
+## General Parameters setting
 | Parameter                  | Default                   | Description                                                                                                            |
 |----------------------------|---------------------------|------------------------------------------------------------------------------------------------------------------------|
 | `Corefunc directory`       |                           | The storage path for the kernel function matrix composed of stress Green's functions                                   |
@@ -86,7 +90,7 @@ The simulation parameters are implemented by modifying the parameter.txt file, r
                                                                                                                                                                                                         |
 
 
-## 📦 Stress and Frition Settings
+## Stress and Frition Settings
 | Parameter                                  | Default   | Description                                                                                         |
 |--------------------------------------------|-----------|-------------------------------------------------------------------------------------------------|
 | `Half space`                              | False     | If 'True', calculating half-space green's functions                                              |
@@ -109,7 +113,7 @@ The simulation parameters are implemented by modifying the parameter.txt file, r
 
 
 
-## 📦 Nucleation and Friction Setting
+## Nucleation and Friction Setting
 | Parameter                                           | Default   | Description                                                                                   |
 |-----------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
 | `Set_nucleation`                                    | False     | If True, sets a patch whose shear stress and sliding rate are significantly greater than the surrounding area to meet the nucleation requirements. |
@@ -132,7 +136,7 @@ The simulation parameters are implemented by modifying the parameter.txt file, r
 
 
 
-## 📦 Output Setting
+## Output Setting
 | Parameter           | Default | Description                                                             |
 |---------------------|---------|-------------------------------------------------------------------------|
 | `totaloutputsteps`  | 2000    | The number of calculating time steps.                                   |
@@ -150,7 +154,11 @@ For questions, suggestions, or collaboration, please contact:
 
 ## Contributing
 
-PyQuake3D was developed by Rongjiang Tang and Luca Dal Zilio, who implemented the core frame-work, including the Boundary Element Method for simulating seismic cycles on geometrically complex 3D faults governed by a regularized rate-and-state friction governed by aging law. We welcome contributions to PyQuake3D. Please ensure that you follow the contribution guidelines and maintain the consistency of the codebase.
+PyQuake3D was developed by Dr. Rongjiang Tang and Dr. Luca Dal Zilio, who implemented the core framework, including the Boundary Element Method for simulating seismic cycles on geometrically complex 3D faults governed by a regularized rate-and-state friction governed by aging law. We welcome contributions to PyQuake3D. Please ensure that you follow the contribution guidelines and maintain the consistency of the codebase.
+
+Email: 
+> rongjiang@csj.uestc.edu.cn
+> luca.dalzilio@ntu.edu.sg
 
 ## License
 
@@ -168,12 +176,6 @@ Nikkhoo, M., & Walter, T. R. (2015). Triangular dislocation: an analytical, arte
 
 We would like to thank Associate Professor Ando Ryosuke and Dr.So Ozawa for their help in the code development, and Professor Steffen Börm for his assistance with HMatrix programming.
 
-
-
-📫 Email: 
-rongjiang@csj.uestc.edu.cn
-
-luca.dalzilio@ntu.edu.sg
 
 ## Videos
 [Videos of 2023, Turkey earthquake sequence simulation](https://github.com/Rongjiang007/PyQuake3D/issues/1#issue-2984332698)
