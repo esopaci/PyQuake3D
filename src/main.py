@@ -195,7 +195,7 @@ if __name__ == "__main__":
                     directory1='out_slipvTt'
                     if not os.path.exists(directory1):
                         os.mkdir(directory1)
-                    np.save(directory1+'/Tt_%d'%i,SLIPV)
+                    np.save(directory1+'/Tt_%d'%i,Tt)
                 #np.save('examples/Heto/slip/slip_%d'%i,SLIP)
                 #np.save('examples/Heto/Tt/Tt_%d'%i,Tt)
 
