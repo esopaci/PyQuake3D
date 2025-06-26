@@ -7,17 +7,17 @@
 
 **PyQuake3D** is a high-performance Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. It combines physics-based modeling with modern parallel computing tools (MPI, GPU acceleration via CuPy) to solve a variety of earthquake cycle and rupture problems. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
 
-## 👥 Authors and Contact
+## Authors and Contact
 
 **PyQuake3D** was developed by [Dr. Rongjiang Tang](https://scholar.google.com/citations?user=_4cR3zMAAAAJ&hl=zh-CN) and [Dr. Luca Dal Zilio](https://www.lucadalzilio.net/).  
 We welcome contributions to the project—please follow the contribution guidelines and help us maintain a clean, consistent codebase.
 
 For questions, suggestions, or collaboration opportunities, feel free to reach out:
 
-- 📧 rongjiang@csj.uestc.edu.cn  
-- 📧 luca.dalzilio@ntu.edu.sg
+-  rongjiang@csj.uestc.edu.cn  
+-  luca.dalzilio@ntu.edu.sg
 
-Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/raw/main/user_manual/user_manual.pdf) for more details.
+Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/raw/main/user_manual/user_manual.pdf)
 
 ## Features
 
