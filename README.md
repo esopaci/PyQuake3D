@@ -5,9 +5,19 @@
 <h1 align="center">PyQuake3D</h1>
 <h3 align="center">A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip</h3>
 
-PyQuake3D is a high-performance Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. It combines physics-based modeling with modern parallel computing tools (MPI, GPU acceleration via CuPy) to solve a variety of earthquake cycle and rupture problems. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
+**PyQuake3D** is a high-performance Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. It combines physics-based modeling with modern parallel computing tools (MPI, GPU acceleration via CuPy) to solve a variety of earthquake cycle and rupture problems. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
 
-Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/blob/main/user_manual/user_manual.pdf) for more details.
+## 👥 Authors and Contact
+
+**PyQuake3D** was developed by [Dr. Rongjiang Tang](https://scholar.google.com/citations?user=_4cR3zMAAAAJ&hl=zh-CN) and [Dr. Luca Dal Zilio](https://www.lucadalzilio.net/).  
+We welcome contributions to the project—please follow the contribution guidelines and help us maintain a clean, consistent codebase.
+
+For questions, suggestions, or collaboration opportunities, feel free to reach out:
+
+- 📧 rongjiang@csj.uestc.edu.cn  
+- 📧 luca.dalzilio@ntu.edu.sg
+
+Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophysics/PyQuake3D/raw/main/user_manual/user_manual.pdf) for more details.
 
 ## Features
 
@@ -18,19 +28,24 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 -  MPI acceleration support 
 -  Suitable for large model earthquake cycle simulation
 
-![examples](https://github.com/Computational-Geophysics/PyQuake3D/images/framework/framework.png)
+<p align="center">
+  <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/framework.png" alt="Framework Overview">
+</p>
 
 ## Installation
--  requirement of python library
--  python>=3.8
--  numpy>=1.2
--  cupy=10.6.0
--  matplotlib==3.2.2
--  scipy==1.10.1
--  joblib==0.16.0
--  mpi4py==4.0.0
--  ctypes == 1.1.0
--  pyvista ==0.45.2
+
+### Python Requirements
+
+PyQuake3D requires Python ≥ 3.8 and the following libraries:
+
+- `numpy >= 1.20`
+- `cupy == 10.6.0`
+- `matplotlib == 3.2.2`
+- `scipy == 1.10.1`
+- `joblib == 0.16.0`
+- `mpi4py == 4.0.0`
+- `ctypes == 1.1.0`
+- `pyvista == 0.45.2`
 
   Use pip for the quick installation:
 ```bash
@@ -146,41 +161,21 @@ The simulation parameters are implemented by modifying the parameter.txt file, r
 | `outputstv`         | True    | If True, the VTK files will be saved in out directroy.                  |
 | `outputmatrix`      | False   | If True, the matrix format txt files will be saved in out directroy.    |
 
-
-
-📧 Contact
-
-For questions, suggestions, or collaboration, please contact:
-
-## Contributing
-
-PyQuake3D was developed by Dr. Rongjiang Tang and Dr. Luca Dal Zilio, who implemented the core framework, including the Boundary Element Method for simulating seismic cycles on geometrically complex 3D faults governed by a regularized rate-and-state friction governed by aging law. We welcome contributions to PyQuake3D. Please ensure that you follow the contribution guidelines and maintain the consistency of the codebase.
-
-Email: 
-> rongjiang@csj.uestc.edu.cn
-> luca.dalzilio@ntu.edu.sg
-
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
 ## Acknowledgments
+We acknowledge the support and feedback provided by the broader scientific community and all contributors to this work.
 
-We would like to thank all the contributors and the community for their support and feedback.
+Development of the Python-based BEM algorithm was informed by the HBI code introduced in:  
+**Ozawa, S., Ida, A., Hoshino, T., & Ando, R.** (2023). *Large-scale earthquake sequence simulations on 3-D non-planar faults using the boundary element method accelerated by lattice H-matrices*. **Geophysical Journal International**, 232(3), 1471–1481.  
+[https://doi.org/10.1093/gji/ggad042](https://doi.org/10.1093/gji/ggad042)
 
-We referred to the HBI code to develop original python-based BIEM algorithm:
-Ozawa, S., Ida, A., Hoshino, T., & Ando, R. (2023). Large-scale earthquake sequence simulations on 3-D non-planar faults using the boundary element method accelerated by lattice H-matrices. Geophysical Journal International, 232(3), 1471-1481.
+The implementation of the stress Green’s functions builds on MATLAB routines from:  
+**Nikkhoo, M., & Walter, T. R.** (2015). *Triangular dislocation: an analytical, artefact-free solution*. **Geophysical Journal International**, 201(2), 1119–1141.  
+[https://doi.org/10.1093/gji/ggv035](https://doi.org/10.1093/gji/ggv035)
 
-We referred to MATLAB code to develop the kernel function:
-Nikkhoo, M., & Walter, T. R. (2015). Triangular dislocation: an analytical, artefact-free solution. Geophysical Journal International, 201(2), 1119-1141.
+We sincerely thank Ryosuke Ando and So Ozawa for their valuable guidance during code development, and Steffen Börm for his assistance with H-matrix implementation.
 
-We would like to thank Associate Professor Ando Ryosuke and Dr.So Ozawa for their help in the code development, and Professor Steffen Börm for his assistance with HMatrix programming.
-
-
-## Videos
-[Videos of 2023, Turkey earthquake sequence simulation](https://github.com/Rongjiang007/PyQuake3D/issues/1#issue-2984332698)
-
-[Videos of Earthquake cycle modeling of the Cascadia subduction zone](https://github.com/Rongjiang007/PyQuake3D/issues/2#issue)
-
-[Videos of Numerical simulation of main shock and aftershock](https://github.com/Rongjiang007/PyQuake3D/issues/4#issue)
 
