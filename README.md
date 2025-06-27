@@ -120,7 +120,6 @@ The simulation parameters are implemented by modifying the parameter.txt file, r
 | `Angle between ssh1 and X-axis`           | 30°       | Angle between maximum horizontal principal stress and X-axis.                                    |
 | `Vertical principal stress value`          | 50 MPa    | Vertical principal stress value                                                                  |
 | `Vertical principal stress value varies with depth` | True      | If True, Vertical principal stress value varies with depth                                      |
-| `Vertical principal stress value varies with depth` | True      | If vertical principal stress value, it maintains a constant value at the conversion depth, and the horizontal principal stress value also changes with depth simultaneously |
 | Turnning depth                            | 5000 m    | If Vertical principal stress value varies with depth is true, starting at this depth, the stress no longer changes with depth |
 | `Shear traction solved from stress tensor` | False     | If 'True', the non-uniform shear stress is projected onto the curved fault surface by the stress tensor |
 | `Rake solved from stress tensor`           | False     | If 'True', the non-uniform rakes are solved from the stress tensor.                              |
