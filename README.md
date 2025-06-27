@@ -124,8 +124,8 @@ The simulation parameters are implemented by modifying the parameter.txt file, r
 | `Shear traction solved from stress tensor` | False     | If 'True', the non-uniform shear stress is projected onto the curved fault surface by the stress tensor |
 | `Rake solved from stress tensor`           | False     | If 'True', the non-uniform rakes are solved from the stress tensor.                              |
 | `Fix_rake`                                | 30°       | If 'True', Set fixed rakes if 'Rake solved from stress tensor' is 'False'.                      |
-| `Widths of VS region`                      | 5000 m    | The width of the velocity weakening region.                                                     |
-| `Widths of surface VS region`              | 2000 m    | Widths of surface VS region                                                                      |
+| `Widths of VS region`                      | 5000 m    | The width of the VS region near boundary.                                                     |
+| `Widths of surface VS region`              | 2000 m    | Widths of surface VS region near free surface.                                                                      |
 | `Transition region  from VS to VW region` | 3000 m    | Transition region width from VS to VW region                                                    |
                                                                                                                                                               |
 
