@@ -21,6 +21,7 @@ from mpi_config import comm, rank, size
 from mpi4py import MPI
 import pyvista as pv
 
+
 def get_sumS(X,Y,Z,nodelst,elelst):
     Ts,Ss,Ds=0,0,1
     mu=0.33e11
@@ -51,6 +52,7 @@ def get_sumS(X,Y,Z,nodelst,elelst):
             Dis=Dis+Dis_tems
     return Dis,Strs,Stra
 
+# find the mesh boundary_edges and nodes
 def find_boundary_edges_and_nodes(triangles):
     from collections import defaultdict
     edge_count = defaultdict(int)
@@ -77,6 +79,7 @@ def find_boundary_edges_and_nodes(triangles):
 
 from scipy.spatial.distance import cdist
 
+# Calculate the distance between two node coord
 def find_min_euclidean_distance(coords1, coords2):
     # 使用 scipy.spatial.distance.cdist 计算成对距离
     distances = cdist(coords1, coords2, 'euclidean')
@@ -84,7 +87,7 @@ def find_min_euclidean_distance(coords1, coords2):
     min_idx = np.unravel_index(np.argmin(distances), distances.shape)
     min_distance = distances[min_idx]
     return min_distance
-
+# Read parameters
 def readPara0(fname):
     Para0={}
     f=open(fname,'r')
@@ -121,13 +124,14 @@ class QDsim:
 
         last_backslash_index = fnamePara.rfind('/')
 
-        # 获取最后一个反斜杠之前的所有内容
+        # get Parameter file name
         if last_backslash_index != -1:
             self.dirname = fnamePara[:last_backslash_index]
         else:
             self.dirname = fnamePara
         #print(self.dirname)
         self.Para0=readPara0(fnamePara)
+        #parameter define
         self.Corefunc_directory=self.Para0['Corefunc directory']
         self.save_corefunc=self.Para0['save Corefunc']=='True'
         jud_ele_order=self.Para0['Node_order']=='True'
@@ -144,6 +148,7 @@ class QDsim:
         if(jud_scalekm==False):
             nodelst=nodelst/1e3
         #jud_ele_order=False
+        # get element label and element center coodinate
         eleVec,xg=readmsh.get_eleVec(nodelst,elelst,jud_ele_order)
         self.eleVec=eleVec
         self.elelst=elelst
@@ -176,6 +181,7 @@ class QDsim:
 
         
         #self.calc_corefunc()
+        #Calcultae Hmatrix structure
         self.tree_block=Hmat.createHmatrix(self.xg,self.nodelst,self.elelst,self.eleVec,self.mu,self.lambda_,self.halfspace_jud,plotHmatrix=True)
 
         
@@ -189,7 +195,7 @@ class QDsim:
     
 
 
-
+    #Determine whether Hmatrix has been calculated. If it has been calculated, read it directly
     def get_block_core(self):
         jud_coredir=True
         #directory = 'surface_core'
@@ -248,6 +254,7 @@ class QDsim:
             self.dc[index1]=0.015
             #print(nuclearloc)
     
+    #calc_nucleaszie and cohesivezone
     def calc_nucleaszie_cohesivezone(self):
         maxsize=0
         elesize=[]
@@ -287,7 +294,7 @@ class QDsim:
         print('Cohesive zone:',self.A0, flush=True)
         return maxsize
     
-
+    #set heterogeneous plate slip rate
     def Grad_slpv_con(self,const):
         self.slipvC=np.ones(len(self.xg))*self.Vpl_con
         Vpl_min=1e-16
@@ -298,7 +305,7 @@ class QDsim:
                 else:
                     self.slipvC[i]=Vpl_min+abs(self.xg[i,2])/5000.0*(self.Vpl_con-Vpl_min)
 
-    
+    #set heterogeneous normal stress
     def Tn_edge(self):
         np.random.seed(42) 
         #self.Tno[i]=self.Tno[i]*exp(dis1)
@@ -376,7 +383,7 @@ class QDsim:
 
 
 
-
+    #set initial condition
     def Init_condition(self):
         N=len(self.eleVec)
         self.Relerrormax1_last=0
@@ -417,6 +424,7 @@ class QDsim:
             stress=np.dot(np.dot(Rmatrix,Pstress),Rmatrix.transpose())
             stress3D=np.array([[stress[0][0],stress[0][1],0],[stress[1][0],stress[1][1],0],[0,0,ssv]])
             
+            #project stress tensor into fault surface
             #Me=self.eleVec[i].reshape([3,3])
             #T_global=np.dot(Me.transpose(),T_local)
             tra=np.dot(stress3D,self.eleVec[i,-3:])
@@ -645,7 +653,7 @@ class QDsim:
             self.calc_nucleaszie_cohesivezone()
             #self.randompatch()
  
-
+    #read vtk file for initial condition if it start from previous results
     def read_vtk(self,fname):
         #K=450
         #mesh0 = pv.read("examples/case1/out/step%d.vtk"%K)
@@ -675,7 +683,7 @@ class QDsim:
 
 
 
-    
+    #read initial condition from outside files
     def read_parameter(self,fname):
         f=open(self.dirname+'/'+fname,'r')
         values=[]
@@ -748,7 +756,7 @@ class QDsim:
             T_globalarr.append(T_global)  
         self.T_globalarr=np.array(T_globalarr)
 
-
+    #Partial derivative calculation
     def derivative(self,Tno,Tt1o,Tt2o,state):
         Tno=Tno*1e6
         Tt1o=Tt1o*1e6
@@ -880,7 +888,7 @@ class QDsim:
         
     #     return dstatedt,dsigmadt/1e6,dtau1dt/1e6,dtau2dt/1e6
     
-    
+    #forward modelling
     def simu_forward(self,dttry):
         
         slipv1=comm.bcast(self.slipv1, root=0)
@@ -893,14 +901,14 @@ class QDsim:
 
         slipv1=slipv1-self.slipvC*np.cos(self.rake0)
         slipv2=slipv2-self.slipvC*np.sin(self.rake0)
-
+        #Calculating Kv first
         #comm.Barrier()
         if(self.fix_Tn==True):
             dsigmadt=self.normal_loading
         else:
             #dsigmadt=np.dot(self.Bs,slipv1)+np.dot(self.Bd,slipv2)+self.normal_loading
             dsigmadt=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'Bs')+\
-                self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'Bd')
+                self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'Bd')+self.normal_loading
 
         #dsigmadt[self.index_normal]=-dsigmadt[self.index_normal]
         AdotV1=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'A1s')+\
@@ -908,6 +916,7 @@ class QDsim:
         AdotV2=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'A2s')+\
                 self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'A2d')
 
+        #Combine results from all ranks
         self.dsigmadt=comm.reduce(dsigmadt, op=MPI.SUM, root=0)
         self.AdotV1=comm.reduce(AdotV1, op=MPI.SUM, root=0)
         self.AdotV2=comm.reduce(AdotV2, op=MPI.SUM, root=0)
@@ -920,12 +929,13 @@ class QDsim:
         
         if(rank==0):
             while running:
+                #RungeKutte iteration and update tau,Tno, Tt1,Tt2
                 Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk,condition1,condition2,hnew1,hnew2=self.RungeKutte_solve_Dormand_Prince(h)
                         
                 #Tno_yhk,Tt_yhk,state_yhk,condition1,condition2,hnew1,hnew2=self.RungeKutta_solve6(h)
                 #print('condition1,condition2,hnew1,hnew2:',condition1,condition2,hnew1,hnew2)
                 
-                
+                #judge the accrancy
                 if(max(condition1,condition2)<1.0 and not (np.isnan(condition1) or np.isnan(condition2))):
                     #print(type(hnew1),type(condition1))
                     dtnext=min(hnew1,hnew2)
@@ -957,6 +967,7 @@ class QDsim:
             self.state=state_yhk
             #self.state2_gpu=state2_yhk
             
+            #update slip rate and rake
             self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
 
             #print('self.Tt1o',np.mean(self.Tt1o),np.mean(self.Tt2o))
@@ -973,11 +984,12 @@ class QDsim:
             self.maxslipv0=np.max(self.slipv)
             
             #print('maxTt:',cp.max(Tt_yhk),'maxstate:',cp.max(state_yhk))
-
+            #update slip
             self.slip1=self.slip1+self.slipv1*h
             self.slip2=self.slip2+self.slipv2*h
             self.slip=np.sqrt(self.slip1*self.slip1+self.slip2*self.slip2)
             
+            #update frictional coeff
             self.fric=self.Tt/self.Tno
         else:
             h,dtnext=None,None
@@ -985,7 +997,7 @@ class QDsim:
 
 
 
-    
+    #RungeKutte iteration
     def RungeKutte_solve_Dormand_Prince(self,h):
         B21=.2
         B31=3./40

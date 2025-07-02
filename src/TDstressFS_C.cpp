@@ -21,11 +21,11 @@ using namespace std;
 void TensTrans(std::vector<double>& Txx, std::vector<double>& Tyy, std::vector<double>& Tzz,
                std::vector<double>& Txy, std::vector<double>& Txz, std::vector<double>& Tyz,
                const double A[3][3], size_t n_pts) {
-    // �����µ�����������Ӧ�þ��� A
+    // 
     for (size_t i = 0; i < n_pts; ++i) {
         double Txx2 = 0, Tyy2 = 0, Tzz2 = 0, Txy2 = 0, Txz2 = 0, Tyz2 = 0;
         
-        // Txx2, Tyy2, Tzz2, Txy2, Txz2, Tyz2 ���ǻ��� A �����ԭ���������ļ���
+        // Txx2, Tyy2, Tzz2, Txy2, Txz2, Tyz2 
         Txx2 = A[0][0] * A[0][0] * Txx[i] + 2 * A[0][0] * A[1][0] * Txy[i] + 2 * A[0][0] * A[2][0] * Txz[i] + 2 * A[1][0] * A[2][0] * Tyz[i] + A[1][0] * A[1][0] * Tyy[i] + A[2][0] * A[2][0] * Tzz[i];
         
         Tyy2 = A[0][1] * A[0][1] * Txx[i] + 2 * A[0][1] * A[1][1] * Txy[i] + 2 * A[0][1] * A[2][1] * Txz[i] + 2 * A[1][1] * A[2][1] * Tyz[i] + A[1][1] * A[1][1] * Tyy[i] + A[2][1] * A[2][1] * Tzz[i];
@@ -38,7 +38,7 @@ void TensTrans(std::vector<double>& Txx, std::vector<double>& Tyy, std::vector<d
         
         Tyz2 = A[0][1] * A[0][2] * Txx[i] + (A[0][2] * A[1][1] + A[0][1] * A[1][2]) * Txy[i] + (A[0][2] * A[2][1] + A[0][1] * A[2][2]) * Txz[i] + (A[2][1] * A[1][2] + A[2][2] * A[1][1]) * Tyz[i] + A[1][1] * A[1][2] * Tyy[i] + A[2][1] * A[2][2] * Tzz[i];
         
-        // ���½��
+        // 
         Txx[i] = Txx2;
         Tyy[i] = Tyy2;
         Tzz[i] = Tzz2;
@@ -123,13 +123,13 @@ void AngDisStrain(
 
 
 std::vector<int> trimodefinder(
-    const std::vector<std::array<double, 3>>& coord, // ÿ������ [z, x, y]
+    const std::vector<std::array<double, 3>>& coord, // 
     const std::vector<double>& p1,
     const std::vector<double>& p2,
     const std::vector<double>& p3
 ) {
     size_t N = coord.size();
-    std::vector<int> trimode(N, 1);  // ��ʼ��ȫΪ 1
+    std::vector<int> trimode(N, 1);  // 
 
     double x1 = p1[1], x2 = p2[1], x3 = p3[1];
     double y1 = p1[2], y2 = p2[2], y3 = p3[2];
@@ -181,7 +181,7 @@ void mat2x2_transpose(const double A[2][2], double AT[2][2]) {
     AT[1][0] = A[0][1]; AT[1][1] = A[1][1];
 }
 
-// ���� coord �� n x 3 �����飬ÿ���� [x, y, z]
+// 
 void TDSetupS(const std::vector<std::array<double, 3>>& coord,
               double alpha, double bx, double by, double bz,
               double nu,
@@ -196,7 +196,7 @@ void TDSetupS(const std::vector<std::array<double, 3>>& coord,
     
     size_t n_pts = coord.size();
 
-    // ���� A ����
+    // 
     double A[2][2] = {
         { SideVec[2], -SideVec[1] },
         { SideVec[1],  SideVec[2] }
@@ -216,14 +216,14 @@ void TDSetupS(const std::vector<std::array<double, 3>>& coord,
         coord1[i][2] = r_out[1]; // new z
     }
 	
-    // λ��ʸ���任 (by, bz)
+    // 
     double slip_in[2] = { by, bz };
     double slip_out[2];
     mat2x2_mul_vec2(A, slip_in, slip_out);
     double by1 = slip_out[0];
     double bz1 = slip_out[1];
 
-    // ����ռ�
+    // 
     Exx.resize(n_pts);
     Eyy.resize(n_pts);
     Ezz.resize(n_pts);
@@ -231,11 +231,11 @@ void TDSetupS(const std::vector<std::array<double, 3>>& coord,
     Exz.resize(n_pts);
     Eyz.resize(n_pts);
 	//printf("%f %f %f %f %f %f %f\n",coord1[0][0],coord1[0][1],coord1[0][2],-M_PI + alpha,bx, by1, bz1);
-    // �����ⲿӦ�亯��������Ϊ ADCS ����ϵ�µ������λ����
+    // 
     AngDisStrain(coord1, -PI + alpha, bx, by1, bz1, nu,
                  Exx, Eyy, Ezz, Exy, Exz, Eyz);
 	//printf("%.10f %.10f %.10f %.10f %.10f %.10f\n",Exx[0],Eyy[0],Ezz[0],Exy[0],Exz[0],Eyz[0]);
-    // ���� B��3x3�������任����
+    // 
     double B[3][3] = {0};
     B[0][0] = 1.0;
     B[1][1] = A[0][0];
@@ -250,7 +250,7 @@ void TDSetupS(const std::vector<std::array<double, 3>>& coord,
 		}
 		printf("\n");
 	}*/
-    // �����任
+    // 
     TensTrans(Exx, Eyy, Ezz, Exy, Exz, Eyz, B, n_pts);
 	//printf("%.10f %.10f %.10f %.10f %.10f %.10f\n",Exx[0], Eyy[0], Ezz[0], Exy[0], Exz[0], Eyz[0]);
 }
@@ -264,7 +264,7 @@ void TDSetupS(const std::vector<std::array<double, 3>>& coord,
 
 
 
-// �����ʹ�õ��� std::array<double, 3>����ô��
+// 
 std::vector<double> vectorOpposite(const std::vector<double>& v) {
     return {-v[0], -v[1], -v[2]};
 }
@@ -291,7 +291,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
     double bz = Ds;
     double nu = 1.0 / (1.0 + lambda_ / mu) / 2.0;
 
-    // ���㷨���� Vnorm���滻 Vector3 ������
+    // 
     std::vector<double> Vnorm(3);
     //Vnorm[0] = P2[1] * P3[2] - P2[2] * P3[1];
     //Vnorm[1] = P2[2] * P3[0] - P2[0] * P3[2];
@@ -308,7 +308,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
     std::vector<double> eY = {0, 1, 0};
     std::vector<double> eZ = {0, 0, 1};
     
-    // ���� Vstrike
+    //  Vstrike
     std::vector<double> Vstrike(3);
     Vstrike[0] = eZ[1] * Vnorm[2] - eZ[2] * Vnorm[1];
     Vstrike[1] = eZ[2] * Vnorm[0] - eZ[0] * Vnorm[2];
@@ -324,7 +324,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
     Vstrike[1] /= norm;
     Vstrike[2] /= norm;
 	
-    // ���� Vdip
+    //  Vdip
     std::vector<double> Vdip(3);
     Vdip[0] = Vnorm[1] * Vstrike[2] - Vnorm[2] * Vstrike[1];
     Vdip[1] = Vnorm[2] * Vstrike[0] - Vnorm[0] * Vstrike[2];
@@ -375,7 +375,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
 		printf("\n");
 	}*/
 	
-    // ��������� e12, e13, e23
+    // e12, e13, e23
     std::vector<double> e12 = {(p2[0] - p1[0]), (p2[1] - p1[1]), (p2[2] - p1[2])};
     std::vector<double> e13 = {(p3[0] - p1[0]), (p3[1] - p1[1]), (p3[2] - p1[2])};
     std::vector<double> e23 = {(p3[0] - p2[0]), (p3[1] - p2[1]), (p3[2] - p2[2])};
@@ -389,7 +389,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
     double norm_e23 = std::sqrt(e23[0] * e23[0] + e23[1] * e23[1] + e23[2] * e23[2]);
     e23[0] /= norm_e23; e23[1] /= norm_e23; e23[2] /= norm_e23;
 
-    // ����Ƕ� A_angle, B_angle, C_angle
+    // A_angle, B_angle, C_angle
     double A_angle = std::acos(e12[0] * e13[0] + e12[1] * e13[1] + e12[2] * e13[2]);
     double B_angle = std::acos((-e12[0]) * e23[0] + (-e12[1]) * e23[1] + (-e12[2]) * e23[2]);
     double C_angle = std::acos(e23[0] * e13[0] + e23[1] * e13[1] + e23[2] * e13[2]);
@@ -397,7 +397,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
 	std::vector<int> Trimode = trimodefinder(X1, p1, p2, p3);
 	
 	//printf("%f %f %f\n",A_angle,B_angle,C_angle);
-    // ��ʼ��Ӧ����������
+    // 
     Exx.resize(n, 0.0);
     Eyy.resize(n, 0.0);
     Ezz.resize(n, 0.0);
@@ -411,13 +411,13 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
 		casenLog[i] = (Trimode[i] == -1);
 		casezLog[i] = (Trimode[i] == 0);
 	}
-	// ��ȡ�Ӽ� Xp, Xn
+	// 
 	std::vector<std::array<double, 3>> Xp, Xn;
 	for (size_t i = 0; i < X1.size(); ++i) {
 		if (casepLog[i]) Xp.push_back(X1[i]);
 		else if (casenLog[i]) Xn.push_back(X1[i]);
 	}
-	// Ӧ����������
+	//
 	std::vector<double> Exx1Tp, Eyy1Tp, Ezz1Tp, Exy1Tp, Exz1Tp, Eyz1Tp;
 	std::vector<double> Exx2Tp, Eyy2Tp, Ezz2Tp, Exy2Tp, Exz2Tp, Eyz2Tp;
 	std::vector<double> Exx3Tp, Eyy3Tp, Ezz3Tp, Exy3Tp, Exz3Tp, Eyz3Tp;
@@ -478,9 +478,8 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
 
 	
 
-	// TensTrans ӦΪһ�����������磺
+	// TensTrans
 	// void TensTrans(const std::vector<double>& exx, ... double Vnorm[3], ...);
-	// ����Խ���������£�
 	//std::vector<double> Exx, Eyy, Ezz, Exy, Exz, Eyz;
 	//double A[3][3] = {
     //{ Vnorm[0], Vstrike[0], Vdip[0] },
@@ -496,10 +495,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
 	TensTrans(exx, eyy, ezz, exy, exz, eyz, A, exx.size());
 	//printf("%.20f %.20f %.20f %.20f %.20f %.20f\n",exx[0], eyy[0],ezz[0], exy[0], exz[0], eyz[0]);
 	
-    // �洢 TDSetupS ����ʱ���
-    
-	
-    // ����Ӧ������
+
     Sxx.resize(n);
     Syy.resize(n);
     Szz.resize(n);
@@ -537,7 +533,6 @@ void TDstressEachSourceAtReceiver(
 {
     size_t N = P1_list.size();
 
-    // ��ղ�Ԥ����
     StressList.clear();
     StrainList.clear();
     StressList.reserve(N);
@@ -563,7 +558,6 @@ void TDstressEachSourceAtReceiver(
 
 
 /*
-// ԭʼ C++ ʵ�ֺ�������������д�ã�
 void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, const std::vector<double>& Z,
                 const std::vector<double>& P1, const std::vector<double>& P2, const std::vector<double>& P3,
                 double Ss, double Ds, double Ts, double mu, double lambda_,
@@ -572,7 +566,7 @@ void TDstressFS(const std::vector<double>& X, const std::vector<double>& Y, cons
                 std::vector<double>& Exx, std::vector<double>& Eyy, std::vector<double>& Ezz,
                 std::vector<double>& Exy, std::vector<double>& Exz, std::vector<double>& Eyz);*/
 
-// C �ӿں�������װΪ DLL / SO �ɵ�����ʽ
+
 extern "C" void TDstressFS_C1(
     const double* X, const double* Y, const double* Z,
 	size_t n,
@@ -586,28 +580,26 @@ extern "C" void TDstressFS_C1(
     double* Exy, double* Exz, double* Eyz)
 {
 	//printf("n=%d",n);
-    // �� raw pointer ת�� vector��ֻ���ڲ��ã�����¶���ⲿ
+    // 
     ::vector<double> Xv(X, X + n);
     std::vector<double> Yv(Y, Y + n);
     std::vector<double> Zv(Z, Z + n);
 
-    // P1, P2, P3 �ǳ���Ϊ3������
+    // P1, P2, P3 
     std::vector<double> P1v(P1, P1 + 3);
     std::vector<double> P2v(P2, P2 + 3);
     std::vector<double> P3v(P3, P3 + 3);
 
-    // ��ʼ���������
     std::vector<double> Sxxv(n), Syyv(n), Szzv(n);
     std::vector<double> Sxyv(n), Sxzv(n), Syzv(n);
     std::vector<double> Exxv(n), Eyyv(n), Ezzv(n);
     std::vector<double> Exyv(n), Exzv(n), Eyzv(n);
 
-    // ���ú��� C++ ����
+
     TDstressFS(Xv, Yv, Zv, P1v, P2v, P3v, Ss, Ds, Ts, mu, lambda_,
                Sxxv, Syyv, Szzv, Sxyv, Sxzv, Syzv,
                Exxv, Eyyv, Ezzv, Exyv, Exzv, Eyzv);
 
-    // ��������� C ���ָ��
     for (int i = 0; i < n; ++i) {
         Sxx[i] = Sxxv[i]; Syy[i] = Syyv[i]; Szz[i] = Szzv[i];
         Sxy[i] = Sxyv[i]; Sxz[i] = Sxzv[i]; Syz[i] = Syzv[i];
@@ -1784,13 +1776,13 @@ void TDstress_HarFunc(const std::vector<double>& X,
                 std::vector<double>& StrFSCxx, std::vector<double>& StrFSCyy, std::vector<double>& StrFSCzz,
                 std::vector<double>& StrFSCxy, std::vector<double>& StrFSCxz, std::vector<double>& StrFSCyz) 
 {
-     // 位移矢量分量
+    // Displacement vector components
     double bx = Ts;
     double by = Ss;
     double bz = Ds;
 
-    // 法向量
-    // 计算法向量 Vnorm = normalize(cross(P2 - P1, P3 - P1))
+    // Normal vector
+    // Calculate the normal vector Vnorm = normalize(cross(P2 - P1, P3 - P1))
     Vec3 u = {P2[0] - P1[0], P2[1] - P1[1], P2[2] - P1[2]};
     Vec3 v = {P3[0] - P1[0], P3[1] - P1[1], P3[2] - P1[2]};
     Vec3 Vnorm = {
@@ -1806,7 +1798,7 @@ void TDstress_HarFunc(const std::vector<double>& X,
     }
 
     // ----------------------------------------
-    // 计算 strike 向量 Vstrike = normalize(cross(eZ, Vnorm))
+    // Vstrike = normalize(cross(eZ, Vnorm))
     Vec3 eY = {0.0, 1.0, 0.0};
     Vec3 eZ = {0.0, 0.0, 1.0};
     Vec3 Vstrike = {
@@ -1827,7 +1819,7 @@ void TDstress_HarFunc(const std::vector<double>& X,
     }
 
     // ----------------------------------------
-    // 计算 dip 向量 Vdip = cross(Vnorm, Vstrike)
+    // Vdip = cross(Vnorm, Vstrike)
     Vec3 Vdip = {
         Vnorm[1]*Vstrike[2] - Vnorm[2]*Vstrike[1],
         Vnorm[2]*Vstrike[0] - Vnorm[0]*Vstrike[2],
@@ -1835,7 +1827,7 @@ void TDstress_HarFunc(const std::vector<double>& X,
     };
 
     // ----------------------------------------
-    // 构建旋转矩阵 A，列向量为 Vnorm, Vstrike, Vdip
+    // rotate A，Vnorm, Vstrike, Vdip
     // B_vec = A * burgers
     std::vector<double> B_vec(3);
     B_vec[0] = Vnorm[0]*bx + Vstrike[0]*by + Vdip[0]*bz;
@@ -1930,7 +1922,7 @@ void TDstressHS(const std::vector<double>& X,
                 std::vector<double>& Exy, std::vector<double>& Exz, std::vector<double>& Eyz) 
 
 {
-    // 检查 Z 坐标中是否有大于 0 的值
+    // Check if there is a value greater than 0 in the Z coordinate
     if (*std::max_element(Z.begin(), Z.end()) > 0 || 
         P1[2] > 0 || P2[2] > 0 || P3[2] > 0) 
     {
@@ -2009,28 +2001,28 @@ void TDstressHS(const std::vector<double>& X,
 
 int main()
 {
-    // 输入：3 个观测点
+    // Input: 3 observation points
     vector<double> X = {48771.61733949,-48484.78117283,48775.26818703};
     vector<double> Y = {30000, 15000, 3000};
     vector<double> Z = {-13944.10291502,-20994.9909562,-12042.91174556};
 
-    // 三角形三个顶点
+    //Three vertices of a triangle
     vector<double> P1 = {-49019.8529842,0., -13632.75018015};
     vector<double> P2 = {-49294.4187163,3000., -14516.85867197};
     vector<double> P3 = {-48427.27119853,0.,-14642.195744633};
     
-    // 输出：每个分量分配空间
+    // Output: space allocated for each component
     size_t N = X.size();
     vector<double> Sxx(N), Syy(N), Szz(N);
     vector<double> Sxy(N), Sxz(N), Syz(N);
     vector<double> Exx(N), Eyy(N), Ezz(N);
     vector<double> Exy(N), Exz(N), Eyz(N);
 
-    // 错动量和介质参数
+    // Dislocation and medium parameters
     double Ss = 1.0, Ds = 0.5, Ts = 0.0;
     double mu = 32038120320, lambda_ = 32038120320;
     //std::cout << "hello"<<endl;
-    // 调用 TDstressHS 函数
+    // Calling the TDstressHS function
     TDstressHS(X, Y, Z, P1, P2, P3,
                Ss, Ds, Ts, mu, lambda_,
                Sxx, Syy, Szz, Sxy, Sxz, Syz,

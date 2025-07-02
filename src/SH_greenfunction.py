@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 
 import ctypes
 
-# ���� .so ��
+# 
 #lib = ctypes.CDLL('src/libang_dis_strain.so')
 #lib = ctypes.CDLL('src/Dll1.dll')
 
-# ���庯���ӿ�
+
 
 # lib.ang_dis_strain.argtypes = [
 #     ctypes.POINTER(ctypes.c_double),  # coord_flat

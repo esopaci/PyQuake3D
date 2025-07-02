@@ -18,6 +18,7 @@ import ctypes
 import pickle
 import traceback
 
+'''Read C++ compiled dynamic library to calculate green's functions'''
 lib = ctypes.CDLL('src/TDstressFS_C.so')
 #lib = ctypes.CDLL('src/Dll1.dll')
 # 定义接口参数类型
@@ -56,10 +57,9 @@ STOP_TAG = 3  # 结束信号
 
 def bounding_box(cluster, points):
     """
-    计算给定点簇的 bounding box 范围
-    :param cluster: 点索引列表
-    :param points: 所有点坐标的矩阵，形状 (n, d)
-    :return: (a, b) 分别是 bounding box 的最小和最大坐标
+    calc bounding box for points
+    :param cluster: index of point
+    :param points: coordinate,shape (n, d)
     """
     #print(points,cluster)
     a = np.min(points[cluster], axis=0)  # 计算每个维度上的最小值
@@ -68,30 +68,30 @@ def bounding_box(cluster, points):
 
 def diameter(a, b):
     """
-    计算 bounding box 的直径
-    :param a: bounding box 的最小坐标
-    :param b: bounding box 的最大坐标
-    :return: 直径
+    calc bounding box diameter
+    :param a: bounding box minimum coord
+    :param b: bounding box maximum coord
+    :return: v
     """
     return np.sqrt(np.sum((b - a) ** 2))
 
 def distance(a_tau, b_tau, a_sigma, b_sigma):
     """
-    计算两个 bounding box 之间的距离
-    :param a_tau, b_tau: 第一个 bounding box 的最小和最大坐标
-    :param a_sigma, b_sigma: 第二个 bounding box 的最小和最大坐标
-    :return: 两个 bounding box 之间的距离
+    calc bounding box distance
+    :param a_tau, b_tau: first bounding box minimun and maximum coord
+    :param a_sigma, b_sigma: second bounding box minimun and maximum coord
+    :return: two bounding box distance
     """
     return np.sqrt(np.sum((np.maximum(0, a_sigma - b_tau) ** 2) + 
                           (np.maximum(0, a_tau - b_sigma) ** 2)))
 
 def is_admissible(cluster_tau,cluster_sigma,points, eta=2.0):
     """
-    判断两个 bounding box 是否满足可接受性条件
-    :param a_tau, b_tau: 第一个 bounding box 的最小和最大坐标
-    :param a_sigma, b_sigma: 第二个 bounding box 的最小和最大坐标
-    :param eta: 可接受性条件参数 (通常 0 < η < 1)
-    :return: 是否满足 admissibility condition
+    judge if bounding box meet admissible condition
+    :param a_tau, b_tau: first bounding box minimun and maximum coord
+    :param a_sigma, b_sigma: second bounding box minimun and maximum coord
+    :param eta: admissible condition (通常 0 < η < 3)
+    :return: admissibility condition
     """
     a_tau, b_tau = bounding_box(cluster_tau, points)
     a_sigma, b_sigma = bounding_box(cluster_sigma, points)
@@ -103,7 +103,7 @@ def is_admissible(cluster_tau,cluster_sigma,points, eta=2.0):
     return min(d_tau, d_sigma) <= eta * d_Q
 
 
-
+#Singular Value Decomposition
 def SVD_recompress(U_ACA, V_ACA, eps):
     """
     Recompress an ACA matrix approximation via SVD.
@@ -131,29 +131,29 @@ def SVD_recompress(U_ACA, V_ACA, eps):
 
 
 class TreeNode:
-    """ 二叉树节点，存储 H 矩阵的 BlockTree 结构 """
+    """ Binary tree node, BlockTree structure storing H matrix"""
     def __init__(self, indices, split_dim=None, split_value=None,level=0):
-        self.indices = indices  # 当前节点存储的点索引
-        self.split_dim = split_dim  # 划分维度
-        self.split_value = split_value  # 划分阈值
+        self.indices = indices  # The point index stored in the current node
+        self.split_dim = split_dim  # Split dimension
+        self.split_value = split_value  # Split threshold
         self.level=level
-        self.left = None  # 左子树
-        self.right = None  # 右子树
+        self.left = None  # Left subtree
+        self.right = None  # Right subtree
 
 def build_block_tree(cluster, points,min_size=16,depth=0):
     """
-    递归构造 BlockTree（二叉树）
-    :param cluster: 需要划分的索引集合
-    :param points: 所有点的坐标矩阵，形状 (n, d)
-    :param min_size: 簇最小大小，达到该值不再分裂
-    :return: 根节点
+    Recursively construct BlockTree (binary tree)
+    :param cluster: the index set to be divided
+    :param points: the coordinate matrix of all points, shape (n, d)
+    :param min_size: the minimum size of the cluster, when this value is reached, no more splitting
+    :return: the root node
     """
     if len(cluster) <= min_size:
-        return TreeNode(cluster,level=depth)  # 叶子节点，不再划分
+        return TreeNode(cluster,level=depth)  # Leaf node, no longer divided
 
     d = points.shape[1]  # 维度
-    alpha = np.min(points, axis=0)  # 计算各维度上的最小值
-    beta = np.max(points, axis=0)   # 计算各维度上的最大值
+    alpha = np.min(points, axis=0)  # Calculate the minimum value of each dimension
+    beta = np.max(points, axis=0)   # Calculate the maximum value of each dimension
     #print(alpha,beta)
     # 选择分裂方向，使得 beta_j - alpha_j 最大
     j_max = np.argmax(beta - alpha)
@@ -182,7 +182,7 @@ def build_block_tree(cluster, points,min_size=16,depth=0):
     return node
 
 def print_tree(node, depth=0):
-    """ 递归打印二叉树结构 """
+    """ Recursively print the binary tree structure """
     if node is None:
         return
     print(" " * (depth * 2), f"Node: {node.indices}, split_dim={node.split_dim}, split_value={node.split_value}")
@@ -194,12 +194,12 @@ def print_tree(node, depth=0):
 class Block:
     def __init__(self, row_cluster, col_cluster,row_index,col_index, children=None, level=0):
         """
-        HMatrix中的Block，支持多层递归分块。
-        :param row_cluster: 行索引
-        :param col_cluster: 列索引
-        :param data: 叶子块存储的矩阵数据
-        :param children: 若是父块，则包含子块列表
-        :param level: 记录当前块的层级
+        Block in HMatrix supports multi-layer recursive block division.
+        :param row_cluster: row index
+        :param col_cluster: column index
+        :param data: matrix data stored in leaf blocks
+        :param children: if it is a parent block, it contains a list of child blocks
+        :param level: records the level of the current block
         """
         self.row_cluster = row_cluster
         self.col_cluster = col_cluster
@@ -237,9 +237,9 @@ class Block:
         self.Mf_A2d=[]
         self.Mf_Bd=[]
 
-        #self.data = data  # 仅叶子节点存储数据
+        #self.data = data  
         self.children = children if children is not None else []
-        self.level = level  # 记录层级
+        self.level = level  
         self.judproc=False
         self.judsvd=False
         self.judaca=False
@@ -248,17 +248,17 @@ class Block:
         self.data=data1
 
     def is_leaf(self):
-        """判断是否为叶子块"""
+        """Judge whether it is a leaf block"""
         return len(self.children) == 0
 
     def apply_low_rank_approximation(self, rank=10):
         """
-        对叶子块进行低秩近似（SVD 分解）
-        :param rank: 低秩近似的阶数
+        Perform low-rank approximation (SVD decomposition) on leaf blocks
+        :param rank: the order of low-rank approximation
         """
         if self.is_leaf() and self.data is not None:
             U, S, Vt = np.linalg.svd(self.data, full_matrices=False)
-            k = min(rank, len(S))  # 取最大可用秩
+            k = min(rank, len(S))  # Get the maximum available rank
             self.data = U[:, :k] @ np.diag(S[:k]) @ Vt[:k, :]
             return self.data
         return None
@@ -266,7 +266,7 @@ class Block:
 
 class BlockTree:
     def __init__(self, root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud, mini_leaf):
-        """HMatrix的BlockTree结构,支持多层分块"""
+        """HMatrix's BlockTree structure supports multi-layer block division"""
         self.root_block = root_block
         self.nodelst=nodelst
         self.elelst=elelst
@@ -291,7 +291,7 @@ class BlockTree:
         
         
         
-    
+    #transtate the Stress tensor into traction on the fault surface
     def GetTtstress(self,Stress,col_cluster):
         Tra=[]
         #print(self.eleVec.shape)
@@ -314,7 +314,7 @@ class BlockTree:
         
     
         
-        
+    #calc strike-slip stressfunc from row in total matrix (calc row elements in ACA)
     def calc_stressfunc_fromC_rowS(self,row_cluster,col_cluster):
         A1s=np.zeros([len(row_cluster),len(col_cluster)])
         A2s=np.zeros([len(row_cluster),len(col_cluster)])
@@ -367,7 +367,8 @@ class BlockTree:
             A2s[i]=Tra[:, 1]
             Bs[i]=Tra[:, 2]
         return A1s,A2s,Bs
-        
+    
+    #calc dip-slip stressfunc from row in total matrix (calc row elements in ACA)
     def calc_stressfunc_fromC_rowD(self,row_cluster,col_cluster):
         A1d=np.zeros([len(row_cluster),len(col_cluster)])
         A2d=np.zeros([len(row_cluster),len(col_cluster)])
@@ -420,7 +421,7 @@ class BlockTree:
             Bd[i]=Tra[:, 2]
         return A1d,A2d,Bd
         
-    
+    #calc strike-slip stressfunc from column in total matrix (calc column elements in ACA)
     def calc_stressfunc_fromCS(self,row_cluster,col_cluster):
         A1s=np.zeros([len(row_cluster),len(col_cluster)])
         A2s=np.zeros([len(row_cluster),len(col_cluster)])
@@ -467,7 +468,7 @@ class BlockTree:
         
         return A1s,A2s,Bs
         
-        
+    #calc dip-slip stressfunc from column in total matrix (calc column elements in ACA)    
     def calc_stressfunc_fromCD(self,row_cluster,col_cluster):
         A1d=np.zeros([len(row_cluster),len(col_cluster)])
         A2d=np.zeros([len(row_cluster),len(col_cluster)])
@@ -509,6 +510,7 @@ class BlockTree:
             Bd[:,i]=Tra[:, 2]
         return A1d,A2d,Bd
     
+
     def calc_stressfunc(self,row_cluster,col_cluster):
         A1s=np.zeros([len(row_cluster),len(col_cluster)], dtype=np.float32)
         A2s=np.zeros([len(row_cluster),len(col_cluster)], dtype=np.float32)
@@ -550,7 +552,7 @@ class BlockTree:
         return A1s.transpose(),A2s.transpose(),Bs.transpose(),A1d.transpose(),A2d.transpose(),Bd.transpose()
     
     
-    #使用 A(i, j) 构造行提取函数
+    #Use A(i, j) to construct a row extraction function
     def calc_rowsS(self,Istart, Iend,row_cluster,col_cluster):
         #A1=A1s[np.ix_(row_cluster[Istart: Iend],col_cluster)]
         A1s,A2s,Bs=self.calc_stressfunc_fromC_rowS(row_cluster[Istart: Iend],col_cluster)
@@ -575,7 +577,7 @@ class BlockTree:
         A1d,A2d,Bd=self.calc_stressfunc_fromCD(row_cluster,col_cluster[Jstart: Jend])
         return A1d,A2d,Bd
         
-        
+    #ACA calculation for strike-slip green functions
     def ACA_plus_full_traceS(self,n_rows, n_cols, calc_rows, calc_cols, row_cluster,col_cluster,eps, max_iter=None, verbose=False):
         us_A1s,vs_A1s=[],[]
         us_A2s,vs_A2s=[],[]
@@ -785,7 +787,8 @@ class BlockTree:
         }
 
         return trace_data
-        
+    
+    #ACA calculation for dip-slip green functions
     def ACA_plus_full_traceD(self,n_rows, n_cols, calc_rows, calc_cols, row_cluster,col_cluster,eps, max_iter=None, verbose=False):
         us_A1d,vs_A1d=[],[]
         us_A2d,vs_A2d=[],[]
@@ -1007,10 +1010,10 @@ class BlockTree:
 
         return trace_data
         
-        
+    #Perform ACA calculations in each rank
     def ACA_worker(self,block):
         #block.Mf_Bd=[1,2,3,4,5]
-        
+        #If the submatrix is ​​larger than the minimum number of leaves, it means admissible
         if(len(block.row_cluster) > self.thread_svd and len(block.col_cluster) > self.thread_svd):
             print(f'rank {rank},start ACA...', flush=True)
             block.judaca=True
@@ -1044,7 +1047,7 @@ class BlockTree:
             print(f"rank {rank},ACA of task success,size{len(block.row_cluster),len(block.col_cluster)},Time takes {end_time - start_time:.10f} seconds", flush=True)
             
             self.size += (block.ACA_dictS['U_ACA_A1s'].nbytes + block.ACA_dictS['V_ACA_A1s'].nbytes)*6.0/(1024*1024)
-        else:
+        else: #Non-admissible case, to calculate dense sub-matrix
             print(f'rank {rank},start fullmatrix calc...', flush=True)
             start_time = time.time()
             A1s,A2s,Bs=self.calc_stressfunc_fromCS(block.row_cluster,block.col_cluster)
@@ -1146,6 +1149,7 @@ class BlockTree:
             for res in final_results:
                 print(res)
     
+    #Assign tasks in each submatrix for calculating green functions
     def master(self,dir,blocks_to_process,num_workers,save_corefunc=False):
         task_id = 1
         next_task = 0
@@ -1159,7 +1163,7 @@ class BlockTree:
             self.blocks_to_process=blocks_to_process
         self.Label=np.zeros(len(self.blocks_to_process))
 
-        tasks_total = len(self.blocks_to_process)  # 假设总共有 10 个任务
+        tasks_total = len(self.blocks_to_process)  # task count
         k=0
         for i in range(tasks_total):
             block=self.blocks_to_process[i]
@@ -1170,7 +1174,7 @@ class BlockTree:
             
         print('tasks_total',k,tasks_total)
 
-        # **初始任务分配**
+        # **Initial Task Assignment**
         for worker_rank in range(1, num_workers + 1):
             MPI.COMM_WORLD.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
             print(f"Master: assign task {task_id} to Worker {worker_rank}, size: {len(self.blocks_to_process[task_id-1].row_cluster),len(self.blocks_to_process[task_id-1].col_cluster)}", flush=True)
@@ -1178,7 +1182,7 @@ class BlockTree:
         
         finish_task=0
         pending_tasks = {} 
-        # **循环等待 worker 返回结果，并分配新任务**
+        # **Loop and wait for the worker to return the result and assign new tasks**
         while active_workers > 0:
             status = MPI.Status()
             if MPI.COMM_WORLD.Iprobe(source=MPI.ANY_SOURCE, tag=RESULT_TAG, status=status):
@@ -1208,7 +1212,7 @@ class BlockTree:
                     print(f"Master: Worker {worker_rank} finish task {result['task_id']} , size = {len(result['result'].row_cluster),len(result['result'].col_cluster)}", flush=True)
                     #print(f"{finish_task}/ {tasks_total}", flush=True)
                 print(f"Master: complete {finish_task}/ {tasks_total}", flush=True)
-                # **如果还有任务，继续分配**
+                # **If there are still tasks, continue to assign**
                 if task_id <= tasks_total:
                     # try:
                     #     pickle.dumps(self.blocks_to_process[task_id-1])
@@ -1225,7 +1229,7 @@ class BlockTree:
                 # else:
                 #     active_workers -= 1
                 #     print(f"active_workers remain {active_workers}", flush=True)
-                #     # **没有任务了，发送结束信号**
+                #     # **No more tasks, send end signal**
                 #     MPI.COMM_WORLD.send(None, dest=worker_rank, tag=STOP_TAG)
                 if(finish_task==tasks_total):
                     for worker_rank in range(1, num_workers + 1):
@@ -1239,14 +1243,14 @@ class BlockTree:
     
     
 
-
+    #Calculate ACA
     def worker(self):
         while True:
             print(f"[Worker {MPI.COMM_WORLD.Get_rank()}] waiting for task...", flush=True)
-            status = MPI.Status()  # 创建 MPI 状态对象
+            status = MPI.Status()  
             rectask = MPI.COMM_WORLD.recv(source=0, tag=MPI.ANY_TAG, status=status)
 
-            # 通过 status.tag 检查是否是终止信号
+            # Check whether it is a termination signal through status.tag
             if status.tag == STOP_TAG:
                 print(f"Worker {MPI.COMM_WORLD.Get_rank()}: end receive message, exit.", flush=True)
                 #MPI.COMM_WORLD.Abort(1)
@@ -1285,7 +1289,7 @@ class BlockTree:
 
 
     def collect_blocks(self, block):
-        """ 递归遍历所有叶子节点，收集需要计算 SVD 的块 """
+        """ Recursively traverse all leaf nodes and collect blocks that need to calculate ACA """
         if block.is_leaf():
             self.blocks_to_process.append(block)
         else:
@@ -1294,7 +1298,7 @@ class BlockTree:
 
 
     def svd_worker(self, block):
-        """ 计算单个 block 的 SVD """
+        """Calculate the SVD of a single block """
         if(len(block.row_cluster) > self.thread_svd and len(block.col_cluster) > self.thread_svd):
             block.judsvd=True
             #if(rank==0):
@@ -1368,7 +1372,7 @@ class BlockTree:
     
 
     
-
+    #Assign missions for forward iteration each rank with completed blocks submatrice
     def parallel_block_scatter_send(self, blocks_to_process, plotHmatrix=False):
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -1380,7 +1384,7 @@ class BlockTree:
             num_blocks = len(blocks_to_process)
             print('num_blocks:', num_blocks)
     
-            # 手动平均分配任务
+            # Manually distribute tasks evenly
             counts = [num_blocks // size] * size
             for i in range(num_blocks % size):
                 counts[i] += 1
@@ -1393,11 +1397,12 @@ class BlockTree:
     
             #print('task_chunks length per process:', [len(c) for c in task_chunks])
     
-            # 发送给其他进程
+            # Send to other processes
             for i in range(1, size):
                 print(i,len(task_chunks[i]), flush=True)
                 batch=int(len(task_chunks[i])/n_task_per_proc)
                 start = 0
+                #Send in sequence to reduce the load of each transmission
                 for j in range(n_task_per_proc):
                     #task_dict=self.trans_class_to_dict(task_chunks[i])
                     if(j<n_task_per_proc-1):
@@ -1406,10 +1411,10 @@ class BlockTree:
                         comm.send(task_chunks[i][start:], dest=i, tag=77+j)
                     start += batch
                     #comm.send(task_chunks[i], dest=i, tag=77)
-            local_blocks = task_chunks[0]  # rank=0 自己的任务
+            local_blocks = task_chunks[0]  # rank=0 his task
     
         else:
-            # 非0进程接收任务
+            # Non-zero process receiving tasks
             #print('rank',rank,len(task_chunks[i]))
             #local_blocks = comm.recv(source=0, tag=77)
             #print('rank',rank,len(local_blocks))
@@ -1420,15 +1425,15 @@ class BlockTree:
                 for k in range(len(task)):
                     local_blocks.append(task[k])
     
-        # 可选绘图处理
+        # Optional drawing processing
         if plotHmatrix:
-            # 分步接收每个进程的数据
+            # Receive data from each process step by step
             #if(rank==0):
             # gathered_blocks = []
             # for i in range(size):
             #     if rank == i:
             #         gathered_blocks.append(local_blocks)
-            #     comm.barrier()  # 确保所有进程都已完成处理
+            #     comm.barrier()  
             if rank == 0:
                 #print('gathered_blocks:',len(gathered_blocks))
                 self.blocks_plot_mpi(task_chunks)
@@ -1436,10 +1441,10 @@ class BlockTree:
         return local_blocks
     
 
-
+    '''Matrix and vector product calculation'''
     def blocks_process_MVM(self,xvector,blocks_to_process,type):
         yvector=np.zeros(len(xvector))
-        #start_time = time.time()  # 记录起始时间
+        #start_time = time.time()  
         #for k in range(100):
         #A1s=np.load('WMF_core/A1s.npy')
         if(type=='A1s'):
@@ -1454,23 +1459,6 @@ class BlockTree:
                 else:
                     #print(blocks_to_process[i].Mf_A1s.shape,len(blocks_to_process[i].row_cluster),len(blocks_to_process[i].col_cluster),x_.shape)
                     Ax_rsvd=blocks_to_process[i].Mf_A1s @ x_
-                # #print(A1s[blocks_to_process[i].col_cluster,blocks_to_process[i].row_cluster].shape)
-                # A1s_=A1s[np.ix_(blocks_to_process[i].col_cluster,blocks_to_process[i].row_cluster)]
-                # Ax1=np.dot(A1s_,x_)
-                # error=np.linalg.norm(Ax1 - Ax_rsvd)
-                # if(error>100):
-
-                #     print(i,rank,'error',error,len(blocks_to_process[i].row_cluster),len(blocks_to_process[i].col_cluster),blocks_to_process[i].is_leaf())
-                #     U, S, Vt = svds(A1s_,k=len(blocks_to_process[i].col_cluster)-1)
-                #     blocks_to_process[i].U_1s=U
-                #     blocks_to_process[i].S_1s=S
-                #     blocks_to_process[i].Vt_1s=Vt
-                #     plt.pcolor(A1s_)
-                #     plt.show()
-                #     #print(U.shape,S.shape,Vt.shape,x_.shape)
-                #     Ax_rsvd = U @ (S * (Vt @ x_))
-                #     error=np.linalg.norm(Ax1 - Ax_rsvd)
-                #     print(i,rank,'error',error)
                 
                 yvector[blocks_to_process[i].row_cluster]=yvector[blocks_to_process[i].row_cluster]+Ax_rsvd
         if(type=='A2s'):
@@ -1547,10 +1535,9 @@ class BlockTree:
                     #print(blocks_to_process[i].Mf_A1s.shape,len(blocks_to_process[i].row_cluster),len(blocks_to_process[i].col_cluster),x_.shape)
                     Ax_rsvd=blocks_to_process[i].Mf_Bd @ x_
                 yvector[blocks_to_process[i].row_cluster]=yvector[blocks_to_process[i].row_cluster]+Ax_rsvd
-        #end_time = time.time()  # 记录结束时间
-        #elapsed_time = end_time - start_time  # 计算时间差
         return yvector
 
+    #Hmatrix structure drawing
     def blocks_plot_mpi(self,gathered_results):
         color1=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*10
         plt.figure(figsize=(10,10))
@@ -1597,18 +1584,18 @@ class BlockTree:
 
     def traverse_and_apply(self, block=None, depth=0, max_level=2):
         """
-        递归遍历 BlockTree 并在满足条件时进行低秩近似。
-        :param block: 当前遍历的块
-        :param depth: 当前层级
-        :param max_level: 低秩近似的最大应用层级
+        Recursively traverse BlockTree and perform low-rank approximation when conditions are met.
+        :param block: the block currently traversed
+        :param depth: the current level
+        :param max_level: the maximum level at which low-rank approximation is applied
         """
         if block is None:
             block = self.root_block
 
-        indent = "    " * depth  # 视觉缩进
+        indent = "    " * depth  
         if block.is_leaf():
             print(f"{indent}- Leaf Block: Level {block.level}, Rows {block.row_cluster}, Cols {block.col_cluster}, Data Shape: {block.data.shape}")
-            if block.level <= max_level:  # 仅对 max_level 层以下的叶子节点做低秩近似
+            if block.level <= max_level:  # Only make low-rank approximation for leaf nodes below the max_level layer
                 block.apply_low_rank_approximation()
                 print(f"{indent}  (Applied Low-Rank Approximation)")
         else:
@@ -1623,13 +1610,13 @@ class BlockTree:
 
 def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,plotHmatrix,mini_leaf=16, depth=0):
     """
-    递归创建BlockTree
-    :param matrix: 目标矩阵
-    :param row_range: 当前块的行索引范围
-    :param col_range: 当前块的列索引范围
-    :param max_depth: 递归的最大深度
-    :param depth: 当前深度
-    :return: Block 对象
+    Recursively create BlockTree
+    :param matrix: target matrix
+    :param row_range: current block row index range
+    :param col_range: current block column index range
+    :param max_depth: maximum recursive depth
+    :param depth: current depth
+    :return: Block object
     """
 
     
@@ -1638,7 +1625,7 @@ def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,p
     #if(len(row_cluster.indices)>5000 or len(col_cluster.indices)>5000):
     #    jud_admis=False
     if jud_admis == True or (len(row_cluster.indices) <= mini_leaf or len(col_cluster.indices) <= mini_leaf):
-        # 终止条件：达到最大深度 or 矩阵块小到不能继续分块
+        # Termination condition: reaching the maximum depth or the matrix block is too small to be further divided
         return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
 
     row_cluster_left=row_cluster.left
@@ -1664,9 +1651,7 @@ def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,p
         plt.plot([midc,midc],[row_index[0],row_index[-1]],c='red')
         #plt.show()
 
-    # 计算中心索引
-    #mid_row = len(row_range) // 2
-    #mid_col = len(col_range) // 2
+
 
     
 
@@ -1732,16 +1717,3 @@ def createHmatrix(xg,nodelst,elelst,eleVec,mu_,lambda_,halfspace_jud,mini_leaf=3
 
 
 
-# 生成测试矩阵
-# n = 16  # 矩阵大小
-# matrix = np.random.rand(n, n)
-
-# # 创建递归 BlockTree（最大递归深度 4）
-# root_block = create_recursive_blocks(matrix, list(range(n)), list(range(n)), max_depth=4)
-# tree = BlockTree(root_block)
-
-# # 仅对最大层级 2 以下的块进行低秩近似
-# tree.traverse_and_apply(max_level=3)
-
-# 遍历并打印结构
-#tree.traverse()

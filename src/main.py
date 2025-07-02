@@ -28,7 +28,7 @@ if __name__ == "__main__":
     #nodelst,xg=None,None
     sim0=None
     jud_coredir=None
-    blocks_to_process=[]
+    blocks_to_process=[] #Save block submatirx from Hmatrix
     if(rank==0):
         print('# ----------------------------------------------------------------------------\n\
 # PyQuake3D: Boundary Element Method to simulate sequences of earthquakes and aseismic slips\n\
@@ -61,7 +61,7 @@ if __name__ == "__main__":
             #fnamePara='examples/WMF/parameter.txt'
             #fnamegeo='examples/cascadia/cascadia35km_ele4.msh'
             #fnamePara='examples/cascadia/parameter.txt'
-            fnamegeo='examples/Lab-model/lab.msh'
+            fnamegeo='examples/Lab-model/lab.msh' #default mesh location
             fnamePara='examples/Lab-model/parameter.txt'
 
         
@@ -98,7 +98,7 @@ if __name__ == "__main__":
         f.write('Cohesive zone::%f\n'%sim0.A0)
         f.write('iteration time_step(s) maximum_slip_rate(m/s) time(s) time(h)\n')
 
-
+        #Determine whether Hmatrix has been calculated. If it has been calculated, read it directly
         jud_coredir,blocks_to_process=sim0.get_block_core()
         print('jud_coredir',jud_coredir) #if saved corefunc
         if(jud_coredir==False):
@@ -107,6 +107,7 @@ if __name__ == "__main__":
             print('Hmatrix reading...')
         SLIPV=[]
         Tt=[]
+
         #test green functions
         # x=np.ones(len(elelst))
         # start_time = time.time()
@@ -116,34 +117,37 @@ if __name__ == "__main__":
         # end_time = time.time()
         # print(f"Green func calc_MVM_fromC Time taken: {end_time - start_time:.10f} seconds")
 
-        
-        
-
         # initial condition loaded by previous results
         #fname="step17800.vtk"
         #sim0.read_vtk(fname)
 
+        # output intial results
         fname='Init.vtk'
         sim0.ouputVTK(fname)
 
 
     
     print('rank:',rank)
-   
+    
+    # bcast parameters to all ranks
     sim0 = comm.bcast(sim0, root=0)
     jud_coredir = comm.bcast(jud_coredir, root=0)
 
     
     
-    if(jud_coredir==False):
+    if(jud_coredir==False):#Calculate green functions and compress in Hmatrix
         #sim0.local_blocks=sim0.tree_block.parallel_traverse_SVD(sim0.Para0['Corefunc directory'],plotHmatrix=sim0.Para0['Hmatrix_mpi_plot'])
         if(rank==0):
+            #Assign tasks for calculating green functions
            sim0.tree_block.master(sim0.Para0['Corefunc directory'],blocks_to_process,size-1,save_corefunc=sim0.save_corefunc)
         else:
+            #Calculat green functions
            sim0.tree_block.worker()
         #sim0.tree_block.master_scatter(sim0.Para0['Corefunc directory'],blocks_to_process,size)
+        '''Assign forward modelling missions for each rank with completed blocks submatrice'''
         sim0.local_blocks=sim0.tree_block.parallel_block_scatter_send(sim0.tree_block.blocks_to_process,plotHmatrix=sim0.Para0['Hmatrix_mpi_plot'])
     else:
+        '''Assign forward modelling missions for each rank with completed blocks submatrice'''
         sim0.local_blocks=sim0.tree_block.parallel_block_scatter_send(blocks_to_process,plotHmatrix=sim0.Para0['Hmatrix_mpi_plot'])
         
 
@@ -153,15 +157,15 @@ if __name__ == "__main__":
         
 
     start_time = MPI.Wtime()
-    totaloutputsteps=int(sim0.Para0['totaloutputsteps'])
+    totaloutputsteps=int(sim0.Para0['totaloutputsteps']) #total time steps
     for i in range(totaloutputsteps):
     #for i in range(0):
 
-        if(i==0):
+        if(i==0):#inital step length
             dttry=sim0.htry
         else:
             dttry=dtnext
-        dttry,dtnext=sim0.simu_forward(dttry)
+        dttry,dtnext=sim0.simu_forward(dttry) #Forward modeling
         #sim0.simu_forward(dttry)
         if(rank==0):
             year=sim0.time/3600/24/365
@@ -169,19 +173,24 @@ if __name__ == "__main__":
                 print('iteration:',i, flush=True)
                 print('dt:',dttry,' max_vel:',np.max(np.abs(sim0.slipv)),' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,
                 'year',year, flush=True)
+            #Output screen information: Iteration; time step; slipv1; slipv2; second; hours
             f.write('%d %f %f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
             
             #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
             #SLIP.append(sim0.slip)
+
+            #Save slip rate and shear stress for each iteration
             SLIPV.append(sim0.slipv)
             Tt.append(sim0.Tt)
             
             # if(sim0.time>60):
             #     break
+            #Output vtk once every outsteps
             outsteps=int(sim0.Para0['outsteps'])
             directory='out_vtk'
             if not os.path.exists(directory):
                 os.mkdir(directory)
+            #output slipv and Tt
             if(i%outsteps==0):
                 #SLIP=np.array(SLIP)
                 SLIPV=np.array(SLIPV)
@@ -196,13 +205,12 @@ if __name__ == "__main__":
                     if not os.path.exists(directory1):
                         os.mkdir(directory1)
                     np.save(directory1+'/Tt_%d'%i,Tt)
-                #np.save('examples/Heto/slip/slip_%d'%i,SLIP)
-                #np.save('examples/Heto/Tt/Tt_%d'%i,Tt)
+
 
                 #SLIP=[]
                 SLIPV=[]
                 Tt=[]
-
+                #output vtk
                 if(sim0.Para0['outputvtk']=='True'):
                     #print('!!!!!!!!!!!!!!!!!!!!!!!!!')
                     fname=directory+'/step'+str(i)+'.vtk'
