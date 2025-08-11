@@ -56,6 +56,10 @@ PyQuake3D requires Python ≥ 3.8 and the following libraries:
 pip install -r dependences.txt
 ```
 
+### C++ Requirements
+
+The TDstressFS_C.cpp in folder src is a C++ source file that computes Green's functions, translated from the Python script TDstressFS.py to leverage C++'s performance for efficient numerical calculations. It is compiled into a dynamic library, TDstressFS_C.so, using a provided Makefile, which must be executed with the make command before running the code to ensure compatibility across different computing environments. The generated library is called by the Python script Hmatrix.py via dynamic loading (e.g., using ctypes). To use it, navigate to the code directory src, run make to build TDstressFS_C.so.
+
 ## Running the Script
 
 To run the PyQuake3D MPI script, use the following command:
