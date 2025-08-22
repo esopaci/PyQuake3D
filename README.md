@@ -31,7 +31,7 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 -  Support for GPU acceleration via CuPy
 -  MPI acceleration support 
 -  Suitable for large model earthquake cycle simulation
--  Pore fluid pressure vary with slip due to inelastic processes including dilatancy, pore compaction (only available in V2).
+-  Support for Pore fluid pressure varing with slip due to inelastic processes including dilatancy, pore compaction (only available in V2).
 
 <p align="center">
   <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/framework.png" alt="Framework Overview">
