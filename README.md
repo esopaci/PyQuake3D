@@ -64,6 +64,9 @@ Install cupy if you want to use GPU acceleration, we recommened to use conda (e.
 The TDstressFS_C.cpp in folder src is a C++ source file that computes Green's functions, translated from the Python script TDstressFS.py to leverage C++'s performance for efficient numerical calculations. It is compiled into a dynamic library, TDstressFS_C.so, using a provided Makefile, which must be executed with the make command before running the code to ensure compatibility across different computing environments. The generated library is called by the Python script Hmatrix.py via dynamic loading (e.g., using ctypes). To use it, navigate to the code directory src, run make to build TDstressFS_C.so.
 
 ## Running the Script
+
+[查看 Example Notebook](example.ipynb)
+
 ## For PyQuake3D_GPU_V1, use the following command:
 python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
 ```bash
