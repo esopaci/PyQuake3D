@@ -57,9 +57,9 @@ PyQuake3D supports Python 3.8 and above, so there is no need to specify a specif
 ```bash
 pip install -r dependences.txt
 ```
-Install cupy if you want to use GPU acceleration, we recommened to use conda in prompt terminal (e.g. CUDA 11.8):conda install -c conda-forge cupy cudatoolkit=11.8
+Install cupy if you want to use GPU acceleration, we recommened to use conda (e.g. CUDA 11.8):conda install -c conda-forge cupy cudatoolkit=11.8
 
-### C++ Requirements
+### C++ Requirements in PyQuake3D_MPI_V2
 
 The TDstressFS_C.cpp in folder src is a C++ source file that computes Green's functions, translated from the Python script TDstressFS.py to leverage C++'s performance for efficient numerical calculations. It is compiled into a dynamic library, TDstressFS_C.so, using a provided Makefile, which must be executed with the make command before running the code to ensure compatibility across different computing environments. The generated library is called by the Python script Hmatrix.py via dynamic loading (e.g., using ctypes). To use it, navigate to the code directory src, run make to build TDstressFS_C.so.
 
