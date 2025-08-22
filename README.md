@@ -31,6 +31,7 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 -  Support for GPU acceleration via CuPy
 -  MPI acceleration support 
 -  Suitable for large model earthquake cycle simulation
+-  Pore fluid pressure vary with slip due to inelastic processes including dilatancy, pore compaction (only available in V2).
 
 <p align="center">
   <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/framework.png" alt="Framework Overview">
@@ -40,28 +41,40 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 
 ### Python Requirements
 
-PyQuake3D requires Python ≥ 3.8 and the following libraries:
+PyQuake3D supports Python 3.8 and above, so there is no need to specify a specific version when installing the library.
 
-- `numpy >= 1.20`
-- `cupy == 10.6.0`
-- `matplotlib == 3.2.2`
-- `scipy == 1.10.1`
-- `joblib == 0.16.0`
-- `mpi4py == 4.0.0`
-- `ctypes == 1.1.0`
-- `pyvista == 0.45.2`
+- `numpy`
+- `matplotlib`
+- `scipy`
+- `joblib`
+- `mpi4py`
+- `pyvista`
+- `imageio`
+- `psutil`
+- `h5py`
 
   Use pip for the quick installation:
 ```bash
 pip install -r dependences.txt
 ```
+Install cupy if you want to use GPU acceleration, we recommened to use conda in prompt terminal (e.g. CUDA 11.8):conda install -c conda-forge cupy cudatoolkit=11.8
 
 ### C++ Requirements
 
 The TDstressFS_C.cpp in folder src is a C++ source file that computes Green's functions, translated from the Python script TDstressFS.py to leverage C++'s performance for efficient numerical calculations. It is compiled into a dynamic library, TDstressFS_C.so, using a provided Makefile, which must be executed with the make command before running the code to ensure compatibility across different computing environments. The generated library is called by the Python script Hmatrix.py via dynamic loading (e.g., using ctypes). To use it, navigate to the code directory src, run make to build TDstressFS_C.so.
 
 ## Running the Script
+## For PyQuake3D_GPU_V1, use the following command:
+python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
+```bash
+mpirun -np 10 python src/main.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
+```
+Ensure you modify the input parameter (`parameter.txt`) as follows:
+- `Corefunc directory`: `bp5t_core`
+- `InputHetoparamter`: `True`
+- `Inputparamter file`: `bp5tparam.dat`
 
+## For PyQuake3D_MPI_V2, use the following command:
 To run the PyQuake3D MPI script, use the following command:
 ```bash
 mpirun -np 10 python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
@@ -72,12 +85,9 @@ For example:
 ```
 To execute benchmarks like BP5-QD, use:
 ```bash
-In the PyQuake3D_MPI_master directory, To run the BP5-QD benchmark:
+In the PyQuake3D_MPI_V2 directory, To run the BP5-QD benchmark:
 mpirun -np 10 python src/main.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
-Ensure you modify the input parameter (`parameter.txt`) as follows:
-- `Corefunc directory`: `bp5t_core`
-- `InputHetoparamter`: `True`
-- `Inputparamter file`: `bp5tparam.dat`
+
 
 To run the HF-model:
 mpirun -np 10 python src/main.py -g examples/HF-model/HFmodel.msh -p examples/HF-model/parameter.txt
