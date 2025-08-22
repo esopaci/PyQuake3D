@@ -38,8 +38,7 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 </p>
 
 ## Quake Start
-A simple tutorial on how to install and run a simple case step by step can be found:
-[Tutorial](PyQuake3D_GPU_V1/src/PyQuake3D_Tutorial.ipynb)
+A step by step tutorial on how to install and run a simple case: [Get Started](PyQuake3D_GPU_V1/src/PyQuake3D_Tutorial.ipynb)
 
 ## Installation
 
