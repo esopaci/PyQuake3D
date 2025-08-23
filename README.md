@@ -44,7 +44,7 @@ A step by step tutorial on how to install and run a simple case: [Get Started](P
 
 ### Python Requirements
 
-PyQuake3D supports Python 3.8 and above, so there is no need to specify a specific version when installing the library.
+PyQuake3D supports Python 3.8 and above, so there is no need to specify any version when installing the dependent libraries.
 
 - `numpy`
 - `matplotlib`
