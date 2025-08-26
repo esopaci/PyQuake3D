@@ -31,7 +31,7 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 -  Support for GPU acceleration via CuPy
 -  MPI acceleration support 
 -  Suitable for large model earthquake cycle simulation
--  Support for pore fluid pressure varing with slip due to inelastic processes including dilatancy, pore compaction (only available in V2).
+-  Support for pore fluid pressure varing with slip due to inelastic processes including dilatancy, pore compaction.
 
 <p align="center">
   <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/framework.png" alt="Framework Overview">
@@ -81,7 +81,7 @@ Ensure you modify the input parameter (`parameter.txt`) as follows:
 - `Inputparamter file`: `bp5tparam.dat`
 
 ## For MPI version, use the following command:
-To run the PyQuake3D MPI script, use the following command:
+To run the PyQuake3D MPI script, use the following command at root directory:
 ```bash
 mpirun -np 10 python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
 ```
