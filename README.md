@@ -38,7 +38,8 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 </p>
 
 ## Quake Start
-A step by step tutorial on how to install and run a simple case: [Get Started](PyQuake3D_GPU_V1/src/PyQuake3D_Tutorial.ipynb)
+A step by step tutorial on how to install and run a BP5-QD_low_resolution case: [Get Started](tutorials/BP5-QD_low_resolution/tutorial_1.ipynb)
+A step by step tutorial on how to install and run a circular_asperity_low_resolution case: [Get Started](tutorials/circular_asperity_low_resolution/tutorial_2.ipynb)
 
 ## Installation
 
