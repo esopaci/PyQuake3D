@@ -38,7 +38,7 @@ Please refer to the [Code Manual (PDF)](https://github.com/Computational-Geophys
 </p>
 
 ## Quake Start
-A step by step tutorial on how to install and run a [BP5-QD_low_resolution case](tutorials/BP5-QD_low_resolution/tutorial_1.ipynb) and [circular_asperity_low_resolution case](tutorials/circular_asperity_low_resolution/tutorial_2.ipynb)
+A step by step tutorial on how to install and run [BP5-QD_low_resolution case](tutorials/BP5-QD_low_resolution/tutorial_1.ipynb) and [circular_asperity_low_resolution case](tutorials/circular_asperity_low_resolution/tutorial_2.ipynb)
 
 ## Installation
 
