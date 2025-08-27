@@ -303,7 +303,7 @@ class QDsim:
         # b=0.02
         # a=0.011
         sigma=np.mean(self.Tno*1e6)
-        print(self.Tno)
+        #print(self.Tno)
         L=np.max(self.dc)
         #L=0.015
         print('L:',L)
@@ -978,7 +978,7 @@ class QDsim:
                 dtnext=min(hnew1,hnew2)
                 h=max(0.5*h,dtnext)
                 #h=0.5*h
-                print('nrjct:',nrjct,'  condition1,',condition1,' condition2:',condition2,'  dt:',h)
+                #print('nrjct:',nrjct,'  condition1,',condition1,' condition2:',condition2,'  dt:',h)
 
                 if(h<1.e-15 or nrjct>20):
                     print('error: dt is too small')
@@ -1068,7 +1068,7 @@ class QDsim:
                 dtnext=min(hnew1,hnew2)
                 h=max(0.5*h,dtnext)
                 #h=0.5*h
-                print('nrjct:',nrjct,'  condition1,',condition1,' condition2:',condition2,'  dt:',h)
+                #print('nrjct:',nrjct,'  condition1,',condition1,' condition2:',condition2,'  dt:',h)
 
                 if(h<1.e-15 or nrjct>20):
                     print('error: dt is too small')
@@ -2004,17 +2004,17 @@ class QDsim:
 
         f.write('SCALARS Slipv[m/s] float\nLOOKUP_TABLE default\n')
         for i in range(len(self.slipv)):
-            f.write('%f '%(self.slipv[i]))
+            f.write('%.20f '%(self.slipv[i]))
         f.write('\n')
 
         f.write('SCALARS Slipv1[m/s] float\nLOOKUP_TABLE default\n')
         for i in range(len(self.slipv)):
-            f.write('%f '%(self.slipv1[i]))
+            f.write('%.20f '%(self.slipv1[i]))
         f.write('\n')
 
         f.write('SCALARS Slipv2[m/s] float\nLOOKUP_TABLE default\n')
         for i in range(len(self.slipv)):
-            f.write('%f '%(self.slipv2[i]))
+            f.write('%.20f '%(self.slipv2[i]))
         f.write('\n')
 
         f.write('SCALARS a float\nLOOKUP_TABLE default\n')
@@ -2045,17 +2045,17 @@ class QDsim:
 
         f.write('SCALARS slip float\nLOOKUP_TABLE default\n')
         for i in range(len(self.slip)):
-            f.write('%f '%(self.slip[i]))
+            f.write('%.20f '%(self.slip[i]))
         f.write('\n')
 
         f.write('SCALARS slip1 float\nLOOKUP_TABLE default\n')
         for i in range(len(self.slip)):
-            f.write('%f '%(self.slip1[i]))
+            f.write('%.20f '%(self.slip1[i]))
         f.write('\n')
 
         f.write('SCALARS slip2 float\nLOOKUP_TABLE default\n')
         for i in range(len(self.slip)):
-            f.write('%f '%(self.slip2[i]))
+            f.write('%.20f '%(self.slip2[i]))
         f.write('\n')
 
 
