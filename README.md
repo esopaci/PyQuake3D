@@ -71,7 +71,7 @@ PyQuake3D provides two versions of the code, GPU and MPI, which can be run using
 ## For single GPU/CPU version, use the following command:
 python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
 ```bash
-mpirun -np 10 python src/main_gpu.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
+python src/main_gpu.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
 ```
 Ensure you modify the input parameter (`parameter.txt`) as follows:
 - `Corefunc directory`: `bp5t_core`
@@ -81,7 +81,7 @@ Ensure you modify the input parameter (`parameter.txt`) as follows:
 ## For MPI version, use the following command:
 To run the PyQuake3D MPI script, use the following command at root directory:
 ```bash
-mpirun -np 10 python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
+mpirun -np 10 python main.py -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
 ```
 Where 10 is the number of virtual cpus. Note that using the mpiexec instead in Windows environment.
 
@@ -90,7 +90,7 @@ For example:
 To execute benchmarks like BP5-QD, use:
 ```bash
 In the PyQuake3D root directory, To run the BP5-QD benchmark:
-mpirun -np 10 python src/main_mpi.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
+mpirun -np 10 python src/main_gpu.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
 
 
 To run the HF-model:
