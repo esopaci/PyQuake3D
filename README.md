@@ -74,7 +74,6 @@ python -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
 python src/main_gpu.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
 ```
 Ensure you modify the input parameter (`parameter.txt`) as follows:
-- `Corefunc directory`: `bp5t_core`
 - `InputHetoparamter`: `True`
 - `Inputparamter file`: `bp5tparam.dat`
 
