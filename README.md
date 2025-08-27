@@ -89,7 +89,7 @@ For example:
 ```
 To execute benchmarks like BP5-QD, use:
 ```bash
-In the PyQuake3D_MPI_V2 directory, To run the BP5-QD benchmark:
+In the PyQuake3D root directory, To run the BP5-QD benchmark:
 mpirun -np 10 python src/main_mpi.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
 
 
