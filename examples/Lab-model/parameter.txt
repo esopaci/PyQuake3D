@@ -1,14 +1,18 @@
-#Files
-Corefunc directory: core_Lab
-save Corefunc: False
-
-Hmatrix_mpi_plot:False
+#Files and cells
+Corefunc directory: core_lab
+save Corefunc: True
 Node_order: False
-Scale_km: True
+Scale_km: False
+
+#Only availible for mpi version
+Hmatrix_mpi_plot:False
+Using C++ green function:True
+
+#Only availible for single GPU/CPU version
 Max_thread workers: 50
 Batch_size: 1000
-Using C++ green function:True
 GPU:False
+
 
 #Property
 Lame constants: 30038120320.0
@@ -76,8 +80,6 @@ totaloutputsteps: 20000
 outsteps: 200
 outputvtk: True
 outputmatrix: False
-
-
 
 
 
