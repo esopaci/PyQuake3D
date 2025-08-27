@@ -1,15 +1,18 @@
-#Files
+#Files and cells
 Corefunc directory: bp5t_core
 save Corefunc: True
-
-#Plot Hmatrix structure
-Hmatrix_mpi_plot:False
 Node_order: False
+Scale_km: True
+
+#Only availible for mpi version
+Hmatrix_mpi_plot:False
+Using C++ green function:True
+
+#Only availible for single GPU/CPU version
 Max_thread workers: 50
 Batch_size: 1000
-Scale_km: True
-Using C++ green function:True
 GPU:False
+
 
 #Property
 Lame constants: 32038120320.0
