@@ -1,0 +1,15 @@
+name: PyQuake3D
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - matplotlib
+  - pyvista
+  - imageio
+  - scipy
+  - joblib
+  - mpi4py
+  - h5py
+  - psutil
+  
