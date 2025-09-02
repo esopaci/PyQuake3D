@@ -201,7 +201,7 @@ if __name__ == "__main__":
             print('dt:',dttry,' max_vel:',np.max(np.abs(sim0.slipv)),' min_vel:',np.min(np.abs(sim0.slipv)),' Porepressure max:',np.max(sim0.P),' Porepressure min:',np.min(sim0.P),' dpdt_max:',np.max((sim0.dPdt0)),' dpdt_min:',np.min((sim0.dPdt0)),' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,
             'year',year, flush=True)
             #Output screen information: Iteration; time step; slipv1; slipv2; second; hours
-            f.write('%d %f %f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
+            f.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
             
             #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
             #SLIP.append(sim0.slip)
