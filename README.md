@@ -37,7 +37,7 @@ Please refer to the [Code Manual (PDF)](PyQuake3D_User_Manual.pdf)
   <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/framework.png" alt="Framework Overview">
 </p>
 
-## Quake Start
+## Quick Start
 A step by step tutorial on how to install and run [BP5-QD_low_resolution case](tutorials/BP5-QD_low_resolution/tutorial_BP5.ipynb) and [circular_asperity_low_resolution case](tutorials/circular_asperity_low_resolution/tutorial_circular_asperity.ipynb)
 
 ## Installation
