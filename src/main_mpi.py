@@ -55,20 +55,20 @@ if __name__ == "__main__":
         except:
             #fnamegeo='examples/HF-model/planar10w.msh'
             #fnamePara='examples/HF-model/parameter.txt'
-            # fnamegeo='examples/BP5-QD/bp5t.msh'
-            # fnamePara='examples/BP5-QD/parameter.txt'
-            fnamegeo='examples/BP5_circle/aspirity_circle.msh'
-            fnamePara='examples/BP5_circle/parameter.txt'
+            fnamegeo='examples/BP5-QD/bp5t.msh'
+            fnamePara='examples/BP5-QD/parameter.txt'
+            # fnamegeo='examples/BP5_circle/aspirity_circle.msh'
+            # fnamePara='examples/BP5_circle/parameter.txt'
             # fnamegeo='examples/BP5_3k/bp5t.msh'
             # fnamePara='examples/BP5_3k/parameter.txt'
             #fnamegeo='examples/EAFZ-model/turkey_cut.msh'
             #fnamePara='examples/EAFZ-model/parameter.txt'
             #fnamegeo='examples/WMF/WMF3.msh'
             #fnamePara='examples/WMF/parameter.txt'
-            # fnamegeo='examples/cascadia/50km_43dense_35w.msh'
-            # fnamePara='examples/cascadia/parameter.txt'
-            #fnamegeo='examples/Lab-model/lab.msh' #default mesh location
-            #fnamePara='examples/Lab-model/parameter.txt'
+            #fnamegeo='examples/cascadia/50km_43dense_35w.msh'
+            #fnamePara='examples/cascadia/parameter.txt'
+            # fnamegeo='examples/Lab-model/lab.msh' #default mesh location
+            # fnamePara='examples/Lab-model/parameter.txt'
 
         
             
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         #sim0.simu_forward(dttry)
         if(rank==0):
             year=sim0.time/3600/24/365
-            #if(i%20==0):
+            #if(i%10==0):
             print('iteration:',i, flush=True)
             print('dt:',dttry,' max_vel:',np.max(np.abs(sim0.slipv)),' min_vel:',np.min(np.abs(sim0.slipv)),' Porepressure max:',np.max(sim0.P),' Porepressure min:',np.min(sim0.P),' dpdt_max:',np.max((sim0.dPdt0)),' dpdt_min:',np.min((sim0.dPdt0)),' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,
             'year',year, flush=True)
