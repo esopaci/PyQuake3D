@@ -117,7 +117,7 @@ def clac_revn_vchange_filter(v):
 
 
 class QDsim:
-    def __init__(self,elelst,nodelst,fnamePara):
+    def __init__(self,elelst,nodelst,fnamePara,calc_greenfunc=True):
         #for i in range(len(xg)):
 
 
@@ -172,8 +172,8 @@ class QDsim:
         
         self.Init_condition()
 
-        
-        self.calc_corefunc()
+        if(calc_greenfunc==True):
+            self.calc_corefunc()
 
         
 
