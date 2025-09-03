@@ -1,28 +1,37 @@
-// 参数定义
-angle = 25; // 倾角 (度)
-dx = 100;    // 矩形宽度
-Len = 40;   // 矩形长度
-lc = 1.5;     // 单元大小
+// Parameters
+angle = 25;   // Dip angle of the fault in degrees
+Len = 100;    // Fault length along x-axis
+width = 40;   // Fault width along z-axis
+lc = 1.5;     // Characteristic length for mesh cell size
 
-// 定义点
-Point(1) = {-dx/2, 0, 0, lc};
-Point(2) = {dx/2, 0, 0, lc};
-Point(3) = {dx/2, 0, -Len, lc};
-Point(4) = {-dx/2, 0, -Len, lc};
-//Point(3) = {dx, Len * Cos(angle * Pi / 180), -Len * Sin(angle * Pi / 180), lc};
-//Point(4) = {0, Len * Cos(angle * Pi / 180), -Len * Sin(angle * Pi / 180), lc};
+// Define points for the rectangular fault plane
+Point(1) = {-Len/2, 0, 0, lc};   // Bottom-left corner (A)
+Point(2) = {Len/2, 0, 0, lc};    // Bottom-right corner (B)
+Point(3) = {Len/2, 0, -width, lc}; // Top-right corner (C)
+Point(4) = {-Len/2, 0, -width, lc}; // Top-left corner (D)
+// Alternative points for a dipping fault (commented out)
+//Point(3) = {Len/2, width * Cos(angle * Pi / 180), -width * Sin(angle * Pi / 180), lc};
+//Point(4) = {-Len/2, width * Cos(angle * Pi / 180), -width * Sin(angle * Pi / 180), lc};
 
-// 定义线段
-Line(1) = {1, 2}; // A -> B
-Line(2) = {2, 3}; // B -> C
-Line(3) = {3, 4}; // C -> D
-Line(4) = {4, 1}; // D -> A
+// Define lines connecting the points
+Line(1) = {1, 2}; // Line from A to B (bottom edge)
+Line(2) = {2, 3}; // Line from B to C (right edge)
+Line(3) = {3, 4}; // Line from C to D (top edge)
+Line(4) = {4, 1}; // Line from D to A (left edge)
 
-// 定义面
-Line Loop(1) = {1, 2, 3, 4}; // 面 A-B-C-D
-Plane Surface(1) = {1};
+// Define the surface by creating a line loop and plane
+Line Loop(1) = {1, 2, 3, 4}; // Closed loop of lines A-B-C-D
+Plane Surface(1) = {1};      // Create a planar surface from the line loop
 
-// 网格设置
-//Mesh.Algorithm = 6;          // 使用指定算法生成网格 (例如 Delaunay)
-//Mesh.ElementSizeFactor = 1.0; // 全局网格因子 (可选)
+// Mesh generation settings
+//Mesh.Algorithm = 1;          // Mesh algorithm: 1 = Delaunay triangulation (triangular mesh)
+//Mesh.Algorithm = 8;        // Alternative: 8 = Structured quadrilateral mesh (uncomment for quads)
+//Mesh.ElementOrder = 1;       // Use first-order elements (linear triangles or quads)
+//Mesh.RecombineAll = 1;       // Recombine triangles into quadrilaterals (enable for quad mesh)
 
+// Generate the 2D mesh
+Mesh 2;
+
+// Save the mesh to a file
+Mesh.Format = 2;             // Output format: 1 = MSH1 format (Gmsh legacy format)
+//Save "fault_mesh.msh";       // Save the mesh as fault_mesh.msh
