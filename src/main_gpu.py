@@ -124,7 +124,7 @@ if __name__ == "__main__":
             #print('self.slipv1',np.max(sim0.slipv1))
             print('dt:',dttry,' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,'year',year)
             print(' max_vel1:',np.max(np.abs(sim0.slipv1)),' max_vel2:',np.max(np.abs(sim0.slipv2)),' min_Tt1:',np.min(sim0.Tt1o),' min_Tt2:',np.min(sim0.Tt2o))  
-            f.write('%d %f %f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
+            f.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
             #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
             #SLIP.append(sim0.slip)
             SLIPV.append(sim0.slipv)
@@ -204,7 +204,7 @@ if __name__ == "__main__":
             year=sim0.time/3600/24/365
             print('dt:',dttry,' max_vel:',np.max(np.abs(sim0.slipv)),' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,
                 'year',year)
-            f.write('%d %f %.16e %f %f %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv)),sim0.time,sim0.time/3600.0/24.0,sim0.Relerrormax1,sim0.Relerrormax2))
+            f.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
             #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
             #SLIP.append(sim0.slip)
             SLIPV.append(sim0.slipv)
