@@ -2018,7 +2018,7 @@ class BlockTree:
 
     #Hmatrix structure drawing
     def blocks_plot_mpi(self,gathered_results):
-        color1=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*1000
+        color1=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*size
         plt.figure(figsize=(10,10))
         #plt.rcParams['font.family'] = 'Arial'
         plt.rcParams.update({'font.size': 14})
