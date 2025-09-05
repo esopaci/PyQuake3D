@@ -193,7 +193,8 @@ class QDsim:
         
         #self.calc_corefunc()
         #Calcultae Hmatrix structure
-        self.tree_block=Hmat.createHmatrix(self.xg,self.nodelst,self.elelst,self.eleVec,self.mu,self.lambda_,self.halfspace_jud,plotHmatrix=True)
+        print('Calcultae Hmatrix structure..', flush=True)
+        self.tree_block=Hmat.createHmatrix(self.xg,self.nodelst,self.elelst,self.eleVec,self.mu,self.lambda_,self.halfspace_jud,plotHmatrix=self.hmatrix_mpi_plot)
 
         
 

@@ -20,7 +20,7 @@ import pickle
 import traceback
 import h5py
 cp=None
-useC=None
+
 
 
 #if(useC==True):
@@ -576,7 +576,7 @@ class BlockTree:
                 stress=stress.reshape([n,6])
                 stress=stress.transpose()
             else:
-                #print(useC,'useC==False..!!!!!!!!!!')
+                print(useC,'useC==False..!!!!!!!!!!')
                 if(self.halfspace_jud==True):
                     stress,strain=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu_,self.lambda_)
                 else:
@@ -1890,7 +1890,7 @@ class BlockTree:
     
 
     def blocks_process_MVM_gpu(self, xvector, blocks_to_process, type):
-        
+        import cupy as cp
         # Convert input vector to CuPy array
         xvector = cp.array(xvector)
         # Initialize output vector on GPU
@@ -2018,7 +2018,7 @@ class BlockTree:
 
     #Hmatrix structure drawing
     def blocks_plot_mpi(self,gathered_results):
-        color1=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*10
+        color1=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*1000
         plt.figure(figsize=(10,10))
         #plt.rcParams['font.family'] = 'Arial'
         plt.rcParams.update({'font.size': 14})
@@ -2169,7 +2169,7 @@ def createHmatrix(xg,nodelst,elelst,eleVec,mu_,lambda_,halfspace_jud,mini_leaf=3
     #testblock.print_tree(tree_root)
     if(plotHmatrix==True):
         plt.figure(figsize=(10,10))
-    
+    print('start Recursively traverse create the BlockTree.')
     root_block = create_recursive_blocks(cluster_raw, cluster_col,cluster,cluster,xg,plotHmatrix,mini_leaf)
     print('Recursively traverse create the BlockTree.')
     tree_block = BlockTree(root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud,mini_leaf)
