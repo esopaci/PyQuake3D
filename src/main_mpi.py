@@ -53,10 +53,10 @@ if __name__ == "__main__":
             fnamePara = args.inputpara
         
         except:
-            #fnamegeo='examples/HF-model/planar10w.msh'
-            #fnamePara='examples/HF-model/parameter.txt'
-            fnamegeo='examples/BP5-QD/bp5t.msh'
-            fnamePara='examples/BP5-QD/parameter.txt'
+            # fnamegeo='examples/HF-model/HFmodel.msh'
+            # fnamePara='examples/HF-model/parameter.txt'
+            # fnamegeo='examples/BP5-QD/bp5t.msh'
+            # fnamePara='examples/BP5-QD/parameter.txt'
             # fnamegeo='examples/BP5_circle/aspirity_circle.msh'
             # fnamePara='examples/BP5_circle/parameter.txt'
             # fnamegeo='examples/BP5_3k/bp5t.msh'
@@ -67,8 +67,8 @@ if __name__ == "__main__":
             #fnamePara='examples/WMF/parameter.txt'
             #fnamegeo='examples/cascadia/50km_43dense_35w.msh'
             #fnamePara='examples/cascadia/parameter.txt'
-            # fnamegeo='examples/Lab-model/lab.msh' #default mesh location
-            # fnamePara='examples/Lab-model/parameter.txt'
+            fnamegeo='examples/Lab-model/lab.msh' #default mesh location
+            fnamePara='examples/Lab-model/parameter.txt'
 
         
             
@@ -106,6 +106,28 @@ if __name__ == "__main__":
         f.write('Cohesive zone::%f\n'%sim0.A0)
         f.write('iteration time_step(s) maximum_slip_rate(m/s) time(s) time(h)\n')
 
+        
+
+        # initial condition loaded by previous results
+        #fname="P2/out_vtk/step7400.vtk"
+        #sim0.read_vtk(fname)
+
+        # output intial results
+        fname='Init.vtk'
+        sim0.ouputVTK(fname)
+        #print(sim0.P)
+
+        
+    
+    print('rank:',rank)
+    # bcast parameters to all ranks
+    fnamePara = comm.bcast(fnamePara, root=0)
+    config.readPara0(fnamePara)
+    
+    sim0 = comm.bcast(sim0, root=0)
+    
+
+    if(rank==0):
         #Determine whether Hmatrix has been calculated. If it has been calculated, read it directly
         jud_coredir,blocks_to_process=sim0.get_block_core()
         print('jud_coredir',jud_coredir) #if saved corefunc
@@ -136,28 +158,8 @@ if __name__ == "__main__":
             else:
                 s=s+blocks_to_process[i].Mf_A1s.nbytes/(1024*1024)
         print('memorary:',s)
-
-        # initial condition loaded by previous results
-        #fname="P2/out_vtk/step7400.vtk"
-        #sim0.read_vtk(fname)
-
-        # output intial results
-        fname='Init.vtk'
-        sim0.ouputVTK(fname)
-        #print(sim0.P)
-
-        
     
-    print('rank:',rank)
-    # bcast parameters to all ranks
-    fnamePara = comm.bcast(fnamePara, root=0)
-    config.readPara0(fnamePara)
-    
-    sim0 = comm.bcast(sim0, root=0)
     jud_coredir = comm.bcast(jud_coredir, root=0)
-
-    
-    
     if(jud_coredir==False):#Calculate green functions and compress in Hmatrix
         #sim0.local_blocks=sim0.tree_block.parallel_traverse_SVD(sim0.Para0['Corefunc directory'],plotHmatrix=sim0.Para0['Hmatrix_mpi_plot'])
         if(rank==0):
@@ -260,8 +262,8 @@ if __name__ == "__main__":
         f.close()
         print('menmorary:',s*6)
         
-#sys.stdout = old_stdout
-#log_file.close()
+# sys.stdout = old_stdout
+# log_file.close()
 
 
 
