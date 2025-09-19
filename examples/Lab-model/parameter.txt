@@ -62,7 +62,7 @@ Rate-and-state parameters a in nucleation region: 0.01
 Rate-and-state parameters b in nucleation region: 0.0185
 Characteristic slip distance in nucleation region: 1e-2
 Initial slip rate in nucleation region: 3e-2
-Plate loading rate: 3e-5
+Plate loading rate: 3e-8
 ChangefriA: False
 Initlab: True
 
