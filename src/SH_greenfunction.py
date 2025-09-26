@@ -740,8 +740,8 @@ def AngSetupFSC_S(X,Y,Z,B_vec,PA,PB,mu,lambda_):
     SideVec = PB-PA
     eZ = np.array([0,0,1])
     beta = acos(-np.dot(SideVec,eZ)/norm(SideVec))
-    eps=2.2204e-16
-    
+    #eps=2.2204e-16
+    eps=1e-4
     if(abs(beta)<eps or abs(pi-beta)<eps):
         Stress = np.zeros((6,len(X)))
         Strain = np.zeros((6,len(X)))
