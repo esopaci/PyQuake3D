@@ -1,5 +1,43 @@
 /* Force resize of the project logo */
+
+/* Make content area wider */
+.wy-nav-content {
+    max-width: 1200px !important;   /* default is ~800px */
+}
+
+/* Or truly full width */
+.wy-nav-content {
+    max-width: none !important;
+}
+
+
 a.icon.icon-home img.logo {
     width: 110px !important;   /* adjust this */
     height: auto !important;   /* keep aspect ratio */
 }
+
+/* Sidebar background → pure black */
+.wy-nav-side {
+    background: #000000 !important;
+}
+
+/* Top nav/header bar (default: blue) */
+.wy-side-nav-search {
+    background: #004466 !important;  /* pick your color */
+}
+
+/* Fix sidebar active item (currently white on white) */
+.wy-menu-vertical li.current > a,
+.wy-menu-vertical li.current > a:visited {
+    background: #222222 !important;   /* dark background for active item */
+    color: #ffffff !important;        /* white text */
+}
+
+/* Optional: make hover look consistent */
+.wy-menu-vertical a:hover {
+    background: #444444 !important;
+    color: #ffffff !important;
+}
+
+
+

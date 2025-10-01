@@ -8,13 +8,24 @@ PyQuake3D Documentation
 =======================
 
 Welcome to the documentation for **PyQuake3D**, A Python tool for 
-3-D earthquake sequence simulations of seismic and aseismic slip
+3-D earthquake sequence simulations of seismic and aseismic slip.
+
+.. figure:: _static/cover.png
+   :alt: PyQuake3D cover
+   :align: left
+   :scale: 12%
+
+.. raw:: html
+
+   <div style="clear: both;"></div>
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents
 
    introduction
+   cite
+   acknowledgments
    installation
    tutorials
-   changelog
+   versions
