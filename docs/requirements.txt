@@ -1,0 +1,6 @@
+sphinx
+sphinx-rtd-theme
+myst-parser
+
+numpy
+scipy
