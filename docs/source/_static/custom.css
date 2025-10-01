@@ -1,0 +1,5 @@
+/* Force resize of the project logo */
+a.icon.icon-home img.logo {
+    width: 110px !important;   /* adjust this */
+    height: auto !important;   /* keep aspect ratio */
+}
