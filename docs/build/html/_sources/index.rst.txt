@@ -13,6 +13,7 @@ Welcome to the documentation for **PyQuake3D**, a Python tool for
 .. figure:: _static/cover.png
    :alt: PyQuake3D cover
    :align: left
+   :width: 800px
 
 .. raw:: html
 
