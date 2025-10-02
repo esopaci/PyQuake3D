@@ -6,16 +6,19 @@ we assume the fault plane is embedded in an elastic half-space or full-space wit
 homogeneous and constant elastic moduli. A constant tectonic loading rate is imposed 
 across the entire fault interface. The elastic stress transfer due to slip on the fault 
 is described in Equations (1) (shear stress) and (2) (normal stress), with the radiation 
-damping assumption :cite:`rice1993spatio`.
+damping assumption :cite:p:`rice1993spatio`.
 
 .. math::
-   \tau_{i} = \tau_{0} - \sum_{j=1}^{n} k_{ij}^s \left( u_{j} - V_{pl} t \right) - \frac{\mu}{2c_s} \frac{\partial u_{i}}{\partial t}
    :label: forcebalance
 
+   \tau_{i} = \tau_{0} - \sum_{j=1}^{n} k_{ij}^s \left( u_{j} - V_{pl} t \right) - \frac{\mu}{2c_s} \frac{\partial u_{i}}{\partial t}
+
 .. math::
-   \bar{\sigma}_{i} = \bar{\sigma}_{0} + \sum_{j=1}^{n} k_{ij}^N \left(u_{j} - V_{pl} t\right)
    :label: normalstressbalance
 
+   \bar{\sigma}_{i} = \bar{\sigma}_{0} + \sum_{j=1}^{n} k_{ij}^N \left(u_{j} - V_{pl} t\right)
+   
+   
 where :math:`V_{pl}` is the imposed tectonic slip rate, :math:`\mu` is the shear modulus, 
 :math:`c_s` is the shear wave speed, and :math:`u_j` is the slip at the :math:`j`-th element. 
 The kernels :math:`k_{ij}^s` and :math:`k_{ij}^N` represent the shear and normal stiffness 
@@ -26,8 +29,8 @@ develop in quasi-static models.
 To compute :math:`k_{ij}^s` and :math:`k_{ij}^N`, analytical formulas for static stress induced 
 by triangular dislocations in a homogeneous elastic full-space and half-space are employed 
 :cite:`nikkhoo2015triangular`. Since the goal is to simulate three-dimensional complex non-planar 
-fault geometries, optimizations specific to planar faults (e.g. Fourier-domain construction 
-:cite:`rice1993spatio`) are not applicable. Instead, CPU-based multiprocessing or MPI are used 
+fault geometries, optimizations specific to planar faults (e.g. Fourier-domain construction) 
+are not applicable. Instead, CPU-based multiprocessing or MPI are used 
 to accelerate the computation of Green's functions.
 
 ---
@@ -112,3 +115,11 @@ block trees.
 Cluster tree construction is based on geometric splitting, while block trees pair clusters to 
 determine admissibility for low-rank approximation. This design enables efficient compression 
 and distributed memory scalability.
+
+References
+==========
+
+.. bibliography::
+   :style: unsrt
+   :filter: docname in docnames
+

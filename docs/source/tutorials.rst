@@ -7,7 +7,7 @@ Getting Started
 ---------------
 A step-by-step installation and run guide is available here:
 
-https://github.com/Computational-Geophysics/PyQuake3D/blob/main/tutorials/BP5-QD_low_resolution/tutorial_BP5.ipynb
+https://github.com/Computational-Geophysics/PyQuake3D/blob/main/tutorials
 
 This notebook walks through:
 
