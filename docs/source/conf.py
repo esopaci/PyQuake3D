@@ -40,3 +40,4 @@ html_css_files = ['custom.css']
 
 # BibTeX file
 bibtex_bibfiles = ["refs.bib"]
+#exclude_patterns = ['references.rst']

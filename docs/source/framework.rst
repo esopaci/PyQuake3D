@@ -116,8 +116,10 @@ Cluster tree construction is based on geometric splitting, while block trees pai
 determine admissibility for low-rank approximation. This design enables efficient compression 
 and distributed memory scalability.
 
+---
+
 References
-==========
+----------
 
 .. bibliography::
    :style: unsrt
