@@ -36,3 +36,13 @@ html_theme = "sphinx_rtd_theme"
 html_logo = "_static/logo.png"
 html_static_path = ['_static']
 html_css_files = ['custom.css']
+
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.mathjax",
+    "sphinx_rtd_theme",
+    "sphinxcontrib.bibtex",
+]
+
+# Point to your bibliography file(s)
+bibtex_bibfiles = ["refs.bib"]

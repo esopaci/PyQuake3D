@@ -26,6 +26,7 @@ Welcome to the documentation for **PyQuake3D**, a Python tool for
    introduction
    cite
    acknowledgments
+   framework
    installation
    tutorials
    versions

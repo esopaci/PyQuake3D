@@ -1,23 +1,36 @@
 Introduction
 ============
 
-PyQuake3D is an open-source Python framework designed to simulate 3D earthquake rupture
-dynamics with realistic fault geometries and rate-and-state friction laws. The goal of
-PyQuake3D is to provide a high-performance, extensible tool for the earthquake physics
-community that bridges simple benchmark problems with full-scale, physics-rich scenarios.
+**PyQuake3D** is an open-source, Python-based Boundary Element Method (BEM) framework 
+designed to simulate sequences of earthquakes and aseismic slip (SEAS) on geometrically 
+complex three-dimensional (3D) fault systems governed by rate- and state-dependent 
+friction laws. It supports fully arbitrary fault geometries embedded in either a 
+uniform elastic half-space or full-space medium, including non-planar surfaces, 
+fault stepovers, branches, and roughness. 
+
+This documentation provides an overview of **PyQuake3D**, including its main capabilities, 
+usage instructions, and a detailed description of the required input parameters.
 
 The code supports multiple execution backends:
 
-* **Single CPU/GPU backend** — constructs dense stiffness matrices using direct evaluation
-  of all source–receiver interactions. GPU acceleration is supported via `CuPy` and
-  parallelism through Python’s ``ProcessPoolExecutor``.
-* **MPI-based CPU backend** — implements a memory-efficient H-matrix representation of the
-  stiffness matrix, distributed across processors via ``mpi4py``. This is the recommended
-  path for large models (>40,000 elements) and HPC systems.
+- **GPU-accelerated version**  
+  Utilizes Python's ``ProcessPoolExecutor`` for parallel evaluation of Green’s functions 
+  (kernels), and leverages GPU-based linear algebra libraries (``CuPy``) to accelerate 
+  dense matrix–vector operations.
 
-With this design, PyQuake3D scales from exploratory models on laptops to high-resolution
-simulations on clusters. The modular structure makes it straightforward to extend the
-framework with new rheologies, boundary conditions, or couplings to geodynamic models.
+- **H-matrix + MPI version**  
+  Reduces memory footprint and computational cost using hierarchical matrix 
+  (H-matrix) compression via Adaptive Cross Approximation (ACA). Distributed 
+  parallelism is implemented with MPI (``mpi4py``) to enable efficient large-scale 
+  simulations on high-performance computing (HPC) platforms.
+
+Scalability and Applications
+----------------------------
+
+**PyQuake3D** is designed to scale from local workstations to HPC clusters, making 
+it a flexible and extensible platform for researchers, students, and educators 
+interested in exploring the physics of earthquake cycles across a wide range 
+of spatial and temporal scales.
 
 PyQuake3D is developed and maintained by Rongjiang Tang and Luca Dal Zilio. 
 The source code, documentation, and tutorials are hosted on GitHub:
