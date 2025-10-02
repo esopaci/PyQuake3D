@@ -1,0 +1,17 @@
+# Ignore build artifacts
+docs/build/
+build/
+_build/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# System files
+.DS_Store

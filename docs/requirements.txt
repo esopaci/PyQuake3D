@@ -1,6 +1,8 @@
-sphinx
-sphinx-rtd-theme
 myst-parser
+
+sphinx>=7.0
+sphinx-rtd-theme
+sphinxcontrib-bibtex
 
 numpy
 scipy
