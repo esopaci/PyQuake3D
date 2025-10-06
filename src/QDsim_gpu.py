@@ -117,7 +117,7 @@ def clac_revn_vchange_filter(v):
 
 
 class QDsim:
-    def __init__(self,elelst,nodelst,fnamePara,calc_greenfunc=True):
+    def __init__(self,elelst,nodelst,fnamePara):
         #for i in range(len(xg)):
 
 
@@ -172,8 +172,8 @@ class QDsim:
         
         self.Init_condition()
 
-        if(calc_greenfunc==True):
-            self.calc_corefunc()
+        
+        self.calc_corefunc()
 
         
 
@@ -303,7 +303,7 @@ class QDsim:
         # b=0.02
         # a=0.011
         sigma=np.mean(self.Tno*1e6)
-        #print(self.Tno)
+        print(self.Tno)
         L=np.max(self.dc)
         #L=0.015
         print('L:',L)
@@ -324,9 +324,9 @@ class QDsim:
         self.Tt2o=np.zeros(N)
         self.Tno=np.zeros(N)
         self.fix_Tn=self.Para0['Fix_Tn']=='True'
-        ssv_scale=float(self.Para0['Vertical principal stress'])
-        ssh1_scale=float(self.Para0['Maximum horizontal principal stress'])
-        ssv0_scale=float(self.Para0['Minimum horizontal principal stress'])
+        ssv_scale=float(self.Para0['ssv_scale'])
+        ssh1_scale=float(self.Para0['ssh1_scale'])
+        ssv0_scale=float(self.Para0['ssh2_scale'])
         trac_nor=float(self.Para0['Vertical principal stress value'])
         
         self.P0=0

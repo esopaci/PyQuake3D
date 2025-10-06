@@ -298,6 +298,7 @@ class BlockTree:
         self.progress_tra=0
         self.blocks_to_process=[]
         self.size_local_blocks=0
+        self.useC=True
         
         
         
@@ -350,10 +351,10 @@ class BlockTree:
         P1_lst=np.array(P1_lst).flatten()
         P2_lst=np.array(P2_lst).flatten()
         P3_lst=np.array(P3_lst).flatten()
-        useC=config.Para0['Using C++ green function']=='True'
+        
         Ts, Ss, Ds = 0, 1, 0
         for i in range(len(X)):
-            if(useC==True):
+            if(self.useC==True):
                 stress_out = np.zeros(n_sources * 6, dtype=np.float64)
                 strain_out = np.zeros(n_sources * 6, dtype=np.float64)
                 lib.TDstressEachSourceAtReceiver_C(
@@ -429,10 +430,10 @@ class BlockTree:
         
         
         Ts, Ss, Ds = 0, 0, 1
-        useC=config.Para0['Using C++ green function']=='True'
+        #useC=config.Para0['Using C++ green function']=='True'
         #useC=True
         for i in range(len(X)):
-            if(useC==True):
+            if(self.useC==True):
                 stress_out = np.zeros(n_sources * 6, dtype=np.float64)
                 strain_out = np.zeros(n_sources * 6, dtype=np.float64)
                 lib.TDstressEachSourceAtReceiver_C(
@@ -496,9 +497,9 @@ class BlockTree:
             # else:
                 #stress,_=DH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu_,self.lambda_)
 
-            useC=config.Para0['Using C++ green function']=='True'
+            #useC=config.Para0['Using C++ green function']=='True'
             #useC=True
-            if(useC==True):
+            if(self.useC==True):
                 stress = np.zeros(n * 6)
                 strain = np.zeros(n * 6)
                 lib.TDstressFS_C(X.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -555,9 +556,9 @@ class BlockTree:
             #     Stress,_=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu_,self.lambda_)
             #else:
                 #Stress,_=DH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu_,self.lambda_)
-            useC=config.Para0['Using C++ green function']=='True'
+            #useC=config.Para0['Using C++ green function']=='True'
             #useC=True
-            if(useC==True):
+            if(self.useC==True):
                 stress = np.zeros(n * 6)
                 strain = np.zeros(n * 6)
                 lib.TDstressFS_C(X.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -576,7 +577,7 @@ class BlockTree:
                 stress=stress.reshape([n,6])
                 stress=stress.transpose()
             else:
-                print(useC,'useC==False..!!!!!!!!!!')
+                #print(useC,'useC==False..!!!!!!!!!!')
                 if(self.halfspace_jud==True):
                     stress,strain=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu_,self.lambda_)
                 else:
@@ -1696,31 +1697,7 @@ class BlockTree:
         block.judproc=True
         return block
     
-    def parallel_cells_scatter_send(self):
-        N=len(self.eleVec)
-        index0=np.arange(0,N,1)
-        local_index = None
-        if rank == 0:
-            print('Assign cells for Dilantacy calculation:', N)
     
-            # Manually distribute tasks evenly
-            counts = [N // size] * size
-            for i in range(N % size):
-                counts[i] += 1
-            task_chunks = []
-            start = 0
-            for c in counts:
-                task_chunks.append(index0[start:start+c])
-                start += c
-            for i in range(1, size):
-                comm.send(task_chunks[i], dest=i, tag=77)
-            local_index = task_chunks[0] 
-        else:
-            #Non-zero process receiving tasks
-            
-            local_index = comm.recv(source=0, tag=77)
-        print('rank',rank,' cells for P calculation',len(local_index))
-        return local_index
     
     #Assign missions for forward iteration each rank with completed blocks submatrice
     def parallel_block_scatter_send(self, blocks_to_process, plotHmatrix=False):
@@ -1785,8 +1762,8 @@ class BlockTree:
             #     if rank == i:
             #         gathered_blocks.append(local_blocks)
             #     comm.barrier()  
+
             if rank == 0:
-                #print('gathered_blocks:',len(gathered_blocks))
                 self.blocks_plot_mpi(task_chunks)
     
         return local_blocks
@@ -2029,17 +2006,27 @@ class BlockTree:
         #for i in range(4):
             for j in range(len(gathered_results[i])):
                 block=gathered_results[i][j]
-                rowleftsize=len(block.row_cluster)
-                colleftsize=len(block.col_cluster)
+                # rowleftsize=len(block.row_index)
+                # colleftsize=len(block.col_index)
                 
-                midr=block.row_index[0]+rowleftsize
-                midc=block.col_index[0]+colleftsize
-                plt.plot([block.col_index[0],block.col_index[-1]],[midr,midr],c=color1[i])
-                plt.plot([midc,midc],[block.row_index[0],block.row_index[-1]],c=color1[i])
+                # midr=(block.row_index[0]+block.row_index[-1])/2
+                # midc=(block.col_index[0]+block.col_index[-1])/2
+                # plt.plot([block.col_index[0],block.col_index[-1]],[midr,midr],c=color1[i])
+                # plt.plot([midc,midc],[block.row_index[0],block.row_index[-1]],c=color1[i])
+                rect = np.array([[block.row_index[0], block.col_index[0]], 
+                                 [block.row_index[-1], block.col_index[0]], 
+                                 [block.row_index[-1], block.col_index[-1]], 
+                                 [block.row_index[0], block.col_index[-1]], 
+                                 [block.row_index[0], block.col_index[0]]])
+
+                # Plot the rectangle
+                plt.plot(rect[:, 0], rect[:, 1], c=color1[i])
+
+
         
         plt.xlim(0,len(self.xg)-1)
         plt.ylim(0,len(self.xg)-1)
-        plt.savefig('HmatrixStru_mpi.eps',dpi=500)
+        plt.savefig('HmatrixStru_mpi.png',dpi=500)
         #plt.show()
 
 
@@ -2098,7 +2085,7 @@ def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,p
     :return: Block object
     """
 
-    
+    hf_Nindex=int(len(row_index)/2)
     
     jud_admis=is_admissible(row_cluster.indices,col_cluster.indices,points, eta=2.0)
     #if(len(row_cluster.indices)>5000 or len(col_cluster.indices)>5000):
@@ -2112,20 +2099,24 @@ def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,p
     col_cluster_left=col_cluster.left
     col_cluster_right=col_cluster.right
 
+
     if((row_cluster_left==None) or (row_cluster_right==None) or (col_cluster_left==None) or (col_cluster_right==None)):
         return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
 
-    rowleftsize=len(row_cluster_left.indices)
-    #rowrightsize=len(row_cluster_right.indices)
-    colleftsize=len(col_cluster_left.indices)
-    #colrightsize=len(row_cluster_left.indices)
+    # rowleftsize=len(row_cluster_left.indices)
+    # rowrightsize=len(row_cluster_right.indices)
+    # colleftsize=len(col_cluster_left.indices)
+    # colrightsize=len(col_cluster_right.indices)
+    #print(colleftsize,colrightsize)
     #print('depth',depth)
-    if(plotHmatrix==True):
+    if(plotHmatrix==True and len(col_index)>0 and len(row_index)>0):
         #print('!!!!!!!!!!!!!!')
         # midr=(row_index[0]+row_index[-1])/2.0
         # midc=(col_index[0]+col_index[-1])/2.0
-        midr=row_index[0]+rowleftsize
-        midc=col_index[0]+colleftsize
+        # midr=row_index[0]+(rowleftsize+rowrightsize)/2
+        # midc=col_index[0]+(colleftsize+colrightsize)/2
+        midr=(row_index[0]+row_index[-1])/2
+        midc=(col_index[0]+col_index[-1])/2
         plt.plot([col_index[0],col_index[-1]],[midr,midr],c='red')
         plt.plot([midc,midc],[row_index[0],row_index[-1]],c='red')
         #plt.show()
@@ -2139,25 +2130,28 @@ def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,p
     # 创建四个子块
     children = [
         create_recursive_blocks(row_cluster_left, col_cluster_left,
-                        row_index[:rowleftsize],col_index[:colleftsize],points, plotHmatrix,mini_leaf,depth + 1),
+                        row_index[:hf_Nindex],col_index[:hf_Nindex],points, plotHmatrix,mini_leaf,depth + 1),
         create_recursive_blocks(row_cluster_left, col_cluster_right,
-                        row_index[:rowleftsize],col_index[colleftsize:],points, plotHmatrix,mini_leaf,depth + 1),
+                        row_index[:hf_Nindex],col_index[hf_Nindex:],points, plotHmatrix,mini_leaf,depth + 1),
         create_recursive_blocks(row_cluster_right, col_cluster_left, 
-                        row_index[rowleftsize:],col_index[:colleftsize],points,plotHmatrix,mini_leaf,depth + 1),
+                        row_index[hf_Nindex:],col_index[:hf_Nindex],points,plotHmatrix,mini_leaf,depth + 1),
         create_recursive_blocks(row_cluster_right, col_cluster_right, 
-                        row_index[rowleftsize:],col_index[colleftsize:],points,plotHmatrix,mini_leaf,depth + 1),
+                        row_index[hf_Nindex:],col_index[hf_Nindex:],points,plotHmatrix,mini_leaf,depth + 1),
     ]
 
     return Block(row_cluster.indices,col_cluster.indices,row_index,col_index,children=children, level=depth)
 
 
 
-def createHmatrix(xg,nodelst,elelst,eleVec,mu_,lambda_,halfspace_jud,mini_leaf=32,plotHmatrix=False,GPU=False):
+#def createHmatrix(xg,nodelst,elelst,eleVec,mu_,lambda_,halfspace_jud,mini_leaf=32,plotHmatrix=False,GPU=False):
+def createHmatrix(xg,nodelst,elelst,eleVec,Para0,mini_leaf=32):
     
-    if(GPU==True):
+    if(Para0['GPU']==True):
         global cp
         import cupy as cp
     
+    mu_,lambda_,halfspace_jud=Para0['Shear modulus'],Para0['Lame constants'],Para0['Half space']
+    plotHmatrix=Para0['Hmatrix_mpi_plot']
     
     #useC=comm.bcast(useC, root=0)
 
@@ -2174,6 +2168,7 @@ def createHmatrix(xg,nodelst,elelst,eleVec,mu_,lambda_,halfspace_jud,mini_leaf=3
     print('Recursively traverse create the BlockTree.')
     tree_block = BlockTree(root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud,mini_leaf)
     print('Recursively traverse create the BlockTree completed.')
+    tree_block.useC=Para0['Using C++ green function']
     #print('Recursively traverse the BlockTree to obtain the interpolation index positions.')
     #tree_block.traverse()
     #print('Recursively traverse completed.')

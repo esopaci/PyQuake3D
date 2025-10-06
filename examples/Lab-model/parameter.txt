@@ -33,9 +33,9 @@ Initial porepressure: 2
 #Stress
 Half space: False
 Fix_Tn:False
-Vertical principal stress: 1.0
-Maximum horizontal principal stress: 0.0
-Minimum horizontal principal stress: 0.0
+ssv_scale: 1.0
+ssh1_scale: 0
+ssh2_scale: 0
 Angle between ssh1 and X-axis: 0
 Vertical principal stress value: 90
 Vertical principal stress value varies with depth: False
@@ -74,12 +74,10 @@ Nuclea_posz: -15000
 Radius of nucleation: 8000
 
 #output
-outputSLIPV: True
-outputTt: True
-totaloutputsteps: 20000
-outsteps: 200
-outputvtk: True
-outputmatrix: False
+outputSLIPV: False
+totaloutputsteps: 5
+outsteps: 50
+outputvtu: True
 
 
 

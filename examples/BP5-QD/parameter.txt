@@ -5,7 +5,7 @@ Node_order: False
 Scale_km: True
 
 #Only availible for mpi version
-Hmatrix_mpi_plot:False
+Hmatrix_mpi_plot:True
 Using C++ green function:True
 
 #Only availible for single GPU/CPU version
@@ -32,9 +32,9 @@ Initial porepressure: 2
 #Stress
 Half space: True
 Fix_Tn:False
-Vertical principal stress: 1.0
-Maximum horizontal principal stress: 1.6
-Minimum horizontal principal stress: 0.6
+ssv_scale: 1.0
+ssh1_scale: 1.6
+ssh2_scale: 0.6
 Angle between ssh1 and X-axis: 30
 Vertical principal stress value: 4e7
 Vertical principal stress value varies with depth: False
@@ -74,11 +74,10 @@ Radius of nucleation: 8000
 
 #output
 outputSLIPV: False
-outputTt: False
 totaloutputsteps: 500
 outsteps: 50
-outputvtk: True
-outputmatrix: False
+outputvtu: True
+
 
 
 

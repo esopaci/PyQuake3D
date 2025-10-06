@@ -53,8 +53,8 @@ if __name__ == "__main__":
         except:
             #fnamegeo='examples/HF-model/planar10w.msh'
             #fnamePara='examples/HF-model/parameter.txt'
-            fnamegeo='examples/BP5_3k/bp5t.msh'
-            fnamePara='examples/BP5_3k/parameter.txt'
+            fnamegeo='examples/Eyup/geometry.msh'
+            fnamePara='examples/Eyup/parameter.txt'
             #fnamegeo='examples/EAFZ-model/turkey_cut.msh'
             #fnamePara='examples/EAFZ-model/parameter.txt'
             #fnamegeo='examples/WMF/WMF3.msh'

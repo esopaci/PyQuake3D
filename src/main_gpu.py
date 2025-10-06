@@ -32,12 +32,16 @@ if __name__ == "__main__":
     except:
         #fnamegeo='examples/surface0/Surface0.msh'
         #fnamePara='examples/surface0/parameter.txt'
-        fnamegeo='examples/BP5_circle/aspirity_circle.msh'
-        fnamePara='examples/BP5_circle/parameter.txt'
+        # fnamegeo='examples/BP5_circle/aspirity_circle.msh'
+        # fnamePara='examples/BP5_circle/parameter.txt'
         # fnamegeo='examples/bp5_1.5w/bp5t_.msh'
         # fnamePara='examples/bp5_1.5w/parameter.txt'
         #fnamegeo='examples/obique/d30_60.msh'
         #fnamePara='examples/obique/parameter.txt'
+        # fnamegeo='examples/Eyup/geometry.msh'
+        # fnamePara='examples/Eyup/parameter.txt'
+        fnamegeo='examples/BP5-QD/bp5t.msh'
+        fnamePara='examples/BP5-QD/parameter.txt'
     print('Input msh geometry file:',fnamegeo)
     print('Input parameter file:',fnamePara)
     
@@ -67,8 +71,10 @@ if __name__ == "__main__":
     # row=[ 1,10,54,  192,204,258,382,431, 4553, 8862, 8879, 8881, 8884, 8943,9004, 9073, 9075, 9160, 9219, 9222, 9242]
     
     
+    
     # submatrix = A2s[np.ix_(row, row)]
     # print(submatrix)
+    
     sim0=QDsim_gpu.QDsim(elelst,nodelst,fnamePara)
     #print(sim0.__dict__)
     
@@ -81,7 +87,7 @@ if __name__ == "__main__":
     #Sliplast=np.mean(sim0.slipv)
     #maxsize=sim0.calc_nucleaszie_cohesivezone()
 
-    
+   
     f.write('iteration time_step(s) maximum_slip_rate(m/s) time(s) time(h)\n')
     
     # x=0
@@ -90,6 +96,9 @@ if __name__ == "__main__":
     # index1_=sim0.get_value(x,y,z)
 
     #print(sim0.mu*sim0.dc/(sim0.b[0]*1e6*10))
+
+    
+
     start_time=time.time()
     
     totaloutputsteps=int(sim0.Para0['totaloutputsteps'])
@@ -119,19 +128,19 @@ if __name__ == "__main__":
             #sim0.state2=sim0.state2_gpu.get()
             sim0.rake=sim0.rake_gpu.get()
             year=sim0.time/3600/24/365
-
-            #print('rake:',np.min(sim0.rake0_gpu.get()),np.max(sim0.rake0_gpu.get()))
-            #print('self.slipv1',np.max(sim0.slipv1))
-            print('dt:',dttry,' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,'year',year)
-            print(' max_vel1:',np.max(np.abs(sim0.slipv1)),' max_vel2:',np.max(np.abs(sim0.slipv2)),' min_Tt1:',np.min(sim0.Tt1o),' min_Tt2:',np.min(sim0.Tt2o))  
-            f.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
+            if(i%10==0):
+                #print('rake:',np.min(sim0.rake0_gpu.get()),np.max(sim0.rake0_gpu.get()))
+                #print('self.slipv1',np.max(sim0.slipv1))
+                print('dt:',dttry,' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,'year',year)
+                print(' max_vel1:',np.max(np.abs(sim0.slipv1)),' max_vel2:',np.max(np.abs(sim0.slipv2)),' min_Tt1:',np.min(sim0.Tt1o),' min_Tt2:',np.min(sim0.Tt2o))  
+            f.write('%d %f %f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
             #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
             #SLIP.append(sim0.slip)
             SLIPV.append(sim0.slipv)
             Tt.append(sim0.Tt)
 
-            memory_info = process.memory_info()
-            print(f"Memory usage: {memory_info.rss / (1024 ** 2)} MB")
+            # memory_info = process.memory_info()
+            # print(f"Memory usage: {memory_info.rss / (1024 ** 2)} MB")
             
             outsteps=int(sim0.Para0['outsteps'])
             directory='out_vtk'
@@ -162,7 +171,7 @@ if __name__ == "__main__":
                 sim0.Tt2o=sim0.Tt2o_gpu.get()
                 sim0.P=sim0.P_gpu.get()
 
-                if(sim0.Para0['outputvtk']=='True'):
+                if(sim0.Para0['outputvtu']=='True'):
                     fname=directory+'/step'+str(i)+'.vtk'
                     sim0.ouputVTK(fname)
                 
@@ -171,11 +180,7 @@ if __name__ == "__main__":
                     if not os.path.exists(directory1):
                         os.mkdir(directory1)
                     np.save(directory1+'/slipv_%d'%i,SLIPV)
-                if(sim0.Para0['outputTt']=='True'):
-                    directory1='out_slipvTt'
-                    if not os.path.exists(directory1):
-                        os.mkdir(directory1)
-                    np.save(directory1+'/Tt_%d'%i,Tt)
+                
                 
                 
         end_time=time.time()
@@ -202,9 +207,11 @@ if __name__ == "__main__":
                 dttry=dtnext
             dttry,dtnext=sim0.simu_forward(dttry)
             year=sim0.time/3600/24/365
+            
             print('dt:',dttry,' max_vel:',np.max(np.abs(sim0.slipv)),' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,
                 'year',year)
-            f.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
+                
+            f.write('%d %f %.16e %f %f %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv)),sim0.time,sim0.time/3600.0/24.0,sim0.Relerrormax1,sim0.Relerrormax2))
             #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
             #SLIP.append(sim0.slip)
             SLIPV.append(sim0.slipv)
@@ -227,7 +234,7 @@ if __name__ == "__main__":
                 SLIPV=[]
                 Tt=[]
 
-                if(sim0.Para0['outputvtk']=='True'):
+                if(sim0.Para0['outputvtu']=='True'):
                     fname=directory+'/step'+str(i)+'.vtk'
                     sim0.ouputVTK(fname)
                 
@@ -237,11 +244,7 @@ if __name__ == "__main__":
                         os.mkdir(directory1)
                     np.save(directory1+'/slipv_%d'%i,SLIPV)
                 
-                if(sim0.Para0['outputTt']=='True'):
-                    directory1='out_slipvTt'
-                    if not os.path.exists(directory1):
-                        os.mkdir(directory1)
-                    np.save(directory1+'/Tt_%d'%i,Tt)
+                
                 
         
         end_time = time.time()
@@ -254,7 +257,21 @@ if __name__ == "__main__":
     
     f.write('Program end time: %s\n'%str(datetime.now()))
     f.write("Time taken: %.2f seconds\n"%timetake)
-        
- 
+    f.close()
+
+    # f=open('source_point.txt','w')
+    # for i in range(sim0.elelst.shape[0]):
+    #     P1 = np.copy(sim0.nodelst[sim0.elelst[i, 0] - 1])
+    #     P2 = np.copy(sim0.nodelst[sim0.elelst[i, 1] - 1])
+    #     P3 = np.copy(sim0.nodelst[sim0.elelst[i, 2] - 1])
+    #     f.write('%f %f %f %f %f %f %f %f %f\n'%(P1[0],P1[1],P1[2],P2[0],P2[1],P2[2],P3[0],P3[1],P3[2]))
+    # f.close()
+    
+    # f=open('xg.txt','w')
+    # for i in range(sim0.xg.shape[0]):
+    #     f.write('%f %f %f\n'%(sim0.xg[i][0],sim0.xg[i][1],sim0.xg[i][2]))
+    # f.close()
+    
+
 
 
