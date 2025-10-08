@@ -438,6 +438,7 @@ class QDsim:
             self.local_blocks=self.tree_block.parallel_block_scatter_send(blocks_to_process,plotHmatrix=self.Para0['Hmatrix_mpi_plot'])
         
         #if(self.Ifdila==True):
+        #print('parallel_cells_scatter_send')
         self.local_index=self.parallel_cells_scatter_send()
         #print(rank,self.local_index)
 
@@ -902,28 +903,25 @@ class QDsim:
         #K=450
         #mesh0 = pv.read("examples/case1/out/step%d.vtk"%K)
         mesh0 = pv.read(fname)
-        self.rake=mesh0.cell_data['rake[Degree]']
-        self.rake=self.rake/180.*np.pi
-        self.Tt1o=mesh0.cell_data['Shear_1[MPa]']
-        self.Tt2o=mesh0.cell_data['Shear_2[MPa]']
-        self.Tt=mesh0.cell_data['Shear_[MPa]']
-        self.Tno=mesh0.cell_data['Normal_[MPa]']
+        self.rake = mesh0.cell_data['rake[Degree]'].astype(np.float64) / 180.0 * np.pi
+        self.Tt1o = mesh0.cell_data['Shear_1[MPa]'].astype(np.float64)
+        self.Tt2o = mesh0.cell_data['Shear_2[MPa]'].astype(np.float64)
+        self.Tt = mesh0.cell_data['Shear_[MPa]'].astype(np.float64)
+        self.Tno = mesh0.cell_data['Normal_[MPa]'].astype(np.float64)
 
-        self.slipv1=mesh0.cell_data['Slipv1[m/s]']
-        self.slipv2=mesh0.cell_data['Slipv2[m/s]']
-        self.slipv=mesh0.cell_data['Slipv[m/s]']
-        
-        
-        self.slip=mesh0.cell_data['slip']
-        self.slip1=mesh0.cell_data['slip1']
-        self.slip2=mesh0.cell_data['slip2']
+        self.slipv1 = mesh0.cell_data['Slipv1[m/s]'].astype(np.float64)
+        self.slipv2 = mesh0.cell_data['Slipv2[m/s]'].astype(np.float64)
+        self.slipv = mesh0.cell_data['Slipv[m/s]'].astype(np.float64)
 
+        self.slip = mesh0.cell_data['slip[m]'].astype(np.float64)
+        self.slip1 = mesh0.cell_data['slip1[m]'].astype(np.float64)
+        self.slip2 = mesh0.cell_data['slip2[m]'].astype(np.float64)
+
+        self.state = mesh0.cell_data['state'].astype(np.float64)
+        self.fric = mesh0.cell_data['fric'].astype(np.float64)
         # self.a=mesh0.cell_data['a']
         # self.b=mesh0.cell_data['b']
         # self.dc=mesh0.cell_data['dc']
-
-        self.state=mesh0.cell_data['state']
-        self.fric=mesh0.cell_data['fric']
 
 
 
@@ -1240,6 +1238,8 @@ class QDsim:
         
 
         if(self.step%self.Para0['outsteps']==0):
+            #print(self.counts, self.displs,self.Tno.shape,Tno_yhk.shape)
+            print(Tno_yhk.dtype, self.Tno.dtype)
             comm.Gatherv(sendbuf=Tno_yhk,recvbuf=(self.Tno, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt1o_yhk,recvbuf=(self.Tt1o, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt2o_yhk,recvbuf=(self.Tt2o, (self.counts, self.displs)), root=0)
