@@ -271,14 +271,14 @@ class QDsim:
             #sim0.simu_forward(dttry)
             if(rank==0):
                 year=self.time/3600/24/365
-                #if(i%10==0):
-                print('iteration:',i, flush=True)
-                print('dt:',dttry,' max_vel:',np.max(np.abs(self.slipv)),' min_vel:',np.min(np.abs(self.slipv)),' Porepressure max:',np.max(self.P),' Porepressure min:',np.min(self.P),' dpdt_max:',np.max((self.dPdt0)),' dpdt_min:',np.min((self.dPdt0)),' Seconds:',self.time,'  Days:',self.time/3600/24,
-                'year',year, flush=True)
-                #Output screen information: Iteration; time step; slipv1; slipv2; second; hours
-                file.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(self.slipv1)),np.max(np.abs(self.slipv2)),self.time,self.time/3600.0/24.0))
-                file.flush()
-                #f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
+                if(i%10==0):
+                	#print('iteration:',i, flush=True)
+                	#print('dt:',dttry,' max_vel:',np.max(np.abs(self.slipv)),' min_vel:',np.min(np.abs(self.slipv)),' Porepressure max:',np.max(self.P),' Porepressure min:',np.min(self.P),' dpdt_max:',np.max((self.dPdt0)),' dpdt_min:',np.min((self.dPdt0)),' Seconds:',self.time,'  Days:',self.time/3600/24,
+                	#'year',year, flush=True)
+                	#Output screen information: Iteration; time step; slipv1; slipv2; second; hours
+                	file.write('%d %f %.16f %.16e %f %f\n' %(i,dttry,np.max(np.abs(self.slipv1)),np.max(np.abs(self.slipv2)),self.time,self.time/3600.0/24.0))
+                	file.flush()
+                	#f1.write('%d %f %f %f %.6e %.16e\n'%(i,dttry,sim0.time,sim0.time/3600.0/24.0,sim0.Tt[index1_],sim0.slipv[index1_]))
                 #SLIP.append(sim0.slip)
 
                 #Save slip rate and shear stress for each iteration
@@ -1238,8 +1238,8 @@ class QDsim:
         
 
         if(self.step%self.Para0['outsteps']==0):
-            #print(self.counts, self.displs,self.Tno.shape,Tno_yhk.shape)
-            print(Tno_yhk.dtype, self.Tno.dtype)
+            # print(self.counts, self.displs,self.Tno.shape,Tno_yhk.shape)
+            # print(Tno_yhk.dtype, self.Tno.dtype)
             comm.Gatherv(sendbuf=Tno_yhk,recvbuf=(self.Tno, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt1o_yhk,recvbuf=(self.Tt1o, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt2o_yhk,recvbuf=(self.Tt2o, (self.counts, self.displs)), root=0)
