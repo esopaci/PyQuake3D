@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Sep 10 17:16:59 2025
-This script helps plotting PyQuake3D outputs
+This tool includes useful tools for plotting PyQuake3D outputs
 @author: eyup
 """
 
@@ -20,7 +20,9 @@ import matplotlib.tri as tri
 
 class Ptool:
     
-    t_yr = 365*3600*24
+    t_yr = 365*3600*24  # year to second converion
+    
+    # header for outut file 
     field = ['Normal_[MPa]', 
               'Pore_pressure[MPa]', 
               'Shear_[MPa]', 
@@ -48,9 +50,15 @@ class Ptool:
         
         
         ##  Get snapshots
-        self.out_folder = os.path.join(path, 'out_vtk')
+        self.out_folder = os.path.join(path, 'out_vtk') # output folder
+        
+        # get the output files
         self.vtk_files = [int(x.split('.vtu')[0][4:]) for x in os.listdir(self.out_folder) if x.endswith('.vtu') ]
+        
+        # Sort the files in the time order
         self.steps = np.sort(self.vtk_files)
+        
+        # State file is for maximum slip rate output
         self.state_file = os.path.join(path, 'state.txt')
         self.N_steps= len(self.vtk_files)
     
@@ -65,6 +73,15 @@ class Ptool:
         return vmax
     
     def plot_timeseries(self):
+        '''
+        This module plots time vs maximum slip rate for each the output 
+        time steps
+
+        Returns
+        -------
+        Saves the figure into the simulation directory.
+
+        '''
         fig,ax = plt.subplots(1,1, figsize = (10,6), clear=True)
         
         vmax = self.read_statefile()
@@ -72,36 +89,62 @@ class Ptool:
         ax.set_xlabel('time [yr]')
         ax.set_ylabel('log($V_{max}$) [m/s]')
         ax.semilogy(vmax['time(s)']/self.t_yr, 
-                    vmax['slipv1'])
+                    np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2) 
+                    )
         
-        fig.savefig(os.path.join(sys.path,'max_time_series.jpg'), dpi = 300, bbox_inches='tight')
+        fig.savefig(os.path.join(self.path,'max_time_series.jpg'), dpi = 300, bbox_inches='tight')
         
-    def animation2D(self, vmin = -9, vmax = 0):
+    def animation2D(self, vmin = -9, vmax = 0, px='XZ', N_interval = 10):
+        '''
+        
+
+        Parameters
+        ----------
+        vmin : float or integer, optional
+            log10(minimum slip rate). The default is -9 => 10^(-9) m/s.
+        vmax : float or integer, optional
+            log10(maximum slip rate). The default is 0 => 10^0= 1 m/s.
+        px : string, optional
+            XZ: plot in (X,Z) domain, YZ plot in domain (Y,Z). 
+            The default is 'XZ'.
+        N_interval: integer, optional
+            intervals for animation.
+
+        Returns
+        -------
+        Animation saved to your simulation folder
+        '''
+        
         
         # --- Plot with Matplotlib ---
-        # fig = plt.figure(figsize=(8,6))
-        # ax = fig.add_subplot(111, projection="3d")
+        # We have two subplots: 
+        # Top : Slip rate plotted with the scatter on PX domain
+        # Bottom : Maximim slip rate plot.
         fig,(ax,ax1) = plt.subplots(2,1, figsize = (8,6))
-        ax.set_xlabel('X[km]')
-        ax.set_ylabel('Z[km]')
+        
 
-        
-        
-        # ax.view_init(elev=30, azim=10, roll=0) 
-        # ax.set_box_aspect([0.5, 4, 0.75]) 
-        # ax1 = fig.add_subplot(422)
-        # plt.tight_layout()
+            
+        # Read maximum slip rate file
         df = self.read_statefile()
-
+        df['slipv'] = np.sqrt(df['slipv1']**2+df['slipv2']**2)
+        # max_sliprate = np.sqrt(df['slipv1']**2 + df['slipv2']**2)
         
+        
+        # This is plot for the maximum slip rate
         ax1.set_xlabel('time [yr]')
         ax1.set_ylabel('V [m/s]')
         ax1.semilogy(df['time(s)']/self.t_yr, 
-                    df['slipv1'], lw = 1)
+                    df['slipv'], 
+                    lw = 1)
         
+          
+        
+        # A red dot shows the maximum slip rate (bottom subplot), that is 
+        # synchronized with the upper scatter plot, colored with slip rates.
         line, = ax1.semilogy(df['time(s)'].iloc[0]/self.t_yr, 
-                    df['maximum_slip_rate(m/s)'].iloc[0], color = 'r', marker = 'o')
+                    df['slipv'].iloc[0], color = 'r', marker = 'o')
         
+        # This is the time information
         timetext = ax1.text(0.0,1.0, "Y{:0>5.0f} D{:0>3.0f}-{:0>2.0f}:{:0>2.0f}:{:0>2.0f}".format(0,
                                                   0,
                                                   0,
@@ -112,37 +155,45 @@ class Ptool:
                             transform = ax.transAxes)
 
         
-        mesh = pv.read(os.path.join(self.out_folder, f'step{self.steps[0]}.vtk'))
-
-        
-
-
-        V = mesh.cell_data['Slipv[m/s]']
+        mesh = pv.read(os.path.join(self.out_folder, f'step{self.steps[0]}.vtu'))
         cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
         triangles = cells[:, 1:]         # drop the "3"
         points = mesh.points[triangles]  # shape (n_cells, 3, 3)
+        points = np.mean(points, axis = 1 )
+        Z = points[:,2]
         
-        triang = tri.Triangulation(points[:,0,1], points[:,0,2])
+        V = mesh.cell_data['Slipv[m/s]']
 
+        if px=='XZ':
+            X = points[:,0]
+            ax.set_xlabel('X[km]')
+            ax.set_ylabel('Z[km]')
+        else:
+            X = points[:,1]
+            ax.set_xlabel('Y[km]')
+            ax.set_ylabel('Z[km]')     
+            
+        log_norm = LogNorm(vmin=10**vmin, vmax=10**vmax)
         
-        tpc = ax.tripcolor(triang, V, cmap='viridis', 
-                          norm=LogNorm(vmin=10**vmin, vmax=10**vmax), 
+        sctr = ax.scatter(X*1e-3, Z*1e-3, c=V, cmap='magma', norm=log_norm, 
+                          s = 5, edgecolor='none',
                           )
         
-        cbar = fig.colorbar(tpc, ax=ax, label='V [m/s]')
+        cbar = fig.colorbar(sctr, ax=ax, label='V [m/s]', shrink = 0.5)
 
         def update(i):
             
-            step = self.steps[i]
+            step = int(self.steps[i])
             print(step)
+            
             mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
-            V = mesh.cell_data['slipv']
+            V = mesh.cell_data['Slipv[m/s]']
             # sctr.set_offsets(np.c_[x_data[:frame+1], y_data[:frame+1]])
-            tpc.set_array(V)
-            # surf.set_norm(LogNorm(vmin=10**vmin, vmax=10**vmax))
-                        
-            time = df.iloc[int(step),-2]
-            sliprate = df.iloc[int(step),2]
+            sctr.set_array(V)
+
+            temp = df[df.Iteration==int(self.steps[i])]
+            time = temp['time(s)'].iloc[0]
+            sliprate = temp['slipv'].iloc[0]
             
             line.set_data([time/self.t_yr], [sliprate])
 
@@ -154,14 +205,16 @@ class Ptool:
                                                   time%60)
                         )
 
-            return tpc, timetext, line
+            return sctr, timetext, line
         
-        anim = FuncAnimation(fig, update, frames=np.arange(1,self.N_steps,1), blit=True)
+        anim = FuncAnimation(fig, update, frames=np.arange(2,self.N_steps,N_interval), 
+                             blit=True, )
+        writer = animation.PillowWriter(fps=10)
+
+        anim.save(os.path.join(self.path,"animation2D.gif"), writer = writer)        
         
-        anim.save(os.path.join(self.path,"animation1.mp4"), fps=10, dpi=150)        
         
-        
-    def animation3D(self, vmin = -10, vmax = 0, azim = 30, interval = 2):
+    def animation3D(self, vmin = -10, vmax = 0, azim = 30, N_interval = 2):
         
         # --- Plot with Matplotlib ---
         fig = plt.figure(figsize=(10,8))
@@ -245,7 +298,6 @@ class Ptool:
             temp = df[df.Iteration==int(self.steps[i])]
             time = temp['time(s)'].iloc[0]
             sliprate = temp['slipv1'].iloc[0]
-            # sliprate = V.max()
             
             line.set_data([time/self.t_yr], [sliprate])
 
@@ -262,8 +314,9 @@ class Ptool:
             #     print(e)
             #     pass
         
-        anim = FuncAnimation(fig, update, frames=np.arange(1,self.N_steps-1,interval), blit=True)
-        writer = animation.PillowWriter(fps=5)
+        anim = FuncAnimation(fig, update, frames=np.arange(2,self.N_steps-1,N_interval), 
+                             blit=True)
+        writer = animation.PillowWriter(fps=20)
 
         anim.save(os.path.join(self.path,"animation.gif"), 
                   writer=writer)
@@ -271,7 +324,28 @@ class Ptool:
         
         
         
-    def animation3D_1(self, vmin = -8, vmax = -2, azim = 20, interval = 5):
+    def animation3D_1(self, vmin = -8, vmax = -2, azim = 20, N_interval = 5):
+        '''
+        This module plots without using subplots. if you want a subplot,
+        use animation3D instead.
+
+        Parameters
+        ----------
+        vmin : TYPE, optional
+            DESCRIPTION. The default is -8.
+        vmax : TYPE, optional
+            DESCRIPTION. The default is -2.
+        azim : TYPE, optional
+            DESCRIPTION. The default is 20.
+        interval : TYPE, optional
+            DESCRIPTION. The default is 5.
+
+        Returns
+        -------
+        surf : TYPE
+            DESCRIPTION.
+
+        '''
         
         # --- Plot with Matplotlib ---
         fig = plt.figure(figsize=(9,6))
@@ -325,14 +399,113 @@ class Ptool:
     
             return surf,
         
-        anim = FuncAnimation(fig, update, frames=np.arange(1,self.N_steps,interval), blit=True)
+        anim = FuncAnimation(fig, update, frames=np.arange(1,self.N_steps-1,N_interval), blit=True)
         
         anim.save(os.path.join(self.path, "animation_1.mp4"), fps=20, dpi=150)
-    
-# sim_folder = sys.argv[1]
-interval = int(sys.argv[2])
+        
+        
+    def extract_slip_info(self, V_dyn= 1e-3):
+        '''
+        This module reads PyQuake3D results recursively finds the slip events,
+        then extract information about the slip event. 
+        
+        Vdyn : float, default:1e-3
+                Dynamic slip rate. Quasi-dyanmic effect dominates the sloution.
+        Returns
+        -------
+        None.
 
-p = Ptool(sim_folder)
-# p.plot_timeseries()
-p.animation3D(azim = -80, interval = 5)
+        '''
+        
+        
+
+        df = self.read_statefile()
+        df['slip_v'] = np.sqrt(df.slipv1**2+df.slipv2**2)
+        
+        Vdyn= 5e-4
+        
+        df1 = df[df.slip_v>Vdyn]
+        ind_temp = df1.index.diff(); 
+        ind_temp2 = np.argwhere(ind_temp>1).flatten()
+        Nevents = ind_temp2.size
+        
+        i_steps = self.steps
+        
+        event_string=f'{"Evnt":5}{"Nuc_X":10}{"Nuc_y":10}{"Nuc_z":10}{"X_min":10}{"X_max":10}{"Y_min":10}{"Y_max":10}{"Z_min":10}{"Z_max":10}{"slip_mean":10}{"slip_max":10}{"State_mean":16}{"State_min":16}{"Shear_mean":16}{"Shear_min":16}\n'
+        
+        ## Loop over events
+        for i in range(Nevents-1):
+            
+            
+            # Finding indcies of the slip events form maximum slip rate file
+            ind1 = int(ind_temp2[i])
+            ind2 = int(ind_temp2[i+1]) - 1  
+            
+            # Find the iteration step number 
+            iter1 = df1.iloc[ind1].Iteration
+            iter2 = df1.iloc[ind2].Iteration
+            
+            iter_indices = ((i_steps>=iter1-10) & (i_steps<=iter2))
+            
+            N_iter = self.steps[iter_indices].size
+            
+        
+            ## Loop during the event
+            for ii in [0, N_iter-1]:    
+                step = self.steps[iter_indices][ii]
+                
+                # read the output file depending on the iteration step
+                mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
+                
+                # Get data
+                cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
+                triangles = cells[:, 1:]         # drop the "3"
+                points = mesh.points[triangles]  # shape (n_cells, 3, 3)
+                points = np.mean(points, axis = 1 )
+                V = mesh.cell_data['Slipv[m/s]']
+            
+                # Find the index of slip rate exceeds dynamic slip rate
+                ind_Vdyn = (V > Vdyn)
+                X_min = points[ind_Vdyn,0].min() 
+                X_max = points[ind_Vdyn,0].max() 
+                
+                Y_min = points[ind_Vdyn,1].min() 
+                Y_max = points[ind_Vdyn,1].max() 
+                
+                Z_min = points[ind_Vdyn,2].min() 
+                Z_max = points[ind_Vdyn,2].max() 
+                
+                if ii == 0:
+                    # Nucleation Point
+                    Nuc = ((X_min+X_max)*0.5, (Y_min+Y_max)*0.5, (Z_min+Z_max)*0.5)
+                    
+                    # beginning of slip
+                    slip_ini = mesh.cell_data['slip[m]']
+                    shear_ini = mesh.cell_data['Shear_[MPa]']
+                    state_ini = mesh.cell_data['state']
+        
+                elif ii == N_iter - 1 :
+                    # beginning of slip
+                    slip_end = mesh.cell_data['slip[m]']
+                    shear_end = mesh.cell_data['Shear_[MPa]']
+                    state_end = mesh.cell_data['state']
+            
+            #VW index
+            # a_min_b = mesh.cell_data['a-b']
+            # ind_vw = a_min_b<0
+                
+            slip_max = (slip_end - slip_ini).max() 
+            slip_mean = (slip_end - slip_ini).mean()
+                
+            state_min = (state_end - state_ini).min() 
+            state_mean = (state_end - state_ini).mean()
+            
+            shear_min = (shear_end - shear_ini).min() 
+            shear_mean = (shear_end - shear_ini).mean()
+                
+            event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
+    
+    
+        with open(os.path.join(self.path, "events.txt"), "w") as file:
+            file.write(event_string)
 
