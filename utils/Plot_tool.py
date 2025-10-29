@@ -16,6 +16,7 @@ import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 import numpy as np
 import matplotlib.tri as tri
+import traceback
 
 
 class Ptool:
@@ -460,7 +461,7 @@ class Ptool:
             
             try:
                 ## Loop during the event
-                for ii in range(0, N_iter-1):    
+                for ii in [0, N_iter-1]:    
                     step = self.steps[iter_indices][ii]
                     
                     # read the output file depending on the iteration step
@@ -475,18 +476,22 @@ class Ptool:
                 
                     # Find the index of slip rate exceeds dynamic slip rate
                     ind_Vdyn = (V > self.Vdyn)
-                    X_min.append(points[ind_Vdyn,0].min())
-                    X_max.append(points[ind_Vdyn,0].max())
-                    
-                    Y_min.append(points[ind_Vdyn,1].min())
-                    Y_max.append(points[ind_Vdyn,1].max())
-                    
-                    Z_min.append(points[ind_Vdyn,2].min())
-                    Z_max.append(points[ind_Vdyn,2].max())
+                    X_min1 = points[ind_Vdyn,0].min()
+                    X_min.append(X_min1)
+                    X_max1 = points[ind_Vdyn,0].max()
+                    X_max.append(X_max1)
+                    Y_min1 = points[ind_Vdyn,1].min()
+                    Y_min.append(Y_min1)
+                    Y_max1 = points[ind_Vdyn,1].max()
+                    Y_max.append(Y_max1)
+                    Z_min1 = points[ind_Vdyn,2].min()
+                    Z_min.append(Z_min1)
+                    Z_max1 = points[ind_Vdyn,2].max()
+                    Z_max.append(Z_max1)
                     
                     if ii == 0:
                         # Nucleation Point
-                        Nuc = ((X_min+X_max)*0.5, (Y_min+Y_max)*0.5, (Z_min+Z_max)*0.5)
+                        Nuc = ((X_min1+X_max1)*0.5, (Y_min1+Y_max1)*0.5, (Z_min1+Z_max1)*0.5)
                         
                         # beginning of slip
                         slip_ini = mesh.cell_data['slip[m]']
@@ -523,6 +528,8 @@ class Ptool:
     
             except Exception as e:
                 print(e)
+                print(traceback.print_exc()) # Prints the full traceback to stderr
+
                 pass
             
             
