@@ -451,7 +451,7 @@ class Ptool:
             
             N_iter = self.steps[iter_indices].size
             
-            if N_iter > 100: # To ensure enough dynamic slip data (ES)
+            try:
                 ## Loop during the event
                 for ii in [0, N_iter-1]:    
                     step = self.steps[iter_indices][ii]
@@ -468,7 +468,6 @@ class Ptool:
                 
                     # Find the index of slip rate exceeds dynamic slip rate
                     ind_Vdyn = (V > self.Vdyn)
-                    
                     X_min = points[ind_Vdyn,0].min() 
                     X_max = points[ind_Vdyn,0].max() 
                     
@@ -508,8 +507,11 @@ class Ptool:
                     
                 event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
     
-            else:
+            except Exception as e:
+                print(e)
                 pass
+            
+            
         with open(os.path.join(self.path, "events.txt"), "w") as file:
             file.write(event_string)
 
