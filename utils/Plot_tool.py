@@ -451,6 +451,13 @@ class Ptool:
             
             N_iter = self.steps[iter_indices].size
             
+            X_min = []
+            X_max = []
+            Y_min = []
+            Y_max = []
+            Z_min = []
+            Z_max = []
+            
             try:
                 ## Loop during the event
                 for ii in [0, N_iter-1]:    
@@ -468,14 +475,14 @@ class Ptool:
                 
                     # Find the index of slip rate exceeds dynamic slip rate
                     ind_Vdyn = (V > self.Vdyn)
-                    X_min = points[ind_Vdyn,0].min() 
-                    X_max = points[ind_Vdyn,0].max() 
+                    X_min.append(points[ind_Vdyn,0].min())
+                    X_max.append(points[ind_Vdyn,0].max())
                     
-                    Y_min = points[ind_Vdyn,1].min() 
-                    Y_max = points[ind_Vdyn,1].max() 
+                    Y_min.append(points[ind_Vdyn,1].min())
+                    Y_max.append(points[ind_Vdyn,1].max())
                     
-                    Z_min = points[ind_Vdyn,2].min() 
-                    Z_max = points[ind_Vdyn,2].max() 
+                    Z_min.append(points[ind_Vdyn,2].min())
+                    Z_max.append(points[ind_Vdyn,2].max())
                     
                     if ii == 0:
                         # Nucleation Point
@@ -504,7 +511,14 @@ class Ptool:
                 
                 shear_min = (shear_end - shear_ini).min() 
                 shear_mean = (shear_end - shear_ini).mean()
-                    
+                
+                X_min = np.min(X_min)
+                X_max = np.max(X_max)
+                Y_min = np.min(Y_min)
+                Y_max = np.max(Y_max)
+                Z_min = np.min(Z_min)
+                Z_max = np.max(Z_max)
+
                 event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
     
             except Exception as e:
