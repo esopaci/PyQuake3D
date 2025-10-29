@@ -31,4 +31,4 @@ p = Ptool(simpath)
 # p.animation3D(N_interval=10,azim=80)
 
 # Generating event file
-# p.extract_slip_info()
+p.extract_slip_info()

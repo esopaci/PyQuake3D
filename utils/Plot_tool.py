@@ -22,6 +22,8 @@ class Ptool:
     
     t_yr = 365*3600*24  # year to second converion
     
+    Vdyn = 1e-3 ## Dynamic slip rate
+    
     # header for outut file 
     field = ['Normal_[MPa]', 
               'Pore_pressure[MPa]', 
@@ -422,9 +424,9 @@ class Ptool:
         df = self.read_statefile()
         df['slip_v'] = np.sqrt(df.slipv1**2+df.slipv2**2)
         
-        Vdyn= 5e-4
+        # Vdyn= 5e-4
         
-        df1 = df[df.slip_v>Vdyn]
+        df1 = df[df.slip_v>self.Vdyn]
         ind_temp = df1.index.diff(); 
         ind_temp2 = np.argwhere(ind_temp>1).flatten()
         Nevents = ind_temp2.size
@@ -436,7 +438,7 @@ class Ptool:
         ## Loop over events
         for i in range(Nevents-1):
             
-            
+            print(f'event {i+1}')
             # Finding indcies of the slip events form maximum slip rate file
             ind1 = int(ind_temp2[i])
             ind2 = int(ind_temp2[i+1]) - 1  
@@ -449,63 +451,65 @@ class Ptool:
             
             N_iter = self.steps[iter_indices].size
             
-        
-            ## Loop during the event
-            for ii in [0, N_iter-1]:    
-                step = self.steps[iter_indices][ii]
-                
-                # read the output file depending on the iteration step
-                mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
-                
-                # Get data
-                cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
-                triangles = cells[:, 1:]         # drop the "3"
-                points = mesh.points[triangles]  # shape (n_cells, 3, 3)
-                points = np.mean(points, axis = 1 )
-                V = mesh.cell_data['Slipv[m/s]']
-            
-                # Find the index of slip rate exceeds dynamic slip rate
-                ind_Vdyn = (V > Vdyn)
-                X_min = points[ind_Vdyn,0].min() 
-                X_max = points[ind_Vdyn,0].max() 
-                
-                Y_min = points[ind_Vdyn,1].min() 
-                Y_max = points[ind_Vdyn,1].max() 
-                
-                Z_min = points[ind_Vdyn,2].min() 
-                Z_max = points[ind_Vdyn,2].max() 
-                
-                if ii == 0:
-                    # Nucleation Point
-                    Nuc = ((X_min+X_max)*0.5, (Y_min+Y_max)*0.5, (Z_min+Z_max)*0.5)
+            if N_iter > 100: # To ensure enough dynamic slip data (ES)
+                ## Loop during the event
+                for ii in [0, N_iter-1]:    
+                    step = self.steps[iter_indices][ii]
                     
-                    # beginning of slip
-                    slip_ini = mesh.cell_data['slip[m]']
-                    shear_ini = mesh.cell_data['Shear_[MPa]']
-                    state_ini = mesh.cell_data['state']
-        
-                elif ii == N_iter - 1 :
-                    # beginning of slip
-                    slip_end = mesh.cell_data['slip[m]']
-                    shear_end = mesh.cell_data['Shear_[MPa]']
-                    state_end = mesh.cell_data['state']
+                    # read the output file depending on the iteration step
+                    mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
+                    
+                    # Get data
+                    cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
+                    triangles = cells[:, 1:]         # drop the "3"
+                    points = mesh.points[triangles]  # shape (n_cells, 3, 3)
+                    points = np.mean(points, axis = 1 )
+                    V = mesh.cell_data['Slipv[m/s]']
+                
+                    # Find the index of slip rate exceeds dynamic slip rate
+                    ind_Vdyn = (V > self.Vdyn)
+                    
+                    X_min = points[ind_Vdyn,0].min() 
+                    X_max = points[ind_Vdyn,0].max() 
+                    
+                    Y_min = points[ind_Vdyn,1].min() 
+                    Y_max = points[ind_Vdyn,1].max() 
+                    
+                    Z_min = points[ind_Vdyn,2].min() 
+                    Z_max = points[ind_Vdyn,2].max() 
+                    
+                    if ii == 0:
+                        # Nucleation Point
+                        Nuc = ((X_min+X_max)*0.5, (Y_min+Y_max)*0.5, (Z_min+Z_max)*0.5)
+                        
+                        # beginning of slip
+                        slip_ini = mesh.cell_data['slip[m]']
+                        shear_ini = mesh.cell_data['Shear_[MPa]']
+                        state_ini = mesh.cell_data['state']
             
-            #VW index
-            # a_min_b = mesh.cell_data['a-b']
-            # ind_vw = a_min_b<0
-                
-            slip_max = (slip_end - slip_ini).max() 
-            slip_mean = (slip_end - slip_ini).mean()
-                
-            state_min = (state_end - state_ini).min() 
-            state_mean = (state_end - state_ini).mean()
+                    elif ii == N_iter - 1 :
+                        # beginning of slip
+                        slip_end = mesh.cell_data['slip[m]']
+                        shear_end = mesh.cell_data['Shear_[MPa]']
+                        state_end = mesh.cell_data['state']
             
-            shear_min = (shear_end - shear_ini).min() 
-            shear_mean = (shear_end - shear_ini).mean()
+                #VW index
+                # a_min_b = mesh.cell_data['a-b']
+                # ind_vw = a_min_b<0
+                    
+                slip_max = (slip_end - slip_ini).max() 
+                slip_mean = (slip_end - slip_ini).mean()
+                    
+                state_min = (state_end - state_ini).min() 
+                state_mean = (state_end - state_ini).mean()
                 
-            event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
+                shear_min = (shear_end - shear_ini).min() 
+                shear_mean = (shear_end - shear_ini).mean()
+                    
+                event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
     
-    
+            else:
+                pass
         with open(os.path.join(self.path, "events.txt"), "w") as file:
             file.write(event_string)
 
