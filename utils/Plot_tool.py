@@ -406,7 +406,7 @@ class Ptool:
         anim.save(os.path.join(self.path, "animation_1.mp4"), fps=20, dpi=150)
         
         
-    def extract_slip_info(self, V_dyn= 1e-3):
+    def extract_slip_info(self):
         '''
         This module reads PyQuake3D results recursively finds the slip events,
         then extract information about the slip event. 
@@ -460,7 +460,7 @@ class Ptool:
             
             try:
                 ## Loop during the event
-                for ii in [0, N_iter-1]:    
+                for ii in range(0, N_iter-1):    
                     step = self.steps[iter_indices][ii]
                     
                     # read the output file depending on the iteration step

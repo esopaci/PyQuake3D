@@ -17,8 +17,9 @@ sys.path.append(os.path.join(PyQuake_path, 'utils'))
 
 from Plot_tool import Ptool
 
-simpath = '/Users/eyup/workspace/mong_3D/test/L30'
+# simpath = '/Users/eyup/workspace/mong_3D/test/L30'
 
+simpath = sys.argv[1]
 p = Ptool(simpath)
 
 # time series plot
