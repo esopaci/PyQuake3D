@@ -134,5 +134,22 @@ Explore selected simulations performed with PyQuake3D:
 - [*Seismic cycles on a planar fault with frictional heterogeneity*](https://www.youtube.com/watch?v=N_yA4uY77C0)
 - [*Seismic cycles on the East Anatolian Fault Zone*](https://www.youtube.com/watch?v=oFy3FSLs3UQ)
 
+## Citation
+
+If you find this work useful, please cite:
+
+@article{tang2025pyquake3d,
+  title={PyQuake3D: A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip},
+  author={Tang, Rongjiang and Gan, Lu and Li, Fusheng and Dal Zilio, Luca},
+  journal={Journal of Geophysical Research: Machine Learning and Computation},
+  volume={2},
+  number={4},
+  pages={e2025JH000871},
+  year={2025},
+  publisher={Wiley Online Library}
+}
+
+Tang, R., Gan, L., Li, F., & Dal Zilio, L. (2025). PyQuake3D: A Python tool for 3‐D earthquake sequence simulations of seismic and aseismic slip. Journal of Geophysical Research: Machine Learning and Computation, 2(4), e2025JH000871.
+
 
 
