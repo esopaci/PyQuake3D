@@ -138,14 +138,14 @@ Explore selected simulations performed with PyQuake3D:
 
 If you find this work useful, please cite:
 
-@article{tang2025pyquake3d,
-  title={PyQuake3D: A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip},
-  author={Tang, Rongjiang and Gan, Lu and Li, Fusheng and Dal Zilio, Luca},
-  journal={Journal of Geophysical Research: Machine Learning and Computation},
-  volume={2},
-  number={4},
-  pages={e2025JH000871},
-  year={2025},
+@article{tang2025pyquake3d,>
+  title={PyQuake3D: A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip},>
+  author={Tang, Rongjiang and Gan, Lu and Li, Fusheng and Dal Zilio, Luca},>
+  journal={Journal of Geophysical Research: Machine Learning and Computation},>
+  volume={2},>
+  number={4},>
+  pages={e2025JH000871},>
+  year={2025},>
   publisher={Wiley Online Library}
 }
 
