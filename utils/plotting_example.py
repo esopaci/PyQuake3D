@@ -17,19 +17,26 @@ sys.path.append(os.path.join(PyQuake_path, 'utils'))
 
 from Plot_tool import Ptool
 
-simpath = '/Users/eyup/workspace/mong_3D/fast/L60'
 
-# simpath = sys.argv[1]
-p = Ptool(simpath)
-p.Vdyn = 1e-2
-# time series plot
-# p.plot_timeseries()
+if __name__ == "__main__":
 
-# Animation in 2D
-# p.animation2D(N_interval=10)
-
-# ANIMATION IN 3D DOMAIN
-# p.animation3D(N_interval=10,azim=80)
-
-# Generating event file
-p.extract_slip_info()
+	arg_list = sys.argv
+	
+	simpath = arg_list[1]
+	
+	p = Ptool(simpath)
+	
+	# p.Vdyn = 1e-2
+	
+	if 'ts' in arg_list[1:]:
+		# time series plot
+		p.plot_timeseries()
+	if 'a2' in arg_list[1:]:
+		# Animation in 2D
+		p.animation2D(N_interval=10)
+	if 'a3' in arg_list[1:]:
+		# ANIMATION IN 3D DOMAIN
+		p.animation3D(N_interval=2,azim=80)
+	if 'event' in arg_list[1:]:
+		# Generating event file
+		p.extract_slip_info()

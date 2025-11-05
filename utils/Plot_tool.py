@@ -56,8 +56,11 @@ class Ptool:
         self.out_folder = os.path.join(path, 'out_vtk') # output folder
         
         # get the output files
-        self.vtk_files = [int(x.split('.vtu')[0][4:]) for x in os.listdir(self.out_folder) if x.endswith('.vtu') ]
-        
+        try:
+            self.vtk_files = [int(x.split('.vtu')[0][4:]) for x in os.listdir(self.out_folder) if x.endswith('.vtu') ]
+        except:
+            self.vtk_files = [int(x.split('.vtu')[0][4:]) for x in os.listdir(self.out_folder) if x.endswith('.vtk') ]
+
         # Sort the files in the time order
         self.steps = np.sort(self.vtk_files)
         
@@ -69,7 +72,7 @@ class Ptool:
         
         vmax = pd.read_csv(
             self.state_file,
-            sep = '\s+', skiprows=15,low_memory=True,
+            sep = '\\s+', skiprows=15,low_memory=True,
             names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)']
             )
         vmax = vmax.dropna().astype(float)
@@ -448,7 +451,7 @@ class Ptool:
             iter1 = df1.iloc[ind1].Iteration
             iter2 = df1.iloc[ind2].Iteration
             
-            iter_indices = ((i_steps>=iter1-10) & (i_steps<=iter2))
+            iter_indices = ((i_steps>=iter1) & (i_steps<=iter2))
             
             N_iter = self.steps[iter_indices].size
             
@@ -465,7 +468,11 @@ class Ptool:
                     step = self.steps[iter_indices][ii]
                     
                     # read the output file depending on the iteration step
-                    mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
+                    # read the output file depending on the iteration step
+                    try:
+                        mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
+                    except:
+                        mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtk'))
                     
                     # Get data
                     cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
@@ -473,9 +480,12 @@ class Ptool:
                     points = mesh.points[triangles]  # shape (n_cells, 3, 3)
                     points = np.mean(points, axis = 1 )
                     V = mesh.cell_data['Slipv[m/s]']
+                    # theta = mesh.cell_data['state']
                 
                     # Find the index of slip rate exceeds dynamic slip rate
                     ind_Vdyn = (V > self.Vdyn)
+                                        
+                    
                     X_min1 = points[ind_Vdyn,0].min()
                     X_min.append(X_min1)
                     X_max1 = points[ind_Vdyn,0].max()
@@ -494,15 +504,18 @@ class Ptool:
                         Nuc = ((X_min1+X_max1)*0.5, (Y_min1+Y_max1)*0.5, (Z_min1+Z_max1)*0.5)
                         
                         # beginning of slip
+                        # Find the index of maximum state. At the end of the 
+                        # rupture we will compare the stress drop
+                        max_state_ind = mesh.cell_data['state'].argmax()
                         slip_ini = mesh.cell_data['slip[m]']
-                        shear_ini = mesh.cell_data['Shear_[MPa]']
-                        state_ini = mesh.cell_data['state']
+                        shear_ini = mesh.cell_data['Shear_[MPa]'][max_state_ind]
+                        state_ini = mesh.cell_data['state'][max_state_ind]
             
                     elif ii == N_iter - 1 :
                         # beginning of slip
                         slip_end = mesh.cell_data['slip[m]']
-                        shear_end = mesh.cell_data['Shear_[MPa]']
-                        state_end = mesh.cell_data['state']
+                        shear_end = mesh.cell_data['Shear_[MPa]'][max_state_ind]
+                        state_end = mesh.cell_data['state'][max_state_ind]
             
                 #VW index
                 # a_min_b = mesh.cell_data['a-b']
@@ -511,11 +524,11 @@ class Ptool:
                 slip_max = (slip_end - slip_ini).max() 
                 slip_mean = (slip_end - slip_ini).mean()
                     
-                state_min = (state_end - state_ini).min() 
-                state_mean = (state_end - state_ini).mean()
+                state_min = (state_end - state_ini)
+                state_mean = (state_end - state_ini)
                 
-                shear_min = (shear_end - shear_ini).min() 
-                shear_mean = (shear_end - shear_ini).mean()
+                shear_min = (shear_end - shear_ini)
+                shear_mean = (shear_end - shear_ini)
                 
                 X_min = np.min(X_min)
                 X_max = np.max(X_max)
@@ -525,7 +538,8 @@ class Ptool:
                 Z_max = np.max(Z_max)
 
                 event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
-    
+
+                
             except Exception as e:
                 print(e)
                 print(traceback.print_exc()) # Prints the full traceback to stderr
