@@ -12,7 +12,9 @@ from datetime import datetime
 from mpi4py import MPI
 import config
 
-
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 file_name = sys.argv[0]
 print(file_name)
