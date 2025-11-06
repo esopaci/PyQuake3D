@@ -17,6 +17,7 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 import matplotlib.tri as tri
 import traceback
+from scipy.integrate import simpson
 
 
 class Ptool:
@@ -410,7 +411,7 @@ class Ptool:
         anim.save(os.path.join(self.path, "animation_1.mp4"), fps=20, dpi=150)
         
         
-    def extract_slip_info(self):
+    def extract_slip_info(self, G = 32038120320):
         '''
         This module reads PyQuake3D results recursively finds the slip events,
         then extract information about the slip event. 
@@ -427,9 +428,7 @@ class Ptool:
 
         df = self.read_statefile()
         df['slip_v'] = np.sqrt(df.slipv1**2+df.slipv2**2)
-        
-        # Vdyn= 5e-4
-        
+                
         df1 = df[df.slip_v>self.Vdyn]
         ind_temp = df1.index.diff(); 
         ind_temp2 = np.argwhere(ind_temp>1).flatten()
@@ -437,7 +436,7 @@ class Ptool:
         
         i_steps = self.steps
         
-        event_string=f'{"Evnt":5}{"Nuc_X":10}{"Nuc_y":10}{"Nuc_z":10}{"X_min":10}{"X_max":10}{"Y_min":10}{"Y_max":10}{"Z_min":10}{"Z_max":10}{"slip_mean":10}{"slip_max":10}{"State_mean":16}{"State_min":16}{"Shear_mean":16}{"Shear_min":16}\n'
+        event_string=f'{"Evnt":5}{"Nuc_X":10}{"Nuc_y":10}{"Nuc_z":10}{"X_min":10}{"X_max":10}{"Y_min":10}{"Y_max":10}{"Z_min":10}{"Z_max":10}{"slip_mean":10}{"slip_max":10}{"State_drop":16}{"Stress_drop":16}{"M0":16}{"M0_dot_mean":16}{"Mw":16}\n'
         
         ## Loop over events
         for i in range(Nevents-1):
@@ -462,12 +461,18 @@ class Ptool:
             Z_min = []
             Z_max = []
             
+            
+            MO_dot = np.empty(N_iter)
+            time = np.empty(N_iter)
+
             try:
                 ## Loop during the event
-                for ii in [0, N_iter-1]:    
+                for ii in range(N_iter):  
                     step = self.steps[iter_indices][ii]
+
+                    # Get time
+                    time[ii] = df[df.Iteration==step]['time(s)'].values
                     
-                    # read the output file depending on the iteration step
                     # read the output file depending on the iteration step
                     try:
                         mesh = pv.read(os.path.join(self.out_folder, f'step{step}.vtu'))
@@ -479,9 +484,15 @@ class Ptool:
                     triangles = cells[:, 1:]         # drop the "3"
                     points = mesh.points[triangles]  # shape (n_cells, 3, 3)
                     points = np.mean(points, axis = 1 )
+                    
+                    mesh_with_areas = mesh.compute_cell_sizes(area=True, volume=False)
+                    
                     V = mesh.cell_data['Slipv[m/s]']
-                    # theta = mesh.cell_data['state']
-                
+                    A = mesh_with_areas.cell_data['Area']
+                    
+                    # Seismic moment release rate
+                    MO_dot[ii] = np.sum(A*V*G)
+                                    
                     # Find the index of slip rate exceeds dynamic slip rate
                     ind_Vdyn = (V > self.Vdyn)
                                         
@@ -506,6 +517,7 @@ class Ptool:
                         # beginning of slip
                         # Find the index of maximum state. At the end of the 
                         # rupture we will compare the stress drop
+
                         max_state_ind = mesh.cell_data['state'].argmax()
                         slip_ini = mesh.cell_data['slip[m]']
                         shear_ini = mesh.cell_data['Shear_[MPa]'][max_state_ind]
@@ -517,18 +529,15 @@ class Ptool:
                         shear_end = mesh.cell_data['Shear_[MPa]'][max_state_ind]
                         state_end = mesh.cell_data['state'][max_state_ind]
             
-                #VW index
-                # a_min_b = mesh.cell_data['a-b']
-                # ind_vw = a_min_b<0
+                # Compute seismic moment and 
+                M0 = simpson(MO_dot, x=time)
+                Mw = 2/3 * (np.log10(M0) - 9.1)
+                M0_dot_mean = 10**np.mean(np.log10(MO_dot))
                     
                 slip_max = (slip_end - slip_ini).max() 
-                slip_mean = (slip_end - slip_ini).mean()
-                    
-                state_min = (state_end - state_ini)
-                state_mean = (state_end - state_ini)
-                
-                shear_min = (shear_end - shear_ini)
-                shear_mean = (shear_end - shear_ini)
+                slip_mean = (slip_end - slip_ini).mean()                    
+                state_drop = state_ini - state_end
+                stress_drop = shear_ini - shear_end
                 
                 X_min = np.min(X_min)
                 X_max = np.max(X_max)
@@ -537,7 +546,7 @@ class Ptool:
                 Z_min = np.min(Z_min)
                 Z_max = np.max(Z_max)
 
-                event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_mean:16.6E}{state_min:16.6E}{shear_mean:16.6E}{shear_min:16.6E}\n'
+                event_string += f'{i:5.0f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_drop:16.6E}{stress_drop:16.6E}{M0:16.6E}{M0_dot_mean:16.6E}{Mw:16.3f}\n'
 
                 
             except Exception as e:

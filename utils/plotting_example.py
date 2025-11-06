@@ -26,7 +26,7 @@ if __name__ == "__main__":
 	
 	p = Ptool(simpath)
 	
-	# p.Vdyn = 1e-2
+	p.Vdyn = 1e-2
 	
 	if 'ts' in arg_list[1:]:
 		# time series plot
