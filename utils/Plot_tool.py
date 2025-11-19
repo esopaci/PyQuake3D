@@ -525,16 +525,16 @@ class Ptool:
                         # Find the index of maximum state. At the end of the 
                         # rupture we will compare the stress drop
 
-                        max_state_ind = mesh.cell_data['state'].argmax()
+                        # max_state_ind = mesh.cell_data['state'].argmax()
                         slip_ini = mesh.cell_data['slip[m]']
-                        shear_ini = mesh.cell_data['Shear_[MPa]'][max_state_ind]
-                        state_ini = mesh.cell_data['state'][max_state_ind]
+                        shear_ini = mesh.cell_data['Shear_[MPa]']
+                        state_ini = mesh.cell_data['state']
             
                     elif ii == N_iter - 1 :
                         # beginning of slip
                         slip_end = mesh.cell_data['slip[m]']
-                        shear_end = mesh.cell_data['Shear_[MPa]'][max_state_ind]
-                        state_end = mesh.cell_data['state'][max_state_ind]
+                        shear_end = mesh.cell_data['Shear_[MPa]']
+                        state_end = mesh.cell_data['state']
             
                 # Compute seismic moment and 
                 M0 = simpson(MO_dot, x=time)
@@ -543,8 +543,8 @@ class Ptool:
                     
                 slip_max = (slip_end - slip_ini).max() 
                 slip_mean = (slip_end - slip_ini).mean()                    
-                state_drop = state_ini - state_end
-                stress_drop = shear_ini - shear_end
+                state_drop = (state_end - state_ini).mean()
+                stress_drop = (shear_end - shear_ini).mean() 
                 
                 X_min = np.min(X_min)
                 X_max = np.max(X_max)
