@@ -36,7 +36,7 @@ if __name__ == "__main__":
 		p.animation2D(N_interval=10)
 	if 'a3' in arg_list[1:]:
 		# ANIMATION IN 3D DOMAIN
-		p.animation3D(N_interval=2,azim=80)
+		p.animation3D(N_interval=1,azim=80)
 	if 'event' in arg_list[1:]:
 		# Generating event file
 		p.extract_slip_info()

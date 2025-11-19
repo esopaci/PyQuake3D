@@ -369,7 +369,7 @@ os.makedirs(target_folder, exist_ok=True)
 os.chdir(target_folder)
 
 
-W1 = 40E3     # Fault 1 length, width
+W1 = 30E3     # Fault 1 length, width
 
 
 MU = 32038120320.0  # Lame Constant
@@ -467,7 +467,7 @@ f_depth_sigma = interp1d(zz, cp, kind='linear', fill_value='extrapolate')
 
 
 L_edge = 5e3
-avary_depth=np.array([[0,b+a_min_b],[-5e3,b], [-10e3,b-a_min_b],[-20e3,b-a_min_b],[-25e3,b],[-40e3,b+a_min_b*2]])
+avary_depth=np.array([[0,b+a_min_b],[-4e3,b], [-7e3,b-a_min_b],[-14e3,b-a_min_b],[-17e3,b],[-30e3,b+a_min_b*2]])
 avary_strike=np.array([[0,b+a_min_b],[L_edge,b-a_min_b], [L1-L_edge,b-a_min_b], [L1,b+a_min_b]])
 
 fa_depth = interp1d(avary_depth[:,0], avary_depth[:,1], kind='linear', fill_value='extrapolate')

@@ -70,12 +70,19 @@ class Ptool:
         self.N_steps= len(self.vtk_files)
     
     def read_statefile(self):
-        
-        vmax = pd.read_csv(
+        try:
+            vmax = pd.read_csv(
             self.state_file,
             sep = '\\s+', skiprows=15,low_memory=True,
             names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)']
-            )
+           	     )
+        except:
+            vmax = pd.read_csv(
+            self.state_file,
+            sep = '\\s+', skiprows=18,low_memory=True,
+            names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
+            skipfooter=2, engine='python' )
+	
         vmax = vmax.dropna().astype(float)
         return vmax
     
@@ -90,7 +97,7 @@ class Ptool:
 
         '''
         fig,ax = plt.subplots(1,1, figsize = (10,6), clear=True)
-        
+    
         vmax = self.read_statefile()
 
         ax.set_xlabel('time [yr]')
