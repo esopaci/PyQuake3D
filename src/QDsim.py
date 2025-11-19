@@ -1218,8 +1218,8 @@ class QDsim:
         #print('self.Tt1o',np.mean(self.Tt1o),np.mean(self.Tt2o))
         self.slipv1[:]=0
         self.slipv2[:]=0
-        self.slipv1[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt1o_local/self.Tno_local/self.a[self.local_index])
-        self.slipv2[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt2o_local/self.Tno_local/self.a[self.local_index])
+        self.slipv1[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt1o_local/(self.Tno_local-self.P[self.local_index]*1e-6)/self.a[self.local_index])
+        self.slipv2[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt2o_local/(self.Tno_local-self.P[self.local_index]*1e-6)/self.a[self.local_index])
         self.slipv1=comm.allreduce(self.slipv1, op=MPI.SUM)
         self.slipv2=comm.allreduce(self.slipv2, op=MPI.SUM)
         self.slipv=np.sqrt(self.slipv1*self.slipv1+self.slipv2*self.slipv2)
@@ -1713,4 +1713,5 @@ class QDsim:
         #self.data = data
         # 在这里可以进行一些初始化操作
         
+
     
