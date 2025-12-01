@@ -83,8 +83,7 @@ Together, these additions greatly enhance PyQuake3D’s capability to model mult
    - In PyQuake3D’s conventional H-matrix implementation, each time step requires:  
      1. dot products between local H-matrix subblocks and slip rates,  
      2. **MPI\_Reduce** to gather contributions across all ranks,  
-     3. RK-based slip-rate updates in each process,  
-     4. another **MPI\_Reduce** to compute global slip rates.
+     3. another **MPI\_Reduce** to compute global slip rates.
 
      Communication therefore scales like **O(n²)** with increasing MPI processes.
 
