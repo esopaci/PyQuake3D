@@ -5,7 +5,9 @@ Node_order: False
 Scale_km: True
 
 #Only availible for mpi version
-Hmatrix_mpi_plot:False
+Hmatrix_mpi_plot:True
+Lattice Matrice: False
+Lattice Partitioning depth:2
 Using C++ green function:True
 
 #Only availible for single GPU/CPU version
@@ -23,12 +25,22 @@ Inputparamter file: initcondion.txt
 
 #Fluid
 If Dilatancy:False
+If Coupledthermal:False
 Dilatancy coefficient: 3e-4
 Hydraulic diffusivity: 1e-5
 Actively shearing zone thickness: 3e-3
 Effective compressibility: 8e-11
 Constant porepressure: 2
 Initial porepressure: 2
+
+#Thermal pressurization
+If thermal: False
+Thermal diffusivity:1e-6
+Ratio of thermal expansivity to compressibility:0.1e6
+Heat capacity: 2.7e6
+Half width: 0.01
+Background temperature: 1
+Initial temperature: 1
 
 #Stress
 Half space: True
