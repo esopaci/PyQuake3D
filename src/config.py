@@ -14,6 +14,22 @@ size = comm.Get_size()
 # global Para
 # Para={}
 
+_cart_comm = None
+
+def init_cart(dims, periods=None, reorder=True):
+    global _cart_comm
+    if _cart_comm is not None:
+        return _cart_comm  # 已初始化
+
+    comm = MPI.COMM_WORLD
+    _cart_comm = comm.Create_cart(dims=dims, periods=periods, reorder=reorder)
+    return _cart_comm
+
+def get_cart():
+    if _cart_comm is None:
+        raise RuntimeError("cart_comm 未初始化！请先调用 init_cart()")
+    return _cart_comm
+
 def readPara0(fname):
     Para0={}
     f=open(fname,'r')
@@ -39,6 +55,8 @@ def readPara(data_dir):
 
     Para['Hmatrix_mpi_plot']=Para0['Hmatrix_mpi_plot']=='True'
     Para['Using C++ green function']=Para0['Using C++ green function']=='True'
+    Para['Lattice Matrice']=Para0['Lattice Matrice']=='True'
+    Para['Lattice Partitioning depth']=int(Para0['Lattice Partitioning depth'])
 
     Para['Batch_size']=int(Para0['Batch_size'])
     Para['GPU']=Para0['GPU']=='True'
@@ -49,16 +67,32 @@ def readPara(data_dir):
     Para['InputHetoparamter']=Para0['InputHetoparamter']=='True'
     Para['Inputparamter file']=Para0['Inputparamter file']
     
-    
-    Para['If Dilatancy']=Para0['If Dilatancy']=='True'
-    Para['Dilatancy coefficient']=float(Para0['Dilatancy coefficient'])
-    Para['Hydraulic diffusivity']=float(Para0['Hydraulic diffusivity'])
-    #self.hw=float(self.Para0['Low permeability zone thickness'])
-    Para['Actively shearing zone thickness']=float(Para0['Actively shearing zone thickness'])
-    Para['Effective compressibility']=float(Para0['Effective compressibility'])
-    Para['Constant porepressure']=float(Para0['Constant porepressure'])
-    Para['Initial porepressure']=float(Para0['Initial porepressure'])
+    try:
+        Para['If Coupledthermal']=Para0['If Coupledthermal']=='True'
+        Para['If Dilatancy']=Para0['If Dilatancy']=='True'
+        Para['Dilatancy coefficient']=float(Para0['Dilatancy coefficient'])
+        Para['Hydraulic diffusivity']=float(Para0['Hydraulic diffusivity'])
+        #self.hw=float(self.Para0['Low permeability zone thickness'])
+        Para['Actively shearing zone thickness']=float(Para0['Actively shearing zone thickness'])
+        Para['Effective compressibility']=float(Para0['Effective compressibility'])
+        Para['Constant porepressure']=float(Para0['Constant porepressure'])
+        Para['Initial porepressure']=float(Para0['Initial porepressure'])
+    except:
+        print('No Dilatancy parameters.')
 
+    try:
+        Para['If thermal']=Para0['If thermal']=='True'
+        Para['Thermal diffusivity']=float(Para0['Thermal diffusivity'])
+        #Para['Hydraulic diffusivity']=float(Para0['Hydraulic diffusivity'])
+        #self.hw=float(self.Para0['Low permeability zone thickness'])
+        Para['Ratio of thermal expansivity to compressibility']=float(Para0['Ratio of thermal expansivity to compressibility'])
+        Para['Heat capacity']=float(Para0['Heat capacity'])
+        Para['Half width']=float(Para0['Half width'])
+        Para['Initial temperature']=float(Para0['Initial temperature'])
+        Para['Background temperature']=float(Para0['Background temperature'])
+        
+    except:
+        print('No thermal parameters.')
     
     Para['Half space']=Para0['Half space']=='True'
     Para['Fix_Tn']=Para0['Fix_Tn']=='True'

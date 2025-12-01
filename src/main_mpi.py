@@ -11,6 +11,7 @@ import psutil
 from datetime import datetime
 from mpi4py import MPI
 import config
+import Hmatrix as Hmat
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     #nodelst,xg=None,None
     sim0=None
     fnamePara=None
+    HMobj=None
     # jud_coredir=None
     blocks_to_process=[] #Save block submatirx from Hmatrix
     if(rank==0):
@@ -60,24 +62,38 @@ if __name__ == "__main__":
             fnamePara='examples/BP5-QD/parameter.txt'
             # fnamegeo='examples/cascadia/50km_43dense_35w.msh'
             # fnamePara='examples/cascadia/parameter.txt'
+            # fnamegeo='examples/WMF/WMF3.msh'
+            # fnamePara='examples/WMF/parameter.txt'
         
-            
+        
         print('Input msh geometry file:',fnamegeo, flush=True)
         print('Input parameter file:',fnamePara, flush=True)   
 
         nodelst,elelst=readmsh.read_mshV2(fnamegeo)
         Para=config.readPara(fnamePara)
         sim0=QDsim.QDsim(elelst,nodelst,Para)
-    #     # output intial results
+        HMobj=Hmat.Hmatrix(sim0.xg,sim0.nodelst,sim0.elelst,sim0.eleVec,Para)
+        # output intial results
+        #sim0.read_vtk('out_vtk/step450.vtu')
         fname='Init.vtu'
         sim0.writeVTU(fname,init=True)
-        #print(sim0.P)
+        
 
+    #t0 = MPI.Wtime()
+    HMobj = comm.bcast(HMobj, root=0)
     sim0 = comm.bcast(sim0, root=0)
+    #bcast_time = (t1 - t0)
+    
+    sim0.deploy_Hmatrix(HMobj)
+    #print('bcast_time',bcast_time)
+    # #print(sim0.Tno.shape,rank)
+    
+    
     sim0.calc_greenfuncs_mpi()
+    
+    #print(rank,len(sim0.local_index))
     sim0.start()
     
-
 
 
 

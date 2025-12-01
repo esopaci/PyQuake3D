@@ -1520,7 +1520,8 @@ void AngSetupFSC_S(
     double beta = acos(dotVal / normSide);
 
     //double eps = 2.2204e-16;
-    double eps = 1.0e-4;
+    //double eps = 1.0e-4;
+    double eps = 1.0e-2;
     size_t N = X.size();
     if (fabs(beta) < eps || fabs(PI - beta) < eps) {
         // Special case: dislocation is vertical

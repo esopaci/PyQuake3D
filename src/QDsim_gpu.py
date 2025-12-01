@@ -140,7 +140,8 @@ class QDsim:
 
         self.maxslipvque=deque(maxlen=20)
         self.val_nv=0
-        
+        self.Ifdila=False
+        self.Ifthermal=False
         
 
         self.mu=float(self.Para0['Shear modulus'])
@@ -157,12 +158,26 @@ class QDsim:
         YoungsM=self.mu*(3.0*self.lambda_+2.0*self.mu)/(self.lambda_+self.mu)
         possonratio=self.lambda_/2.0/(self.lambda_+self.mu)
 
-        self.Ifdila=self.Para0['If Dilatancy']=='True'
-        self.DilatancyC=float(self.Para0['Dilatancy coefficient'])
-        self.Chyd=float(self.Para0['Hydraulic diffusivity'])
-        #self.hw=float(self.Para0['Low permeability zone thickness'])
-        self.hs=float(self.Para0['Actively shearing zone thickness'])
-        self.EPermeability=float(self.Para0['Effective compressibility'])
+        try:
+            self.Ifdila=self.Para0['If Dilatancy']
+            self.Ifcouple=self.Para0['If Coupledthermal']
+            self.DilatancyC=self.Para0['Dilatancy coefficient']
+            self.Chyd=self.Para0['Hydraulic diffusivity']
+            #self.hw=float(self.Para0['Low permeability zone thickness'])
+            self.hs=self.Para0['Actively shearing zone thickness']
+            self.EPermeability=self.Para0['Effective compressibility']
+        except:
+            print('No Dilatancy parameters or incomplete parameters.')
+
+        try:
+            #thermal pressurizationparameter
+            self.Ifthermal=self.Para0['If thermal']
+            self.cth=self.Para0['Thermal diffusivity']
+            self.At=self.Para0['Ratio of thermal expansivity to compressibility']
+            self.c=self.Para0['Heat capacity']
+            
+        except:
+            print('No thermal parameters or incomplete parameters.')
 
         print('Cs',self.Cs)
         print('First Lamé constants',self.lambda_)
@@ -1001,8 +1016,8 @@ class QDsim:
         
 
 
-        self.slipv1_gpu=(2.0*self.V0)*cp.exp(-self.state_gpu/self.a_gpu)*cp.sinh(self.Tt1o_gpu/self.Tno_gpu/self.a_gpu)
-        self.slipv2_gpu=(2.0*self.V0)*cp.exp(-self.state_gpu/self.a_gpu)*cp.sinh(self.Tt2o_gpu/self.Tno_gpu/self.a_gpu)
+        self.slipv1_gpu=(2.0*self.V0)*cp.exp(-self.state_gpu/self.a_gpu)*cp.sinh(self.Tt1o_gpu/(self.Tno_gpu-self.P_gpu*1e-6)/self.a_gpu)
+        self.slipv2_gpu=(2.0*self.V0)*cp.exp(-self.state_gpu/self.a_gpu)*cp.sinh(self.Tt2o_gpu/(self.Tno_gpu-self.P_gpu*1e-6)/self.a_gpu)
         self.slipv_gpu=cp.sqrt(self.slipv1_gpu*self.slipv1_gpu+self.slipv2_gpu*self.slipv2_gpu)
         self.rake_gpu=cp.arctan2(self.slipv2_gpu,self.slipv1_gpu)
         

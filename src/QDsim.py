@@ -17,6 +17,7 @@ from collections import deque
 from scipy.ndimage import gaussian_filter1d
 import Hmatrix as Hmat
 import joblib
+import config
 from config import comm, rank, size
 from mpi4py import MPI
 import pyvista as pv
@@ -24,6 +25,10 @@ from scipy.linalg import lu_factor, lu_solve
 import logging
 from datetime import datetime
 import vtk
+import gc  # Garbage collection
+import psutil
+
+
 
 
 def get_sumS(X,Y,Z,nodelst,elelst):
@@ -127,7 +132,8 @@ class QDsim:
         
         fnamePara=Para['parameter directory']
         last_backslash_index = fnamePara.rfind('/')
-
+        self.compute_time = 0.0
+        self.comm_time = 0.0
         # get Parameter file name
         if last_backslash_index != -1:
             self.dirname = fnamePara[:last_backslash_index]
@@ -146,18 +152,34 @@ class QDsim:
         self.halfspace_jud=self.Para0['Half space']
         self.InputHetoparamter=self.Para0['InputHetoparamter']
         self.hmatrix_mpi_plot=self.Para0['Hmatrix_mpi_plot']
+        self.Ifdila=False
+        self.Ifthermal=False
+        try:
+            self.Ifdila=self.Para0['If Dilatancy']
+            self.Ifcouple=self.Para0['If Coupledthermal']
+            self.DilatancyC=self.Para0['Dilatancy coefficient']
+            self.Chyd=self.Para0['Hydraulic diffusivity']
+            #self.hw=float(self.Para0['Low permeability zone thickness'])
+            self.hs=self.Para0['Actively shearing zone thickness']
+            self.EPermeability=self.Para0['Effective compressibility']
+        except:
+            print('No Dilatancy parameters or incomplete parameters.')
 
-        self.Ifdila=self.Para0['If Dilatancy']
-        self.DilatancyC=self.Para0['Dilatancy coefficient']
-        self.Chyd=self.Para0['Hydraulic diffusivity']
-        #self.hw=float(self.Para0['Low permeability zone thickness'])
-        self.hs=self.Para0['Actively shearing zone thickness']
-        self.EPermeability=self.Para0['Effective compressibility']
+        try:
+            #thermal pressurizationparameter
+            self.Ifthermal=self.Para0['If thermal']
+            self.cth=self.Para0['Thermal diffusivity']
+            self.At=self.Para0['Ratio of thermal expansivity to compressibility']
+            self.c=self.Para0['Heat capacity']
+            
+        except:
+            print('No thermal parameters or incomplete parameters.')
+        
         #self.useGPU=self.Para0['GPU']=='True'
         self.useC=self.Para0['Using C++ green function']=='False'
         
         #self.tf=2.0*self.Chyd/self.hs/self.hw
-        
+        self.Lt_jud=False
 
         
         if(jud_scalekm==False):
@@ -169,7 +191,7 @@ class QDsim:
         self.elelst=elelst
         self.nodelst=nodelst
         self.xg=np.array(xg, dtype=np.float64)
-
+        
         self.maxslipvque=deque(maxlen=20)
         self.val_nv=0
         
@@ -209,9 +231,9 @@ class QDsim:
         
         #self.calc_corefunc()
         #Calcultae Hmatrix structure
-        print('Calcultae Hmatrix structure..', flush=True)
+        #print('Calcultae Hmatrix structure..', flush=True)
         #self.tree_block=Hmat.createHmatrix(self.xg,self.nodelst,self.elelst,self.eleVec,self.mu,self.lambda_,self.halfspace_jud,plotHmatrix=self.hmatrix_mpi_plot)
-        self.tree_block=Hmat.createHmatrix(self.xg,self.nodelst,self.elelst,self.eleVec,self.Para0)
+        #self.tree_block=Hmat.createHmatrix(self.xg,self.nodelst,self.elelst,self.eleVec,self.Para0)
 
         print('Number of Node',nodelst.shape, flush=True)
         print('Number of Element',elelst.shape, flush=True)
@@ -238,18 +260,192 @@ class QDsim:
         file.write('Cohesive zone::%f\n'%self.A0)
         file.write('iteration time_step(s) maximum_slip_rate(m/s) time(s) time(h)\n')
 
-        # f=open('Tvalue.txt','w')
-        # f.write('xg1,xg2,xg3,se1,se2,se3\n')
-        # for i in range(len(xg)):
-        #     #f.write('%f %f %f %f %f %f\n' %(xg[i,0],xg[i,1],xg[i,2],self.Tt1o[i],self.Tt2o[i],self.Tno[i]))
-        #     f.write('%f,%f,%f,%f,%f,%f\n' %(xg[i,0],xg[i,1],xg[i,2],self.T_globalarr[i,0],self.T_globalarr[i,1],self.T_globalarr[i,2]))
-        # f.close()
+        
     
+    def monitor_total_memory(self,comm, prefix="Total Memory"):
+        """
+        Monitor memory usage across all processes and aggregate total usage to the root process.
+        Only displays total memory (RSS and VMS) without local per-rank details.
+        
+        :param comm: MPI communicator (e.g., MPI.COMM_WORLD or self.cart_comm)
+        :param prefix: Print prefix for logging
+        """
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+        
+        # Each process gets local memory usage (in MB)
+        gc.collect()  # Force garbage collection for more accurate peak value
+        process = psutil.Process(os.getpid())
+        local_rss = process.memory_info().rss / 1024 / 1024  # Physical memory (RSS)
+        local_vms = process.memory_info().vms / 1024 / 1024  # Virtual memory (VMS)
+        
+        # MPI reduction: Sum local values to get total
+        total_rss = comm.reduce(local_rss, op=MPI.SUM, root=0)
+        total_vms = comm.reduce(local_vms, op=MPI.SUM, root=0)
+        
+        # Root process prints only aggregated totals
+        if rank == 0:
+            print(f"{prefix} | Total RSS (all {size} processes): {total_rss:.2f} MB")
+            print(f"{prefix} | Total VMS (all {size} processes): {total_vms:.2f} MB")
+            print(f"{prefix} | Average per process: RSS {total_rss / size:.2f} MB | VMS {total_vms / size:.2f} MB")
+            file = open(self.state_file, "a", encoding="utf-8")
+            file.write(f"{prefix} | Total RSS (all {size} processes): {total_rss:.2f} MB\n")
+            file.write(f"{prefix} | Total VMS (all {size} processes): {total_vms:.2f} MB\n")
+            file.write(f"{prefix} | Average per process: RSS {total_rss / size:.2f} MB | VMS {total_vms / size:.2f} MB\n")
+            file.flush()
+
+        return total_rss, total_vms  # Return totals (meaningful only on root; None on others)
+
+    def collect_blocks(self,block,rankrow=0,rankcol=0):
+        """ Recursively traverse all leaf nodes and collect blocks that need to calculate ACA """
+        blocks_to_process = []
+        def traverse(block):
+            if block.is_leaf():
+                block.rank_row=rankrow
+                block.rank_col=rankcol
+                blocks_to_process.append(block)
+            else:
+                for child in block.children:
+                    traverse(child)
+        traverse(block)
+        return blocks_to_process
+
+    def deploy_Hmatrix(self,HMobj):
+        self.Lt_jud=HMobj.Lt_jud
+        if(HMobj.Lt_jud==False):
+            self.tree_block=HMobj.tree_block
+        else:
+            self.dims=HMobj.dims
+            # dimsq=int(sqrt(size))
+            # self.dims=[dimsq,dimsq]
+            periods = [False, False]
+            reorder = False
+            config.init_cart(self.dims,periods=periods, reorder=reorder)
+            self.cart_comm = config.get_cart()
+            self.row_comm = self.cart_comm.Sub(remain_dims=[False, True])
+            cart_rank = self.cart_comm.Get_rank()
+            row, col = self.cart_comm.Get_coords(cart_rank)
+            color = 0 if col == 0 else MPI.UNDEFINED # diag_comm color=0, others UNDEFINED
+            self.diag_comm = comm.Split(color, key=cart_rank)
+            # print(row, col,cart_rank)
+            # if(col==0):
+            #     print(row, col,cart_rank, self.diag_comm.Get_rank())
+            # #self.tree_block=HMobj.LTMtree_block_lst[cart_rank]
+            self.tree_block=HMobj.tree_block
+            self.root_block=HMobj.root_block
+            
+            self.LTMtree_block_lst = HMobj.LTMtree_block_lst
+            self.cart_coords=HMobj.cart_coords
+            LMblocks_to_process=self.collect_blocks(HMobj.root_block)
+
+            for i in range(len(LMblocks_to_process)):
+                rankrow=self.cart_coords[i,0]
+                rankcol=self.cart_coords[i,1]
+                if(row==rankrow):
+                    self.local_index=LMblocks_to_process[i].row_cluster
+                    break
+
+            #self.local_index=HMobj.root_block.row_cluster
+            #print('self.local_index',len(self.local_index))
+            #self.local_slipv_index=HMobj.root_block.col_cluster
+
+            # index_target_rank=[]
+            # Nd=self.dims[0]
+            # NI=len(self.root_block.row_index)
+            # LMblocks_to_process=self.collect_blocks(self.root_block)
+            # Coord=[]
+            #cart_rank=self.cart_comm.Get_rank()
+            # for i in range(len(LMblocks_to_process)):
+            #     rowI=round((LMblocks_to_process[i].row_index[-1]+1)/NI*Nd)-1
+            #     colI=round((LMblocks_to_process[i].col_index[-1]+1)/NI*Nd)-1
+            #     #Coord.append([rowI, colI])
+            #     #print(rowI,colI)
+            #     #if(rowI == 0 and colI == 0):
+            #     target_coords = [rowI, colI]
+            #     print(target_coords,cart_rank)
+                # target_rank = self.cart_comm.Get_cart_rank(target_coords)
+                # #index_target_rank.append(target_rank)
+
+                # if(cart_rank==target_rank):
+                #     self.local_index=LMblocks_to_process[i].row_cluster
+            #         self.local_slipv_index=LMblocks_to_process[i].col_cluster
+                
+            # #print(index_target_rank)
+            # self.LTMtree_block_lst = [HMobj.LTMtree_block_lst[i] for i in index_target_rank]
+
+            
+
+            # row, col = self.cart_comm.Get_coords(rank)
+            #if(row==col):
+            #np.save('local_index%d'%rank,self.local_index)
+            
+            # cart_comm = config.get_cart()
+            # row, col = cart_comm.Get_coords(rank)
+            # print(row,rank,self.local_index[:10])
+            # if(row==dimsq-col-1):
+                # print(row,col,rank,'!!!!!!!!!!!!')
+                # print(len(HMobj.root_block.row_cluster),len(HMobj.root_block.col_cluster))
+                #self.local_index=HMobj.root_block.row_cluster
+        #print(type(self.tree_block))
+        #self.HMCoord=HMobj.Coord
+
 
     def writestate(self, msg: str):
         # 之后每次写入都用追加模式
         with open(self.filepath, "a", encoding="utf-8") as f:
             f.write(msg + "\n")
+
+    def start_LMT(self):
+        start_time = MPI.Wtime()
+        totaloutputsteps=int(self.Para0['totaloutputsteps']) #total time steps
+        #file = open(self.state_file, "a", encoding="utf-8")
+        SLIPV=[]
+        Tt=[]
+        self.init_mpi_local_variables()
+        # #print(rank)
+        for i in range(totaloutputsteps):
+        #for i in range(0):
+            self.step=i
+            if(i==0):#inital step length
+                dttry=self.htry
+            else:
+                dttry=dtnext
+            #dttry,dtnext=self.simu_forward_mpi_(dttry) #Forward modeling
+            
+            dttry,dtnext=self.simu_forward_mpi_LTM(dttry)
+            if(rank==0):
+                year=self.time/3600/24/365
+                #if(i%10==0):
+                print('iteration:',i, flush=True)
+                print('dt:',dttry,' max_vel:',np.max(np.abs(self.slipv)),' min_vel:',np.min(np.abs(self.slipv)),' Porepressure max:',np.max(self.P),' Porepressure min:',np.min(self.P),' dpdt_max:',np.max((self.dPdt0)),' dpdt_min:',np.min((self.dPdt0)),' Seconds:',self.time,'  Days:',self.time/3600/24,
+                'year',year, flush=True)
+
+                if(self.Para0['outputvtu']==True):
+                    outsteps=int(self.Para0['outsteps'])
+                    directory='out_vtk'
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    #output slipv and Tt
+                    if(i%outsteps==0):
+                        #print('!!!!!!!!!!!!!!!!!!!!!!!!!')
+                        fname=directory+'/step'+str(i)+'.vtu'
+                        self.writeVTU(fname)
+        
+        end_time = MPI.Wtime()
+
+        if rank == 0:
+            
+            print(f"Program run time: {end_time - start_time:.6f} sec")
+            timetake=end_time - start_time
+            # file.write('Program end time: %s\n'%str(datetime.now()))
+            # file.write("Time taken: %.2f seconds\n"%timetake)
+            # file.close()
+
+    def countblock(self):
+        s=0
+        for i in range(len(self.local_blocks)):
+            s=s+len(self.local_blocks[i].row_cluster)
+        return s
 
     def start(self):
         start_time = MPI.Wtime()
@@ -259,6 +455,7 @@ class QDsim:
         Tt=[]
         #self.Init_mpi_local_variables()
         self.init_mpi_local_variables()
+        self.monitor_total_memory(comm, prefix=f"Init:")
         for i in range(totaloutputsteps):
         #for i in range(0):
             self.step=i
@@ -267,7 +464,10 @@ class QDsim:
             else:
                 dttry=dtnext
             #dttry,dtnext=self.simu_forward_mpi_(dttry) #Forward modeling
-            dttry,dtnext=self.simu_forward_mpi_(dttry)
+            if(self.Lt_jud==False):
+                dttry,dtnext=self.simu_forward_mpi_(dttry)
+            else:
+                dttry,dtnext=self.simu_forward_mpi_LTM(dttry)
             #sim0.simu_forward(dttry)
             if(rank==0):
                 year=self.time/3600/24/365
@@ -323,16 +523,21 @@ class QDsim:
                    
 
         end_time = MPI.Wtime()
-
+        #print(f"rank {rank} computation time: {self.compute_time:.6f} sec")
         if rank == 0:
-            
             print(f"Program run time: {end_time - start_time:.6f} sec")
+            print(f"communication time: {self.comm_time:.6f} sec")
+            print(f"Matrix product computation time: {self.compute_time:.6f} sec")
             timetake=end_time - start_time
+            file.write(f"Program run time: {end_time - start_time:.6f} sec")
+            file.write(f"communication time: {self.comm_time:.6f} sec")
+            file.write(f"Matrix product computation time: {self.compute_time:.6f} sec")
             file.write('Program end time: %s\n'%str(datetime.now()))
-            file.write("Time taken: %.2f seconds\n"%timetake)
+            #file.write("Time taken: %.2f seconds\n"%timetake)
             file.close()
             #print('menmorary:',s*6)
 
+    
     #Determine whether Hmatrix has been calculated. If it has been calculated, read it directly
     def get_block_core(self):
         jud_coredir=True
@@ -358,8 +563,52 @@ class QDsim:
         # elif():
         #     self.tree_block.parallel_traverse_SVD(comm, rank, size)
 
+    def get_block_LTMcore(self):
+        jud_coredir=True
+        #directory = 'surface_core'
+        dir_exists = False
+        cart_rank = self.cart_comm.Get_rank()
+        if cart_rank == 0:
+            if not os.path.exists(self.Corefunc_directory):
+                os.mkdir(self.Corefunc_directory)   
+                jud_coredir=False
+            dir_exists = True 
+        
+        dir_exists = comm.bcast(dir_exists, root=0)
+        comm.Barrier()
+        
+        if(dir_exists==True):
+            file_path = os.path.join(self.Corefunc_directory, 'blocks_to_process%d.joblib'%cart_rank)
+            if not os.path.exists(file_path):
+                jud_coredir=False
+        
+        if(jud_coredir==True):
+            blocks_to_process = joblib.load(self.Corefunc_directory+'/blocks_to_process%d.joblib'%cart_rank)
+            #make sure all submatices are loaded
+            self.local_blocks=blocks_to_process
+            #print(type(self.local_blocks),len(self.local_blocks))
+            for i in range(len(blocks_to_process)):
+                if(hasattr(blocks_to_process[i], 'judproc') and blocks_to_process[i].judproc==False):
+                    jud_coredir=False
+                    break
+        return jud_coredir
+        # sendbuf = np.array(jud_coredir, dtype='?')  # '?' = MPI_BOOL
+        # #  root receive
+        # if rank == 0:
+        #     recvbuf_jud_coredir = np.empty(size, dtype='?')  # 接收 size 个 bool
+        # else:
+        #     recvbuf_jud_coredir = None
 
-    def parallel_cells_scatter_send(self):
+        # #  Gather
+        # comm.Gather(sendbuf, recvbuf_jud_coredir, root=0)
+
+        # # root 
+        # if rank == 0:
+        #     #result_list = recvbuf_jud_coredir.tolist()  # 转为 Python list[bool]
+        #     has_false = np.any(~recvbuf_jud_coredir)
+            
+
+    def parallel_cells_scatter_send(self,nsize=size):
         N=len(self.eleVec)
         index0=np.arange(0,N,1)
         local_index = None
@@ -367,15 +616,15 @@ class QDsim:
             print('Assign cells for rank calculation:', N)
     
             # Manually distribute tasks evenly
-            counts = [N // size] * size
-            for i in range(N % size):
+            counts = [N // nsize] * nsize
+            for i in range(N % nsize):
                 counts[i] += 1
             task_chunks = []
             start = 0
             for c in counts:
                 task_chunks.append(index0[start:start+c])
                 start += c
-            for i in range(1, size):
+            for i in range(1, nsize):
                 comm.send(task_chunks[i], dest=i, tag=77)
             local_index = task_chunks[0] 
         else:
@@ -385,8 +634,106 @@ class QDsim:
         #print('rank',rank,' cells for local rank calculation',len(local_index))
         return local_index
 
+    
+
+    def split_blocks_equally(self,blocks_to_process_row, n_splits):
+        """
+        Split the blocks_to_process_row into n_splits parts, making the total length of row_cluster
+        in each part as balanced as possible.
+        
+        Parameters:
+        - blocks_to_process_row: list of objects, each object has a row_cluster attribute (list)
+        - n_splits: int, the number of splits (>0, and <= len(blocks_to_process_row))
+        
+        Returns:
+        - list of lists: the split sub-lists, preserving the original order
+        """
+        if n_splits <= 0 or n_splits > len(blocks_to_process_row):
+            raise ValueError("n_splits must be between 1 and len(blocks_to_process_row)")
+        
+        # Calculate the weight for each block (length of row_cluster)
+        weights = np.array([1.0+log10(len(block.row_cluster)*len(block.col_cluster)) for block in blocks_to_process_row])
+        #weights = np.array([1.0 for block in blocks_to_process_row])
+        #weights = np.array([1.0+exp(-(len(block.row_cluster)*len(block.col_cluster))*0.01) for block in blocks_to_process_row])
+        
+        if len(weights) == 0:
+            return [[] for _ in range(n_splits)]
+        
+        # Compute cumulative weights
+        cum_weights = np.cumsum(weights)
+        total_weight = cum_weights[-1]
+        
+        # Ideal cut points (cumulative weight targets)
+        ideal_cuts = np.array([i * total_weight / n_splits for i in range(1, n_splits)])
+        
+        # Find the closest actual index for each ideal cut point (using binary search-like minimization)
+        splits = [0]  # Starting point
+        for ideal in ideal_cuts:
+            # Find the index in cum_weights closest to the ideal
+            idx = np.argmin(np.abs(cum_weights - ideal))
+            splits.append(idx + 1)  # +1 because the next segment starts after the cut
+        
+        splits.append(len(blocks_to_process_row))  # End point
+        
+        # Generate sub-lists
+        sub_lists = []
+        for i in range(n_splits):
+            start, end = splits[i], splits[i+1]
+            sub_lists.append(blocks_to_process_row[start:end])
+        
+        # Verification: Print total weights for each split (optional, for debugging)
+        sub_weights = [sum(pow(len(b.row_cluster)*len(b.col_cluster),0.1) for b in sub) for sub in sub_lists]
+        print(f"Split weights: {sub_weights} (total: {sum(sub_weights)}, ideal per split: {total_weight / n_splits:.2f})")
+        
+        return sub_lists
+    
+    
+    def parallel_LTMblock_assign(self, blocks_to_process):
+        rank = self.cart_comm.Get_rank()
+        #size = self.cart_comm.Get_size()
+        target_coords = self.cart_comm.Get_coords(rank)
+        blocks_to_process_row = [[ ] for _ in range(self.dims[0])]
+        blocks_to_process_row_all=[]
+        if(rank==0):
+            for i in range(len(blocks_to_process)):
+                Irow=blocks_to_process[i].rank_row
+                blocks_to_process_row[Irow].append(blocks_to_process[i])
+                #for j in range()
+            n_splits=self.dims[1]
+            
+            for i in range(len(blocks_to_process_row)):
+                sub_lists=self.split_blocks_equally(blocks_to_process_row[i], n_splits)
+                #print('sub_lists',[len(blocks) for blocks in sub_lists])
+                blocks_to_process_row_all.append(sub_lists)
+
+        local_blocks=self.tree_block.parallel_block_scatter_send_(blocks_to_process_row_all,self.dims[0],self.dims[1], plotHmatrix=self.hmatrix_mpi_plot)
+        #print('self.local_blocks:',rank,len(self.local_blocks),self.local_blocks[0])
+        local_slipv_index=[]
+        #local_index=[]
+        for i in range(len(local_blocks)):
+            index_cols=local_blocks[i].col_cluster
+            #index_rows=local_blocks[i].row_cluster
+            local_slipv_index.append(index_cols)
+            #local_index.append(index_rows)
+        flattened_indices = np.concatenate(local_slipv_index)
+        self.local_slipv_index = np.sort(np.unique(flattened_indices))
+        #flattened_indices = np.concatenate(local_index)
+        #self.local_index = np.sort(np.unique(flattened_indices))
+        
+        #if(target_coords[1]==0):
+        #    print(len(self.local_index),len(self.local_slipv_index),rank)
+        return local_blocks
+
+    def get_LMTblocks(self):
+        blocks_to_process=[]
+        for i in range(len(self.LTMtree_block_lst)):
+            blocks_=self.collect_blocks(self.LTMtree_block_lst[i].root_block,rankrow=self.cart_coords[i,0],rankcol=self.cart_coords[i,1])
+            blocks_to_process.append(blocks_)
+        return [item for sublist in blocks_to_process for item in sublist]
     #calculate greenfuncs accerlated by Hmatrix and MPI
     def calc_greenfuncs_mpi(self):
+        # if(self.Lt_jud==True):
+        #     rank = self.cart_comm.Get_rank()
         # bcast parameters to all ranks
         jud_coredir=None
         blocks_to_process=[]
@@ -400,14 +747,14 @@ class QDsim:
                 print('Hmatrix reading...')
                         
             #test green functions
-            x=np.ones(len(self.elelst))
-            start_time = time.time()
-            for i in range(1):
-                y=self.tree_block.blocks_process_MVM(x,blocks_to_process,'A2d')
-                print(y[:20])
-                print(np.max(y))
-            end_time = time.time()
-            print(f"Green func calc_MVM_fromC Time taken: {end_time - start_time:.10f} seconds")
+            # x=np.ones(len(self.elelst))
+            # start_time = time.time()
+            # for i in range(1):
+            #     y=self.tree_block.blocks_process_MVM(x,blocks_to_process,'A2d')
+            #     #print(y[:20])
+            #     #print(np.max(y))
+            # end_time = time.time()
+            # print(f"Green func calc_MVM_fromC Time taken: {end_time - start_time:.10f} seconds")
 
             #calculate memorary
             s=0 
@@ -424,33 +771,44 @@ class QDsim:
 
         if(jud_coredir==False):#Calculate green functions and compress in Hmatrix
             #sim0.local_blocks=sim0.tree_block.parallel_traverse_SVD(sim0.Para0['Corefunc directory'],plotHmatrix=sim0.Para0['Hmatrix_mpi_plot'])
+            
             if(rank==0):
                 #Assign tasks for calculating green functions
-                self.tree_block.master(self.Para0['Corefunc directory'],blocks_to_process,size-1,save_corefunc=self.save_corefunc)
+                if(self.Lt_jud==True):
+                    print('Assign tasks for lattice Hmatrix')
+                    blocks_to_process=self.get_LMTblocks()
+                self.tree_block.master(self.Para0['Corefunc directory'],blocks_to_process,size-1,save_corefunc=self.save_corefunc,rank0=-1)
             else:
                 #Calculat green functions
                 self.tree_block.worker()
                 #sim0.tree_block.master_scatter(sim0.Para0['Corefunc directory'],blocks_to_process,size)
                 '''Assign forward modelling missions for each rank with completed blocks submatrice'''
-            self.local_blocks=self.tree_block.parallel_block_scatter_send(self.tree_block.blocks_to_process,plotHmatrix=self.Para0['Hmatrix_mpi_plot'])
+            if(self.Lt_jud==False):
+                self.local_blocks=self.tree_block.parallel_block_scatter_send(self.tree_block.blocks_to_process,plotHmatrix=self.Para0['Hmatrix_mpi_plot'])
+            else:
+                self.local_blocks=self.parallel_LTMblock_assign(self.tree_block.blocks_to_process)
         else:
             '''Assign forward modelling missions for each rank with completed blocks submatrice'''
-            self.local_blocks=self.tree_block.parallel_block_scatter_send(blocks_to_process,plotHmatrix=self.Para0['Hmatrix_mpi_plot'])
-        
+            if(self.Lt_jud==False):
+                self.local_blocks=self.tree_block.parallel_block_scatter_send(blocks_to_process,plotHmatrix=self.Para0['Hmatrix_mpi_plot'])
+            else:
+                self.local_blocks=self.parallel_LTMblock_assign(blocks_to_process)
+       
         #if(self.Ifdila==True):
         #print('parallel_cells_scatter_send')
-        self.local_index=self.parallel_cells_scatter_send()
-        #print(rank,self.local_index)
+        if(self.Lt_jud==False):
+            self.local_index=self.parallel_cells_scatter_send(nsize=size)
+            #print(rank,self.local_index)
 
 
     def get_rotation1(self,x):
-        if(x<70):
-            theta=-10
+        if(x<60):
+            theta=0
         elif(x>=60.0 and x<80.0):
             temx=((x-60.0)/10.0-1.0)*np.pi/2
-            theta=-10.0-(sin(temx)+1.0)*10.0
+            theta=0.0-(sin(temx)+1.0)*12.5
         else:
-            theta=-30.0
+            theta=-25.0
         return theta
 
     
@@ -623,21 +981,50 @@ class QDsim:
         self.P0=0
         self.P=np.zeros(N)
         self.dPdt0=np.zeros(N)
+        
         self.local_index=np.arange(0,N,1)
+        
+        c=1e-2
+        scaleC=0.001
+        num=60
+        ymax=100
         if(self.Ifdila==True):
             
-            c=1e-2
-            num=60
+            
             self.P0=self.Para0['Constant porepressure']
             self.P=np.ones(N)*self.Para0['Initial porepressure']
-            self.yp=np.logspace(start=-3, stop=10, num=num, base=10)
-            self.zp=np.log(1+self.yp/c)
+            # self.yp=np.logspace(start=-3, stop=10, num=num, base=10)
+            # self.zp=np.log(1+self.yp/c)
+            # self.zp=np.linspace(log(c),log(30),num)
+            # self.yp=-c+np.exp(self.zp)
+            self.yp=np.logspace(start=log(scaleC*c), stop=log(ymax), num=num, base=np.e)-scaleC*c
+            self.zp=np.log(c+self.yp)
             self.Parr=np.ones([N,num])*self.Para0['Initial porepressure']
             self.Pmatrix=np.zeros([num,num])
             self.Parr=self.Parr*1e6
             self.P0=self.P0*1e6
             self.P=self.P*1e6
+            self.dTdtmatrix=np.zeros([N,num])
             self.Calc_Pmatrix()
+        
+        if(self.Ifthermal==True):
+            self.dTdt0=np.zeros(N)
+            self.T0=self.Para0['Initial temperature']
+            self.Tempe=np.ones(N)*self.Para0['Background temperature']
+            self.halfwidth=self.Para0['Half width']
+            self.yp=np.logspace(start=log(scaleC*c), stop=log(ymax), num=num, base=np.e)-scaleC*c
+            self.zp=np.log(c+self.yp)
+            self.Tempearr=np.ones([N,num])*self.T0
+            self.Tmatrix=np.zeros([num,num])
+            self.dTdtmatrix=np.zeros([N,num])
+            self.Calc_Tmatrix()
+
+
+            # self.Ifthermal=self.Para0['If thermal']
+            # self.cth=self.Para0['Thermal diffusivity']
+            # self.At=self.Para0['Ratio of thermal expansivity to compressibility']
+            # self.c=self.Para0['Heat capacity']
+            # self.T0=self.Para0['Initial temperature']
             
         
         #print('trac_nor',trac_nor)
@@ -693,8 +1080,8 @@ class QDsim:
         self.Tno=np.abs(self.Tno)
         self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
         tem=self.Tt/self.Tno
-        x=self.Tt1o/self.Tt
-        y=self.Tt2o/self.Tt
+        x=self.Tt1o/(self.Tt+1e-5)
+        y=self.Tt2o/(self.Tt+1e-5)
         solve_shear=self.Para0['Shear traction solved from stress tensor']
         solve_normal=self.Para0['Normal traction solved from stress tensor']
         if(self.Para0['Rake solved from stress tensor']==True):
@@ -897,6 +1284,13 @@ class QDsim:
             self.calc_nucleaszie_cohesivezone()
             #self.randompatch()
         
+        f=open('Tvalue.txt','w')
+        f.write('xg1,xg2,xg3,se1,se2,se3\n')
+        for i in range(len(self.xg)):
+            #f.write('%f %f %f %f %f %f\n' %(xg[i,0],xg[i,1],xg[i,2],self.Tt1o[i],self.Tt2o[i],self.Tno[i]))
+            f.write('%f,%f,%f,%f,%f,%f\n' %(self.xg[i,0],self.xg[i,1],self.xg[i,2],self.T_globalarr[i,0],self.T_globalarr[i,1],self.T_globalarr[i,2]))
+        f.close()
+        
  
     #read vtk file for initial condition if it start from previous results
     def read_vtk(self,fname):
@@ -1045,7 +1439,8 @@ class QDsim:
         # slipv2 = self.slipv2
         # slipv_gpu=np.sqrt(slipv1*slipv1+slipv2*slipv2)
 
-        #print('Tt1o / (a * Tno):',np.max(Tt1o / (a * Tno)))
+        #print('Tno-P:',np.max(Tno-P),np.min(Tno-P))
+        
         # 计算公式
         dV1dtau = 2 * V0 / (a * (Tno-P)) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * (Tno-P)))
         dV2dtau = 2 * V0 / (a * (Tno-P)) * safe_exp(-state / a) * safe_cosh(Tt2o / (a * (Tno-P)))
@@ -1077,6 +1472,21 @@ class QDsim:
                 self.Pmatrix[i,i+1]=-c_hyd*np.exp(-(2*z_k[i]+dz[i]/2))/(dz[i]*dz[i])
                 self.Pmatrix[i,i-1]=-c_hyd*np.exp(-(2*z_k[i]-dz[i]/2))/(dz[i]*dz[i])
 
+    def Calc_Tmatrix(self):
+        K=len(self.zp)
+        z_k = self.zp
+        cth = self.cth 
+        dz = np.diff(self.zp)
+        #for j in range(len(self.eleVec)):
+        for i in range(K-1):
+            if(i==0):
+                self.Tmatrix[0,0]=cth*(np.exp(-(2*z_k[0]-dz[0]/2))+np.exp(-(2*z_k[0]+dz[0]/2)))/(dz[0]*dz[0])
+                self.Tmatrix[0,1]=-cth*(np.exp(-(2*z_k[0]-dz[0]/2))+np.exp(-(2*z_k[0]+dz[0]/2)))/(dz[0]*dz[0])
+            else:
+                self.Tmatrix[i,i]=cth*(np.exp(-(2*z_k[i]-dz[i]/2))+np.exp(-(2*z_k[i]+dz[i]/2)))/(dz[i]*dz[i])
+                self.Tmatrix[i,i+1]=-cth*np.exp(-(2*z_k[i]+dz[i]/2))/(dz[i]*dz[i])
+                self.Tmatrix[i,i-1]=-cth*np.exp(-(2*z_k[i]-dz[i]/2))/(dz[i]*dz[i])
+    
     
 
     def Calc_P_implicit_mpi(self,dt):
@@ -1098,11 +1508,17 @@ class QDsim:
         K=len(self.zp)
         M=self.Pmatrix[:-1,:-1]*dt+np.eye(K-1)
         lu, piv = lu_factor(M)
+        #print('self.state_local',np.max(self.state_local))
         theta=dc/self.V0*np.exp((self.state_local-f0)/b)
         dthetadt=1.0-slipv*theta/dc
         #g=e*h*self.slipv/(2.0*beta*c_hyd*dc)*np.log(self.slipv*self.state/dc)*np.exp(-delta/dc)
         #dstatedt = self.b / dc * (self.V0 * np.exp((self.f0 - self.state) / self.b) - self.slipv)
-        g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
+        if(self.Ifcouple==True and self.Ifdila==True):
+            g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
+        elif(self.Ifdila==True and self.Ifthermal==False):
+            g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
+        else:
+            g=dthetadt*0.0
         #print('gmax:',np.max(g[self.local_index]),'   gmin:',np.min(g[self.local_index]))
         
         for i in range(len(self.local_index)):
@@ -1110,33 +1526,367 @@ class QDsim:
             bv=np.copy(Parr[k,:-1])
             bv[0]=bv[0]-2.0*c_hyd*np.exp(-(z_k[0]-dz[0]/2))*g[i]*dt/dz[0]
             #B1.append(b[0])
-            bv[-1]=bv[-1]+dt/(dz[-1]*dz[-1])*c_hyd*np.exp(-(z_k[-2]-dz[-1]/2))*self.P0
+            bv[-1]=bv[-1]+dt/(dz[-1]*dz[-1])*c_hyd*np.exp(-(2.0*z_k[-2]+dz[-1]/2))*self.P0
+            #couple with temperature
+            
+            if(self.Ifthermal==True):
+               bv=bv+dt*self.At*self.dTdtmatrix[k,:-1]
             x = lu_solve((lu, piv), bv)
             Parr[k,:-1]=np.copy(x)
             #self.dPdt0[i]=(x[0]*1e-6-self.P[i])/dt
             term1 = -np.exp(-(z_k[0] - dz[0]/2)) * (Parr[k,0] - Parr[k,1]+2*dz[0]*g[i]*exp(z_k[0]))
             term2 = np.exp(-(z_k[0] + dz[0]/2)) * (Parr[k,1] - Parr[k,0])
-            dPdt0[k]=c_hyd * np.exp(-z_k[0]) * (term1 + term2) / dz[0]**2
-
+            dPdt0[k]=c_hyd * np.exp(-z_k[0]) * (term1 + term2) / dz[0]**2+self.At*self.dTdtmatrix[k,0]
             #self.dPdt0[i]=0
             P[k]=Parr[k,0]
+            
         #print('rank ',rank,np.max(P[self.local_index]),np.min(P[self.local_index]))
         return P,dPdt0,Parr
 
 
+    def Calc_T_implicit_mpi(self,dt):
+        
+        trac=np.sqrt(self.Tt1o_local*self.Tt1o_local+self.Tt2o_local*self.Tt2o_local)
+        slipv=self.slipv[self.local_index]
+        Tempe=np.copy(self.Tempe)
+        dTdt0=np.copy(self.dTdt0)
+        Tarr=np.copy(self.Tempearr)
+        z_k = self.zp
+
+        dz = np.diff(self.zp)
+        #delta=self.slip
+        K=len(self.zp)
+        M=self.Tmatrix[:-1,:-1]*dt+np.eye(K-1)
+        lu, piv = lu_factor(M)
+        #print('self.state_local',np.max(self.state_local))
+        
+        #g=e*h*self.slipv/(2.0*beta*c_hyd*dc)*np.log(self.slipv*self.state/dc)*np.exp(-delta/dc)
+        #dstatedt = self.b / dc * (self.V0 * np.exp((self.f0 - self.state) / self.b) - self.slipv)
+        #g=-trac*1e6*slipv/(2.0*self.c*self.density*self.cth)
+        #g=-trac*1e6*slipv/(2.0*self.c*1000*self.cth)
+        #g=slipv*0.0
+        g=-trac*1e6*slipv/(2.0*self.c*self.cth)
+        g=slipv*0.0
+        #print('gmax:',np.max(g[self.local_index]),'   gmin:',np.min(g[self.local_index]))
+        maxval=0
+        maxtra=0
+        for i in range(len(self.local_index)):
+            k=self.local_index[i]
+            bv=np.copy(Tarr[k,:-1])
+            bv[0]=bv[0]-2.0*self.cth*np.exp(-(z_k[0]-dz[0]/2))*g[i]*dt/dz[0]
+            #B1.append(b[0])
+            bv[-1]=bv[-1]+dt/(dz[-1]*dz[-1])*self.cth*np.exp(-(2.0*z_k[-2]+dz[-1]/2))*self.T0
+            Ind_term=trac[i]*1e6*slipv[i]/(self.c)*np.exp(-self.yp[:-1]*self.yp[:-1]/(2.0*self.halfwidth*self.halfwidth))/(sqrt(2.0*np.pi)*self.halfwidth)
+            bv=bv+Ind_term*dt
+            if(Ind_term[0]>maxval):
+                maxval=Ind_term[0]
+                #maxtra=trac[i]*1e6*slipv[i]/(self.c)
+            x = lu_solve((lu, piv), bv)
+            Tarr[k,:-1]=np.copy(x)
+            
+            if(self.Ifdila==True):
+                self.dTdtmatrix[k,:-1]=np.dot(-self.Tmatrix[:-1,:-1],x)
+                self.dTdtmatrix[k,0]=self.dTdtmatrix[k,0]-2.0*self.cth*np.exp(-(z_k[0]-dz[0]/2))*g[i]/dz[0]
+                self.dTdtmatrix[k,-2]=self.dTdtmatrix[k,-2]+1.0/(dz[-1]*dz[-1])*self.cth*np.exp(-(2.0*z_k[-2]+dz[-1]/2))*self.T0
+                self.dTdtmatrix[k,:-1]=self.dTdtmatrix[k,:-1]+Ind_term
+            #self.dPdt0[i]=(x[0]*1e-6-self.P[i])/dt
+            term1 = -np.exp(-(z_k[0] - dz[0]/2)) * (Tarr[k,0] - Tarr[k,1]+2*dz[0]*g[i]*exp(z_k[0]))
+            term2 = np.exp(-(z_k[0] + dz[0]/2)) * (Tarr[k,1] - Tarr[k,0])
+            dTdt0[k]=self.cth * np.exp(-z_k[0]) * (term1 + term2) / dz[0]**2+Ind_term[0]
+            #print(np.max(np.exp(-self.yp[:-1]*self.yp[:-1]/(2.0*self.halfwidth*self.halfwidth))))
+            
+            #self.dPdt0[i]=0
+            Tempe[k]=Tarr[k,0]
+            #print(Tempe[k])
+        #print('maxval:',maxval,maxtra)
+        #print('rank ',rank,np.max(P[self.local_index]),np.min(P[self.local_index]))
+        return Tempe,dTdt0,Tarr
     
 
     def init_mpi_local_variables(self):
-        self.Tno_local=self.Tno[self.local_index]
-        self.Tt1o_local=self.Tt1o[self.local_index]
-        self.Tt2o_local=self.Tt2o[self.local_index]
-        self.state_local=self.state[self.local_index]
-        self.counts = comm.gather(len(self.local_index), root=0)
-        self.displs = comm.gather(self.local_index[0], root=0)
-        self.index0=np.arange(0,len(self.eleVec),1)
-        self.index_ = np.setdiff1d(self.index0, self.local_index)
-        
+        if(self.Lt_jud==False):
+            self.Tno_local=self.Tno[self.local_index]
+            self.Tt1o_local=self.Tt1o[self.local_index]
+            self.Tt2o_local=self.Tt2o[self.local_index]
+            self.state_local=self.state[self.local_index]
+            self.counts = comm.gather(len(self.local_index), root=0)
+            self.displs = comm.gather(self.local_index[0], root=0)
+            self.index0=np.arange(0,len(self.eleVec),1)
+            self.index_ = np.setdiff1d(self.index0, self.local_index)
+        else:
+            row, col = self.cart_comm.Get_coords(rank)
+            if(col==0):
+                self.Tno_local=self.Tno[self.local_index]
+                self.Tt1o_local=self.Tt1o[self.local_index]
+                #print(np.max(self.Tt1o_local),rank)
+                self.Tt2o_local=self.Tt2o[self.local_index]
+                self.state_local=self.state[self.local_index]
+                self.counts = self.diag_comm.gather(len(self.local_index), root=0)
+                self.displs = self.diag_comm.gather(self.local_index[0], root=0)
+                self.index0=np.arange(0,len(self.eleVec),1)
+                self.index_ = np.setdiff1d(self.index0, self.local_index)
+            else:
+                self.Tno_local=None
+                self.Tt1o_local=None
+                self.Tt2o_local=None
+                self.state_local=None
+                self.index0=None
+                self.index_ = None
+            
 
+
+
+    #forward modelling using lattice matrix   
+    def simu_forward_mpi_LTM(self,dttry):
+        
+        cart_rank = self.cart_comm.Get_rank()
+        row, col = self.cart_comm.Get_coords(cart_rank)
+        # color = 0 if row == col else MPI.UNDEFINED  # 对角线进程 color=0，其他 UNDEFINED
+        # diag_comm = comm.Split(color, key=cart_rank)
+        #print('start:',self.step,self.Tno.shape,rank,cart_rank)
+        slipv1=np.zeros(len(self.slipv1))
+        slipv2=np.zeros(len(self.slipv2))
+        slipv1[self.local_slipv_index]=self.slipv1[self.local_slipv_index]-self.slipvC[self.local_slipv_index]*np.cos(self.rake0[self.local_slipv_index])
+        slipv2[self.local_slipv_index]=self.slipv2[self.local_slipv_index]-self.slipvC[self.local_slipv_index]*np.sin(self.rake0[self.local_slipv_index])
+        t0 = MPI.Wtime()
+        if(self.fix_Tn==True):
+            dsigmadt=self.normal_loading
+        else:
+            #self.Tno=comm.bcast(self.Tno, root=0)
+            #dsigmadt=np.dot(self.Bs,slipv1)+np.dot(self.Bd,slipv2)+self.normal_loading
+            dsigmadt=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'Bs')+\
+                self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'Bd')+self.normal_loading
+        
+        #dsigmadt[self.index_normal]=-dsigmadt[self.index_normal]
+        AdotV1=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'A1s')+\
+                self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'A1d')
+        AdotV2=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'A2s')+\
+                self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'A2d')
+        #self.cart_comm.Barrier()
+        # if(cart_rank==0 or cart_rank==1 or cart_rank==2 or cart_rank==3):
+        #     np.save('AdotV%d'%cart_rank,AdotV1)
+        t1 = MPI.Wtime()
+        self.compute_time += (t1 - t0)
+        
+        #row_comm = self.cart_comm.Sub(remain_dims=[False, True])
+        #print(row,col,cart_rank,row_comm.rank)
+        diag_rank_in_row = 0  # 在行通信器中，对角线进程的局部 rank 就是 row 编号
+        M=len(self.xg)
+        # 接收缓冲区：所有进程都必须提供，但只有 root 用结果
+
+        sendbuf_v1 = np.array(AdotV1, dtype=np.float64)
+        sendbuf_v2 = np.array(AdotV2, dtype=np.float64)
+        sendbuf_sig = np.array(dsigmadt, dtype=np.float64)
+
+        if col == 0:
+            recvbuf_v1  = np.zeros(M, dtype=np.float64)
+            recvbuf_v2  = np.zeros(M, dtype=np.float64)
+            recvbuf_sig = np.zeros(M, dtype=np.float64)
+        else:
+            recvbuf_v1 = np.empty(M, dtype=np.float64)
+            recvbuf_v2 = np.empty(M, dtype=np.float64)
+            recvbuf_sig = np.empty(M, dtype=np.float64)
+        #print(rank)
+        t0 = MPI.Wtime()
+        # row_comm Reduce
+        self.row_comm.Reduce(sendbuf_v1,  recvbuf_v1,  op=MPI.SUM, root=diag_rank_in_row)
+        self.row_comm.Reduce(sendbuf_v2,  recvbuf_v2,  op=MPI.SUM, root=diag_rank_in_row)
+        self.row_comm.Reduce(sendbuf_sig, recvbuf_sig, op=MPI.SUM, root=diag_rank_in_row)
+        t1 = MPI.Wtime()
+        self.comm_time += (t1 - t0)
+        if col == 0:
+            self.AdotV1 = recvbuf_v1
+            self.AdotV2 = recvbuf_v2
+            self.dsigmadt = recvbuf_sig
+            #print(np.max(self.AdotV1),rank)
+
+            
+        nrjct=0
+        h=dttry
+        running=True
+        dtnext=None
+        
+        if(col == 0):
+            
+            while running:
+                Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk=self.RungeKutte_solve_Dormand_Prince_(h)
+                
+                recvbuf_Relerror1 = np.zeros(1, dtype=np.float64) if cart_rank == 0 else np.empty(1, dtype=np.float64)
+                recvbuf_Relerror1 = np.ascontiguousarray(recvbuf_Relerror1)
+                self.diag_comm.Reduce(self.Relerrormax1, recvbuf_Relerror1, op=MPI.MAX, root=0)
+                
+                recvbuf_Relerror2 = np.zeros(1, dtype=np.float64) if cart_rank == 0 else np.empty(1, dtype=np.float64)
+                recvbuf_Relerror2 = np.ascontiguousarray(recvbuf_Relerror2)
+                self.diag_comm.Reduce(self.Relerrormax2, recvbuf_Relerror2, op=MPI.MAX, root=0)
+                if(cart_rank==0):
+                    self.RelTol1=1e-4
+                    self.RelTol2=1e-4
+                    condition1=recvbuf_Relerror1[0]/self.RelTol1
+                    condition2=recvbuf_Relerror2[0]/self.RelTol2
+                    hnew1=h*0.9*(self.RelTol1/recvbuf_Relerror1[0])**0.2
+                    hnew2=h*0.9*(self.RelTol2/recvbuf_Relerror2[0])**0.2
+                    dtnext_raw = min(hnew1, hnew2)
+                    if(max(condition1,condition2)<1.0 and not (np.isnan(condition1) or np.isnan(condition2))):
+                        #print(type(hnew1),type(condition1))
+                        dtnext=min(1.5*h,dtnext_raw)
+                        accept = 1.0
+                    
+                    
+                    else:
+                        nrjct=nrjct+1
+                        dtnext = max(0.5 * h, dtnext_raw)  # 提前限制
+                        h = dtnext
+                        
+                        #h=0.5*h
+                        #print('nrjct:',nrjct,'  condition1,',condition1,' condition2:',condition2,'  dt:',h)
+                        accept = 0.0
+                        if(h<1.e-15 or nrjct>20):
+                            print('error: dt is too small')
+                            accept = -1.0
+
+                else:
+                    dtnext = 0.0
+                    accept = 0.0
+                bcast_data = np.array([dtnext, accept], dtype=np.float64)
+                recv_bcast = np.zeros(2, dtype=np.float64)
+
+                self.diag_comm.Bcast(bcast_data if cart_rank == 0 else recv_bcast, root=0)
+
+                # 5. 所有对角线进程解析广播
+                if cart_rank != 0:
+                    dtnext = recv_bcast[0]
+                    accept = recv_bcast[1]
+
+                # 6. 所有进程统一判断退出
+                if accept > 0.5:        # accept == 1.0 → break
+                    self.dtnext = dtnext
+                    break
+                elif accept < -0.5:     # accept == -1.0 → 错误终止
+                    if cart_rank == 0:
+                        print("Simulation failed: dt too small.")
+                    comm.Abort(1)  # stop all pro
+                    break
+                else:                   # accept == 0.0 → 拒绝，继续循环
+                    h = dtnext  # 更新步长
+            
+            self.time=self.time+h
+            #if(rank==0):
+            #update slip rate and rake
+            self.Tno_local=Tno_yhk
+            self.Tt1o_local=Tt1o_yhk
+            self.Tt2o_local=Tt2o_yhk
+            self.state_local=state_yhk
+            
+            #self.Tt_local=np.sqrt(Tt1o_yhk*Tt1o_yhk+Tt2o_yhk*Tt2o_yhk)
+            #print('self.Tt1o',np.mean(self.Tt1o),np.mean(self.Tt2o))
+            self.slipv1[:]=0
+            self.slipv2[:]=0
+            self.slipv1[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt1o_local/(self.Tno_local-self.P[self.local_index]*1e-6)/self.a[self.local_index])
+            self.slipv2[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt2o_local/(self.Tno_local-self.P[self.local_index]*1e-6)/self.a[self.local_index])
+            #print(np.max(np.sinh(self.Tt1o_local/self.Tno_local/self.a[self.local_index])),rank)
+            #print(np.max(np.exp(-self.state_local/self.a[self.local_index])),rank,len(self.local_index))
+            # slipv1_rec = np.zeros(len(self.slipv1), dtype=np.float64) if cart_rank == 0 else np.empty(1, dtype=np.float64)
+            # diag_comm.Reduce(self.slipv1, slipv1_rec, op=MPI.SUM, root=0)
+            t0 = MPI.Wtime()
+            self.slipv1=self.diag_comm.allreduce(self.slipv1, op=MPI.SUM)
+            self.slipv2=self.diag_comm.allreduce(self.slipv2, op=MPI.SUM)
+            t1 = MPI.Wtime()
+            self.comm_time += (t1 - t0)
+
+            self.slipv=np.sqrt(self.slipv1*self.slipv1+self.slipv2*self.slipv2)
+            
+            #self.slipv=diag_comm.allreduce(self.slipv, op=MPI.SUM)
+            indexmin=np.where(self.slipv<1e-30)[0]
+            if(len(indexmin)>0):
+                self.slipv[indexmin]=1e-30
+            #self.maxslipv0=np.max(self.slipv)
+            #print(self.Tno.shape,rank,cart_rank)
+
+            if(self.step%self.Para0['outsteps']==0):
+                #update slip
+                self.slip1=self.slip1+self.slipv1*h
+                self.slip2=self.slip2+self.slipv2*h
+                self.slip=np.sqrt(self.slip1*self.slip1+self.slip2*self.slip2)
+                
+                self.Tno[:]=0
+                self.Tt1o[:]=0
+                self.Tt2o[:]=0
+                self.state[:]=0
+                self.Tno[self.local_index]=Tno_yhk
+                self.Tt1o[self.local_index]=Tt1o_yhk
+                self.Tt2o[self.local_index]=Tt2o_yhk
+                self.state[self.local_index]=state_yhk
+            #     #print(self.counts, self.displs,self.Tno.shape,Tno_yhk.shape)
+            #     #print(Tno_yhk.dtype, self.Tno.dtype)
+
+                t0 = MPI.Wtime()
+                recvbuf = np.zeros(len(self.Tno), dtype=np.float64)
+                self.diag_comm.Reduce(self.Tno, recvbuf, op=MPI.SUM, root=0)
+                if(cart_rank==0):
+                    self.Tno=recvbuf
+
+                recvbuf = np.zeros(len(self.Tt1o), dtype=np.float64) 
+                self.diag_comm.Reduce(self.Tt1o, recvbuf, op=MPI.SUM, root=0)
+                if(cart_rank==0):
+                    self.Tt1o=recvbuf
+
+                recvbuf = np.zeros(len(self.Tt2o), dtype=np.float64) 
+                self.diag_comm.Reduce(self.Tt2o, recvbuf, op=MPI.SUM, root=0)
+                if(cart_rank==0):
+                    self.Tt2o=recvbuf
+
+                recvbuf = np.zeros(len(self.state), dtype=np.float64) 
+                self.diag_comm.Reduce(self.state, recvbuf, op=MPI.SUM, root=0)
+                if(cart_rank==0):
+                    self.state=recvbuf
+
+                if(self.Ifthermal==True):
+                    self.Tempe[self.index_]=0
+                    recvbuf = np.zeros(len(self.Tempe), dtype=np.float64) 
+                    self.diag_comm.Reduce(self.Tempe, recvbuf, op=MPI.SUM, root=0)
+                    if(cart_rank==0):
+                        self.Tempe=recvbuf
+
+                if(self.Ifdila==True):
+                    self.P[self.index_]=0
+                    recvbuf = np.zeros(len(self.P), dtype=np.float64) 
+                    self.diag_comm.Reduce(self.P, recvbuf, op=MPI.SUM, root=0)
+                    if(cart_rank==0):
+                        self.P=recvbuf
+                
+                t1 = MPI.Wtime()
+                self.comm_time += (t1 - t0)
+
+                if(cart_rank==0):
+                    self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
+                    self.rake=np.arctan2(self.Tt2o,self.Tt1o)
+                    self.fric=self.Tt/(self.Tno-self.P*1e-6)
+                
+                
+
+
+                
+
+        #bcast slipv in row_comm
+        t1 = MPI.Wtime()
+        self.row_comm.Bcast(self.slipv1, root=diag_rank_in_row)
+        self.row_comm.Bcast(self.slipv2, root=diag_rank_in_row)
+        t1 = MPI.Wtime()
+        self.comm_time += (t1 - t0)
+        if(self.Ifthermal==True):
+            if(col == 0):
+                Tempe,dTdt0,Tarr=self.Calc_T_implicit_mpi(h)
+                self.Tempe=Tempe
+                self.dTdt0=dTdt0
+                self.Tempearr=Tarr
+        if(self.Ifdila==True):
+            if(col == 0):
+                Pre,dPdt0,Parr=self.Calc_P_implicit_mpi(h)
+                self.dPdt0=dPdt0
+                self.P=Pre
+                self.Parr=Parr
+        return h,dtnext
+    
 
     #forward modelling
     def simu_forward_mpi_(self,dttry):
@@ -1145,6 +1895,7 @@ class QDsim:
         slipv2=self.slipv2-self.slipvC*np.sin(self.rake0)
         #Calculating Kv first
         #comm.Barrier()
+        t0 = MPI.Wtime()
         if(self.fix_Tn==True):
             dsigmadt=self.normal_loading
         else:
@@ -1158,16 +1909,22 @@ class QDsim:
                 self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'A1d')
         AdotV2=self.tree_block.blocks_process_MVM(slipv1,self.local_blocks,'A2s')+\
                 self.tree_block.blocks_process_MVM(slipv2,self.local_blocks,'A2d')
+        t1 = MPI.Wtime()
+        self.compute_time += (t1 - t0)
 
         #Combine results from all ranks
+        t0 = MPI.Wtime()
         self.dsigmadt=comm.allreduce(dsigmadt, op=MPI.SUM)
         self.AdotV1=comm.allreduce(AdotV1, op=MPI.SUM)
         self.AdotV2=comm.allreduce(AdotV2, op=MPI.SUM)
+        t1 = MPI.Wtime()
+        self.comm_time += (t1 - t0)
+        #print(np.max(self.AdotV1),rank)
 
-        
         #comm.Barrier()
         #if(rank==0):
         #    print(self.AdotV2[100:120])
+
         nrjct=0
         h=dttry
         running=True
@@ -1207,21 +1964,26 @@ class QDsim:
 
         self.time=self.time+h
 
-
         #if(rank==0):
         #update slip rate and rake
         self.Tno_local=Tno_yhk
         self.Tt1o_local=Tt1o_yhk
         self.Tt2o_local=Tt2o_yhk
         self.state_local=state_yhk
+        #print(np.max(self.Tt1o_local),np.max(self.state_local),rank)
+        
         #self.Tt_local=np.sqrt(Tt1o_yhk*Tt1o_yhk+Tt2o_yhk*Tt2o_yhk)
         #print('self.Tt1o',np.mean(self.Tt1o),np.mean(self.Tt2o))
         self.slipv1[:]=0
         self.slipv2[:]=0
         self.slipv1[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt1o_local/(self.Tno_local-self.P[self.local_index]*1e-6)/self.a[self.local_index])
         self.slipv2[self.local_index]=(2.0*self.V0)*np.exp(-self.state_local/self.a[self.local_index])*np.sinh(self.Tt2o_local/(self.Tno_local-self.P[self.local_index]*1e-6)/self.a[self.local_index])
+        #print(np.max(np.exp(-self.state_local/self.a[self.local_index])),rank)
+        t0 = MPI.Wtime()
         self.slipv1=comm.allreduce(self.slipv1, op=MPI.SUM)
         self.slipv2=comm.allreduce(self.slipv2, op=MPI.SUM)
+        t1 = MPI.Wtime()
+        self.comm_time += (t1 - t0)
         self.slipv=np.sqrt(self.slipv1*self.slipv1+self.slipv2*self.slipv2)
 
         #print(np.max(self.slipv))
@@ -1239,23 +2001,41 @@ class QDsim:
 
         if(self.step%self.Para0['outsteps']==0):
             #print(self.counts, self.displs,self.Tno.shape,Tno_yhk.shape)
-            print(Tno_yhk.dtype, self.Tno.dtype)
+            #print(Tno_yhk.dtype, self.Tno.dtype)
+            t0 = MPI.Wtime()
             comm.Gatherv(sendbuf=Tno_yhk,recvbuf=(self.Tno, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt1o_yhk,recvbuf=(self.Tt1o, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt2o_yhk,recvbuf=(self.Tt2o, (self.counts, self.displs)), root=0)
+            t1 = MPI.Wtime()
+            self.comm_time += (t1 - t0)
             if(rank==0):
                 self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
                 self.rake=np.arctan2(self.Tt2o,self.Tt1o)
                 self.fric=self.Tt/(self.Tno-self.P*1e-6)
             if(self.Ifdila==False):
+                t0 = MPI.Wtime()
                 comm.Gatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)), root=0)
+                t1 = MPI.Wtime()
+                self.comm_time += (t1 - t0)
             
-            
-        
+        #update temperature
+        if(self.Ifthermal==True):
+            Tempe,dTdt0,Tarr=self.Calc_T_implicit_mpi(h)
+            self.Tempe=Tempe
+            self.dTdt0=dTdt0
+            self.Tempearr=Tarr
+            if(self.step%self.Para0['outsteps']==0):
+                Tarr[self.index_]=0
+                Tempe[self.index_]=0
+                dTdt0[self.index_]=0
+                self.dTdt0=comm.allreduce(dTdt0, op=MPI.SUM)
+                self.Tempe=comm.allreduce(Tempe, op=MPI.SUM)
+                self.Tempearr=comm.allreduce(Tarr, op=MPI.SUM)
+
         #update Pore pressure
 
         if(self.Ifdila==True):
-            comm.Allgatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)))
+            #comm.Allgatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)))
             Pre,dPdt0,Parr=self.Calc_P_implicit_mpi(h)
             self.dPdt0=dPdt0
             self.P=Pre
@@ -1267,6 +2047,8 @@ class QDsim:
                 self.dPdt0=comm.allreduce(dPdt0, op=MPI.SUM)
                 self.P=comm.allreduce(Pre, op=MPI.SUM)
                 self.Parr=comm.allreduce(Parr, op=MPI.SUM)
+
+        
 
         return h,dtnext
     
@@ -1327,8 +2109,9 @@ class QDsim:
         state_yhk=state+h*B21*dstatedt1
         #P_yhk=P+h*B21*dPdt1
         #print('Tt_yhk',np.mean(Tt_yhk))
-
+        #print(np.max(Tt1o_yhk),np.max(Tt1o),rank)
         dstatedt2,dsigmadt2,dtau1dt2,dtau2dt2=self.derivative_(Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk)
+        
         Tno_yhk=Tno+h*(B31*dsigmadt1+B32*dsigmadt2)
         Tt1o_yhk=Tt1o+h*(B31*dtau1dt1+B32*dtau1dt2)
         Tt2o_yhk=Tt2o+h*(B31*dtau2dt1+B32*dtau2dt2)
@@ -1337,7 +2120,7 @@ class QDsim:
         #P_yhk=P+h*(B31*dPdt1+B32*dPdt2)
         #state2_yhk=state2+h*(B31*dstate2dt1+B32*dstate2dt2)
         #print('Tt_yhk',np.mean(Tt_yhk))
-
+        
         dstatedt3,dsigmadt3,dtau1dt3,dtau2dt3=self.derivative_(Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk)
         Tno_yhk=Tno+h*(B41*dsigmadt1+B42*dsigmadt2+B43*dsigmadt3)
         Tt1o_yhk=Tt1o+h*(B41*dtau1dt1+B42*dtau1dt2+B43*dtau1dt3)
@@ -1372,7 +2155,7 @@ class QDsim:
         #P_yhk=P+h*(B71*dPdt1+B73*dPdt3+B74*dPdt4+B75*dPdt5+B76*dPdt6)
         #print('dstatedt6',np.max(dstatedt6),np.min(dstatedt6))
         #state2_yhk=state2+h*(B71*dstate2dt1+B73*dstate2dt3+B74*dstate2dt4+B75*dstate2dt5+B76*dstate2dt6)
-
+        
         dstatedt7,dsigmadt7,dtau1dt7,dtau2dt7=self.derivative_(Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk)
         Tno_yhk8=Tno+h*(B81*dsigmadt1+B83*dsigmadt3+B84*dsigmadt4+B85*dsigmadt5+B86*dsigmadt6+B87*dsigmadt7)
         Tt1o_yhk8=Tt1o+h*(B81*dtau1dt1+B83*dtau1dt3+B84*dtau1dt4+B85*dtau1dt5+B86*dtau1dt6+B87*dtau1dt7)
@@ -1406,12 +2189,12 @@ class QDsim:
 
         #print('errormax1,errormax2,relaemax1,relaemax2:',errormax1,errormax2,self.Relerrormax1,self.Relerrormax2)
 
-        if((self.maxslipv0)>1e-6):
-            self.RelTol1=1e-4
-            self.RelTol2=1e-4
-        else:
-            self.RelTol1=2e-6
-            self.RelTol2=2e-6
+        # if((self.maxslipv0)>1e-6):
+        #     self.RelTol1=1e-4
+        #     self.RelTol2=1e-4
+        # else:
+        #     self.RelTol1=2e-6
+        #     self.RelTol2=2e-6
         
         
 
@@ -1593,6 +2376,8 @@ class QDsim:
         add_scalar("slip2[m]", self.slip2)
         if(self.Ifdila==True):
             add_scalar("Pore_pressure[MPa]", self.P*1e-6)
+        if(self.Ifthermal==True):
+            add_scalar("Temperature[Degree]", self.Tempe)
         if(init==True):
             add_scalar("a", self.a)
             add_scalar("b", self.b)
@@ -1713,5 +2498,4 @@ class QDsim:
         #self.data = data
         # 在这里可以进行一些初始化操作
         
-
     

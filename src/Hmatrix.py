@@ -202,7 +202,7 @@ def print_tree(node, depth=0):
 
 
 class Block:
-    def __init__(self, row_cluster, col_cluster,row_index,col_index, children=None, level=0):
+    def __init__(self, row_cluster:np.ndarray, col_cluster:np.ndarray,row_index,col_index, children=None, level=0,rank0=0):
         """
         Block in HMatrix supports multi-layer recursive block division.
         :param row_cluster: row index
@@ -211,10 +211,13 @@ class Block:
         :param children: if it is a parent block, it contains a list of child blocks
         :param level: records the level of the current block
         """
+        self.rank=rank0
         self.row_cluster = row_cluster
         self.col_cluster = col_cluster
         self.row_index=row_index
         self.col_index=col_index
+        self.rank_row=0
+        self.rank_col=0
         #self.jud_svd=True
         self.U_1s=[]
         self.S_1s=[]
@@ -261,6 +264,7 @@ class Block:
         """Judge whether it is a leaf block"""
         return len(self.children) == 0
 
+
     def apply_low_rank_approximation(self, rank=10):
         """
         Perform low-rank approximation (SVD decomposition) on leaf blocks
@@ -273,6 +277,19 @@ class Block:
             return self.data
         return None
 
+# 子类 CustomBlock
+class LMBlock(Block):
+    def __init__(self, row_cluster: TreeNode, col_cluster: TreeNode, row_index, col_index, children=None, level=0):
+        # 转换为 CustomCluster
+        if not isinstance(row_cluster, TreeNode):
+            row_cluster = row_cluster.indices
+        if not isinstance(col_cluster, TreeNode):
+            col_cluster = col_cluster.indices
+        # 调用父类 __init__，传入 np.ndarray
+        super().__init__(row_cluster.indices, col_cluster.indices, row_index, col_index, children, level)
+        # 重新赋值以保持 CustomCluster 类型
+        self.row_cluster = row_cluster
+        self.col_cluster = col_cluster
 
 class BlockTree:
     def __init__(self, root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud, mini_leaf):
@@ -1345,87 +1362,6 @@ class BlockTree:
     
     
     
-    def master_scatter(self,dir,blocks_to_process,num_workers):
-        
-        def print_progress(current, total):
-            bar_len = 30
-            filled_len = int(round(bar_len * current / float(total)))
-            bar = '=' * filled_len + '-' * (bar_len - filled_len)
-            sys.stdout.write(f'\rProgress: [{bar}] {current}/{total} results collected')
-            sys.stdout.flush()
-        # 主进程准备任务
-        if rank == 0:
-            task_id = 1
-            next_task = 0
-            #nprocs = num_workers
-            
-            #print('label',len(self.Label))
-            if(len(blocks_to_process)==0):
-                self.collect_blocks(self.root_block)
-                #self.blocks_to_process.sort(key=lambda block: len(block.row_cluster), reverse=True)
-            else:
-                self.blocks_to_process=blocks_to_process
-
-            # 按进程数量平均切分任务
-            def split_blocks(blocks, nprocs):
-                n = len(blocks)
-                q, r = divmod(n, nprocs)
-                chunks = []
-                start = 0
-                for i in range(nprocs):
-                    end = start + q + (1 if i < r else 0)
-                    chunks.append(blocks[start:end])
-                    start = end
-                return chunks
-
-            task_chunks = split_blocks(self.blocks_to_process, num_workers)
-        else:
-            task_chunks = None
-
-        # 分发任务：每个进程获得一小块任务
-        my_blocks = comm.scatter(task_chunks, root=0)
-
-        # 每个进程处理自己的任务
-        #my_results = [self.ACA_worker(block) for block in my_blocks]
-        my_results = []
-        nblocks = len(my_blocks)
-        for i, block in enumerate(my_blocks):
-            try:
-                result = self.ACA_worker(block)
-            except Exception as e:
-                tb = traceback.format_exc()
-                print(f"[Rank {rank}] ❌ Exception on block:\n{tb}", flush=True)
-                result = None
-            my_results.append(result)
-
-            # 每个进程单独输出处理进度
-            percent = (i + 1) / nblocks * 100
-            bar_len = 30
-            filled_len = int(bar_len * (i + 1) / nblocks)
-            bar = '=' * filled_len + '-' * (bar_len - filled_len)
-            print(f"[Rank {rank}] Processing: [{bar}] {i + 1}/{nblocks} ({percent:.1f}%)", flush=True)
-
-        # 非主进程发送结果回 rank 0
-        if rank != 0:
-            comm.send(my_results, dest=0, tag=rank)
-        else:
-            # 主进程先收自己的结果
-            final_results = my_results.copy()
-            total_expected = size
-            collected = 1  # 主进程自己已经处理
-
-            print_progress(collected, total_expected)
-            # 然后接收其他进程的结果
-            for i in range(1, size):
-                worker_results = comm.recv(source=i, tag=i)
-                final_results.extend(worker_results)
-                collected += 1
-                print_progress(collected, total_expected)
-            
-            # 打印最终结果
-            print("All results collected:")
-            for res in final_results:
-                print(res)
     def save_to_HDF5(self,output_file,standard_blocks):
         with h5py.File(output_file, 'w') as f:
             for i, block in enumerate(standard_blocks):
@@ -1461,8 +1397,12 @@ class BlockTree:
             }
             standard_blocks.append(block_dict)
         return standard_blocks
+    
+    
+    
+
     #Assign tasks in each submatrix for calculating green functions
-    def master(self,dir,blocks_to_process,num_workers,save_corefunc=False):
+    def master(self,dir,blocks_to_process,num_workers,save_corefunc=False,rank0=0):
         task_id = 1
         next_task = 0
         active_workers = num_workers
@@ -1488,9 +1428,10 @@ class BlockTree:
 
         # **Initial Task Assignment**
         for worker_rank in range(1, num_workers + 1):
-            MPI.COMM_WORLD.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
-            print(f"Master: assign task {task_id} to Worker {worker_rank}, size: {len(self.blocks_to_process[task_id-1].row_cluster),len(self.blocks_to_process[task_id-1].col_cluster)}", flush=True)
-            task_id += 1
+            if(task_id-1<len(self.blocks_to_process)):
+                MPI.COMM_WORLD.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
+                print(f"Master: assign task {task_id} to Worker {worker_rank}, size: {len(self.blocks_to_process[task_id-1].row_cluster),len(self.blocks_to_process[task_id-1].col_cluster)}", flush=True)
+                task_id += 1
         
         finish_task=0
         pending_tasks = {} 
@@ -1550,7 +1491,12 @@ class BlockTree:
                         MPI.COMM_WORLD.send(None, dest=worker_rank, tag=STOP_TAG)   
 
         if(save_corefunc==True):
-            dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
+            
+            #dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
+            if(rank0==-1):
+                dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
+            else:
+                dump(self.blocks_to_process,dir+ "/blocks_to_process%d.joblib"%rank0)
             #blocks_to_process_trans=self.convert_to_standard_format(self.blocks_to_process)
             #self.save_to_HDF5(dir+ "/blocks_to_process.hdf5",blocks_to_process_trans)
         print("Master: all tasks completed.", flush=True)
@@ -1600,20 +1546,8 @@ class BlockTree:
                 MPI.COMM_WORLD.send({'worker': MPI.COMM_WORLD.Get_rank(), 'task_id': rectask['task_id'], 'result': block,'jud_already_calsvd':jud_already_calsvd}, dest=0, tag=RESULT_TAG)
                 
 
-    def calc_Hmatrix_ACA(self,dir,save_corefunc=False):
-        blocks_to_process=[]
-        self.collect_blocks(self.root_block)
-        for i in range(len(self.blocks_to_process)):
-            print('blocks_to_process:%d/%d'%(i,len(self.blocks_to_process)))
-            result=self.ACA_worker(self.blocks_to_process[i])
-            blocks_to_process.append(result)
-        
-        if(save_corefunc==True):
-            dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
-            #blocks_to_process_trans=self.convert_to_standard_format(self.blocks_to_process)
-            #self.save_to_HDF5(dir+ "/blocks_to_process.hdf5",blocks_to_process_trans)
-        print("Master: all blocks_to_process completed.", flush=True)
-        return blocks_to_process
+    
+    
 
     def collect_blocks(self, block):
         """ Recursively traverse all leaf nodes and collect blocks that need to calculate ACA """
@@ -1698,76 +1632,281 @@ class BlockTree:
         return block
     
     
-    
-    #Assign missions for forward iteration each rank with completed blocks submatrice
-    def parallel_block_scatter_send(self, blocks_to_process, plotHmatrix=False):
-        # comm = MPI.COMM_WORLD
-        # rank = comm.Get_rank()
-        # size = comm.Get_size()
 
-        local_blocks = None
-        n_task_per_proc=50
+
+    def parallel_block_scatter_send(self, blocks_to_process, target_ranks=None, plotHmatrix=False):
+        
+        local_blocks = []
+        n_task_per_proc = 50
+        
         if rank == 0:
             num_blocks = len(blocks_to_process)
-            print('num_blocks:', num_blocks)
-    
-            # Manually distribute tasks evenly
-            counts = [num_blocks // size] * size
-            for i in range(num_blocks % size):
+            print(f'num_blocks: {num_blocks}')
+            
+            # 默认：发送给所有进程（包括 0）
+            if target_ranks is None:
+                target_ranks = list(range(size))  # 包括 0
+            else:
+                # 验证 target_ranks：唯一、有序、在 0~size-1 范围内
+                target_ranks = sorted(set(target_ranks))
+                invalid = [r for r in target_ranks if not (0 <= r < size)]
+                if invalid:
+                    raise ValueError(f"Invalid target ranks: {invalid} (must be 0 to {size-1})")
+            
+            # 总目标进程：target_ranks
+            all_targets = target_ranks
+            num_total = len(all_targets)
+            
+            if num_total == 0:
+                raise ValueError("No target ranks specified; nothing to distribute.")
+            
+            # 检查是否包含 rank 0
+            includes_zero = 0 in target_ranks
+            zero_idx = all_targets.index(0) if includes_zero else -1
+            
+            # 均匀分配块
+            counts = [num_blocks // num_total] * num_total
+            for i in range(num_blocks % num_total):
                 counts[i] += 1
-    
+            
             task_chunks = []
             start = 0
             for c in counts:
-                task_chunks.append(blocks_to_process[start:start+c])
+                task_chunks.append(blocks_to_process[start:start + c])
                 start += c
-    
-            #print('task_chunks length per process:', [len(c) for c in task_chunks])
-    
-            # Send to other processes
-            for i in range(1, size):
-                
-                batch=int(len(task_chunks[i])/n_task_per_proc)
+            
+            # rank 0 的 local_blocks
+            if includes_zero:
+                local_blocks = task_chunks[zero_idx]
+                print(f'rank {rank} assigned {len(local_blocks)} blocks (self included)')
+            else:
+                local_blocks = []  # 不保留
+                print(f'rank {rank} assigned 0 blocks (sender only)')
+            
+            # 向每个 target_ranks 发送（排除自己，如果包含 0）
+            for idx, tgt in enumerate(target_ranks):
+                if tgt == 0:  # 跳过发送给自己
+                    continue
+                chunk = task_chunks[idx]
+                if not chunk:  # 空 chunk 跳过
+                    continue
+                batch_size = max(1, len(chunk) // n_task_per_proc)
                 start = 0
-                #Send in sequence to reduce the load of each transmission
+                base_tag = 77 + tgt * 100  # 独特 tag 基数
                 for j in range(n_task_per_proc):
-                    #task_dict=self.trans_class_to_dict(task_chunks[i])
-                    if(j<n_task_per_proc-1):
-                        comm.send(task_chunks[i][start:start+batch], dest=i, tag=77+j)
-                    else:
-                        comm.send(task_chunks[i][start:], dest=i, tag=77+j)
-                    start += batch
-                    #comm.send(task_chunks[i], dest=i, tag=77)
-            local_blocks = task_chunks[0]  # rank=0 his task
-            #print('rank ',rank,len(local_blocks))
-    
+                    end = start + batch_size if j < n_task_per_proc - 1 else len(chunk)
+                    sub_chunk = chunk[start:end]
+                    if sub_chunk:
+                        comm.send(sub_chunk, dest=tgt, tag=base_tag + j)
+                    start = end
+                print(f'rank {tgt} assigned {len(chunk)} blocks')
+        
         else:
-            # Non-zero process receiving tasks
-            #print('rank',rank,len(task_chunks[i]))
-            #local_blocks = comm.recv(source=0, tag=77)
-            #print('rank',rank,len(local_blocks))
+            # 非 rank 0：只有 target_ranks 中的进程接收
+            if target_ranks is None:
+                target_ranks = list(range(size))  # 匹配默认
+            if rank in target_ranks:
+                local_blocks = []
+                base_tag = 77 + rank * 100
+                for j in range(n_task_per_proc):
+                    try:
+                        task = comm.recv(source=0, tag=base_tag + j)
+                        local_blocks.extend(task)
+                    except Exception:  # 最后一批可能为空
+                        break
+                #print(f'rank {rank} received {len(local_blocks)} blocks')
+            else:
+                print(f'rank {rank} idle (not targeted)')
+        
+        # 统一打印
+        print(f'rank {rank} final Hmatrix sub-blocks number: {len(local_blocks)}')
 
+        
+        return local_blocks
+
+    #Assign missions for forward iteration each rank with completed blocks submatrice
+    def parallel_block_scatter_send_(self, blocks_to_process,rows,cols, plotHmatrix=False):
+        local_blocks = None
+        n_task_per_proc = 50
+        if rank == 0:
+            num_rows = len(blocks_to_process)
+            assert num_rows == rows, f"blocks_to_process length ({num_rows}) must match rows ({rows})"
+            print(f'num_rows: {num_rows}, total blocks per row: {[len(row_blocks) for row_blocks in blocks_to_process]}')
+            
+            # 为每一行准备任务分发
+            task_chunks_per_row = {}  # dict: row_id -> list of chunks for each col in row
+            
+            for i in range(rows):
+                # row_blocks = blocks_to_process[i]
+                # num_blocks = len(row_blocks)
+                
+                # # 均匀分发到该行的 cols 个进程
+                # counts = [num_blocks // cols] * cols
+                # for j in range(num_blocks % cols):
+                #     counts[j] += 1
+                
+                task_chunks = []
+                # start = 0
+                for blocks in blocks_to_process[i]:
+                    task_chunks.append(blocks)
+                    #start += c
+                
+                task_chunks_per_row[i] = task_chunks
+                print(f'Row {i}: chunks lengths: {[len(c) for c in task_chunks]}')
+            
+            # Rank 0 保留自己的 chunk (row 0, col 0)
+            local_blocks = task_chunks_per_row[0][0]
+            
+            # 发送到其他进程：按行发送到该行的所有进程（跳过自己）
+            for i in range(rows):
+                for j in range(cols):
+                    target_rank = i * cols + j
+                    if target_rank == 0:
+                        continue  # 跳过自己
+                    
+                    target_chunks = task_chunks_per_row[i][j]
+                    batch = int(len(target_chunks) / n_task_per_proc)
+                    start = 0
+                    for k in range(n_task_per_proc):
+                        if k < n_task_per_proc - 1:
+                            chunk = target_chunks[start:start + batch]
+                        else:
+                            chunk = target_chunks[start:]
+                        
+                        # 发送 chunk，并附加行ID以便接收方验证（可选）
+                        send_data = {'row': i, 'chunk': chunk}
+                        comm.send(send_data, dest=target_rank, tag=77 + k)
+                        start += batch
+            
+            # 可选：保存所有chunks用于plot
+            self.task_chunks_per_row = task_chunks_per_row
+        
+        else:
+            # 非零进程：根据自己的 row 接收数据
             local_blocks = []
+            batch_received = 0
             for j in range(n_task_per_proc):
-                task = comm.recv(source=0, tag=77 + j)
-                for k in range(len(task)):
-                    local_blocks.append(task[k])
-        print('rank ',rank,'Hmatirx sub-blocks number',len(local_blocks))
+                recv_data = comm.recv(source=0, tag=77 + j)
+                received_row = recv_data['row']
+                #assert received_row == row, f"Received row {received_row} mismatch with my row {row}"
+                chunk = recv_data['chunk']
+                local_blocks.extend(chunk)
+                batch_received += 1
+            
+            # 如果最后一批不足 n_task_per_proc，会在最后 tag 接收剩余
+            # 但由于发送方总是发 n_task_per_proc 次（即使最后空），这里假设发送方调整
+            # 实际中，可用 status 检查，但简化假设固定循环
+        
+        #print(f'Rank {rank} (row {row}, col {col}): Hmatrix sub-blocks number {len(local_blocks) if local_blocks is not None else 0}')
+        
         # Optional drawing processing
         if plotHmatrix:
-            # Receive data from each process step by step
-            #if(rank==0):
-            # gathered_blocks = []
-            # for i in range(size):
-            #     if rank == i:
-            #         gathered_blocks.append(local_blocks)
-            #     comm.barrier()  
-
             if rank == 0:
-                self.blocks_plot_mpi(task_chunks)
-    
+
+                self.blocks_plot_mpi(blocks_to_process,lattice=True,Nrow=rows)
+        
         return local_blocks
     
+    def blocks_process_MVM_(self, xvector, blocks_to_process, type):
+        yvector = np.zeros(len(xvector))
+
+        if type == 'A1s':
+            for blk in blocks_to_process:
+                x_ = xvector[blk.col_cluster]
+                if blk.judsvd:
+                    tmp = np.dot(blk.Vt_1s, x_)   # r × 1
+                    tmp *= blk.S_1s               # 原地乘法
+                    Ax_rsvd = np.dot(blk.U_1s, tmp)
+                elif hasattr(blk, 'judaca') and blk.judaca:
+                    tmp = np.dot(blk.ACA_dictS['V_ACA_A1s'], x_)
+                    Ax_rsvd = np.dot(blk.ACA_dictS['U_ACA_A1s'], tmp)
+                else:
+                    Ax_rsvd = np.dot(blk.Mf_A1s, x_)
+                yvector[blk.row_cluster] += Ax_rsvd
+
+        elif type == 'A2s':
+            for blk in blocks_to_process:
+                x_ = xvector[blk.col_cluster]
+                if blk.judsvd:
+                    tmp = np.dot(blk.Vt_2s, x_)
+                    tmp *= blk.S_2s
+                    Ax_rsvd = np.dot(blk.U_2s, tmp)
+                elif hasattr(blk, 'judaca') and blk.judaca:
+                    tmp = np.dot(blk.ACA_dictS['V_ACA_A2s'], x_)
+                    Ax_rsvd = np.dot(blk.ACA_dictS['U_ACA_A2s'], tmp)
+                else:
+                    Ax_rsvd = np.dot(blk.Mf_A2s, x_)
+                yvector[blk.row_cluster] += Ax_rsvd
+
+        elif type == 'Bs':
+            for blk in blocks_to_process:
+                x_ = xvector[blk.col_cluster]
+                if blk.judsvd:
+                    if len(blk.Vt_Bs) > 0:
+                        tmp = np.dot(blk.Vt_Bs, x_)
+                        tmp *= blk.S_Bs
+                        Ax_rsvd = np.dot(blk.U_Bs, tmp)
+                    else:
+                        Ax_rsvd = np.zeros(len(blk.row_cluster))
+                elif hasattr(blk, 'judaca') and blk.judaca:
+                    if len(blk.ACA_dictS['U_ACA_Bs']) > 0:
+                        tmp = np.dot(blk.ACA_dictS['V_ACA_Bs'], x_)
+                        Ax_rsvd = np.dot(blk.ACA_dictS['U_ACA_Bs'], tmp)
+                    else:
+                        Ax_rsvd = np.zeros(len(blk.row_cluster))
+                else:
+                    Ax_rsvd = np.dot(blk.Mf_Bs, x_)
+                yvector[blk.row_cluster] += Ax_rsvd
+
+        elif type == 'A1d':
+            for blk in blocks_to_process:
+                x_ = xvector[blk.col_cluster]
+                if blk.judsvd:
+                    tmp = np.dot(blk.Vt_1d, x_)
+                    tmp *= blk.S_1d
+                    Ax_rsvd = np.dot(blk.U_1d, tmp)
+                elif hasattr(blk, 'judaca') and blk.judaca:
+                    tmp = np.dot(blk.ACA_dictD['V_ACA_A1d'], x_)
+                    Ax_rsvd = np.dot(blk.ACA_dictD['U_ACA_A1d'], tmp)
+                else:
+                    Ax_rsvd = np.dot(blk.Mf_A1d, x_)
+                yvector[blk.row_cluster] += Ax_rsvd
+
+        elif type == 'A2d':
+            for blk in blocks_to_process:
+                x_ = xvector[blk.col_cluster]
+                if blk.judsvd:
+                    tmp = np.dot(blk.Vt_2d, x_)
+                    tmp *= blk.S_2d
+                    Ax_rsvd = np.dot(blk.U_2d, tmp)
+                elif hasattr(blk, 'judaca') and blk.judaca:
+                    tmp = np.dot(blk.ACA_dictD['V_ACA_A2d'], x_)
+                    Ax_rsvd = np.dot(blk.ACA_dictD['U_ACA_A2d'], tmp)
+                else:
+                    Ax_rsvd = np.dot(blk.Mf_A2d, x_)
+                yvector[blk.row_cluster] += Ax_rsvd
+
+        elif type == 'Bd':
+            for blk in blocks_to_process:
+                x_ = xvector[blk.col_cluster]
+                if blk.judsvd:
+                    if len(blk.Vt_Bd) > 0:
+                        tmp = np.dot(blk.Vt_Bd, x_)
+                        tmp *= blk.S_Bd
+                        Ax_rsvd = np.dot(blk.U_Bd, tmp)
+                    else:
+                        Ax_rsvd = np.zeros(len(blk.row_cluster))
+                elif hasattr(blk, 'judaca') and blk.judaca:
+                    if len(blk.ACA_dictD['U_ACA_Bd']) > 0:
+                        tmp = np.dot(blk.ACA_dictD['V_ACA_Bd'], x_)
+                        Ax_rsvd = np.dot(blk.ACA_dictD['U_ACA_Bd'], tmp)
+                    else:
+                        Ax_rsvd = np.zeros(len(blk.row_cluster))
+                else:
+                    Ax_rsvd = np.dot(blk.Mf_Bd, x_)
+                yvector[blk.row_cluster] += Ax_rsvd
+
+        return yvector
 
     '''Matrix and vector product calculation'''
     def blocks_process_MVM(self,xvector,blocks_to_process,type):
@@ -1994,7 +2133,7 @@ class BlockTree:
         return cp.asnumpy(yvector)
 
     #Hmatrix structure drawing
-    def blocks_plot_mpi(self,gathered_results):
+    def blocks_plot_mpi(self,gathered_results,lattice=False,Nrow=4):
         color1=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*size
         plt.figure(figsize=(10,10))
         #plt.rcParams['font.family'] = 'Arial'
@@ -2002,25 +2141,42 @@ class BlockTree:
       
 
         #print('gathered_results',len(gathered_results))
-        for i in range(len(gathered_results)):
-        #for i in range(4):
-            for j in range(len(gathered_results[i])):
-                block=gathered_results[i][j]
-                # rowleftsize=len(block.row_index)
-                # colleftsize=len(block.col_index)
-                
-                # midr=(block.row_index[0]+block.row_index[-1])/2
-                # midc=(block.col_index[0]+block.col_index[-1])/2
-                # plt.plot([block.col_index[0],block.col_index[-1]],[midr,midr],c=color1[i])
-                # plt.plot([midc,midc],[block.row_index[0],block.row_index[-1]],c=color1[i])
-                rect = np.array([[block.row_index[0], block.col_index[0]], 
-                                 [block.row_index[-1], block.col_index[0]], 
-                                 [block.row_index[-1], block.col_index[-1]], 
-                                 [block.row_index[0], block.col_index[-1]], 
-                                 [block.row_index[0], block.col_index[0]]])
+        if(lattice==False):
+            for i in range(len(gathered_results)):
+            #for i in range(4):
+                for j in range(len(gathered_results[i])):
+                    block=gathered_results[i][j]
 
-                # Plot the rectangle
-                plt.plot(rect[:, 0], rect[:, 1], c=color1[i])
+
+
+                    if(len(block.row_index)>0 and len(block.col_index)>0):
+                        rect = np.array([[block.row_index[0], block.col_index[0]], 
+                                        [block.row_index[-1], block.col_index[0]], 
+                                        [block.row_index[-1], block.col_index[-1]], 
+                                        [block.row_index[0], block.col_index[-1]], 
+                                        [block.row_index[0], block.col_index[0]]])
+
+                        # Plot the rectangle
+                        plt.plot(rect[:, 0], rect[:, 1], c=color1[i])
+                        #if(lattice==False):
+                            
+                        #else:
+                        #    plt.plot(rect[:, 0], rect[:, 1], c=color1[block.rank_row*Ncol+block.rank_col])
+
+        else:
+            Nrank_row=int(size/Nrow)
+            for i in range(len(gathered_results)):
+            #for i in range(4):
+                for j in range(len(gathered_results[i])):
+                    for k in range(len(gathered_results[i][j])):
+                        block=gathered_results[i][j][k]
+                        if(len(block.row_index)>0 and len(block.col_index)>0):
+                            rect = np.array([[block.col_index[0], block.row_index[0]], 
+                                            [block.col_index[-1], block.row_index[0]], 
+                                            [block.col_index[-1], block.row_index[-1]], 
+                                            [block.col_index[0], block.row_index[-1]], 
+                                            [block.col_index[0], block.row_index[0]]])
+                            plt.plot(rect[:, 0], rect[:, 1], c=color1[i*Nrank_row+j])
 
 
         
@@ -2070,132 +2226,497 @@ class BlockTree:
                 self.traverse_and_apply(child, depth + 1, max_level)
 
 
-# --------------------------
-# 递归构造 BlockTree
-# --------------------------
+class Hmatrix:
+    def __init__(self, xg,nodelst,elelst,eleVec,Para0,mini_leaf=32):
+        self.mu_,self.lambda_,self.halfspace_jud=Para0['Shear modulus'],Para0['Lame constants'],Para0['Half space']
+        self.plotHmatrix=Para0['Hmatrix_mpi_plot']
+        self.mini_leaf=mini_leaf
+        # if(self.is_power_of_four(size)==False and Para0['Lattice Matrice']==True):
 
-def create_recursive_blocks(row_cluster,col_cluster,row_index,col_index,points,plotHmatrix,mini_leaf=16, depth=0):
-    """
-    Recursively create BlockTree
-    :param matrix: target matrix
-    :param row_range: current block row index range
-    :param col_range: current block column index range
-    :param max_depth: maximum recursive depth
-    :param depth: current depth
-    :return: Block object
-    """
+        #     print(f"{size}  is not suitable for lattice matrix!Rank size should be an integer power of 4")
+        #     sys.exit()
+        
+        self.plotrec=[]
+        self.xg=xg
+        self.nodelst=nodelst
+        self.elelst=elelst
+        self.eleVec=eleVec
+        self.halfspace_jud=Para0['Hmatrix_mpi_plot']
+        self.Lt_jud=Para0['Lattice Matrice']
+        self.colormpi=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*size
+        
 
-    hf_Nindex=int(len(row_index)/2)
+        self.init(Para0)
+
     
-    jud_admis=is_admissible(row_cluster.indices,col_cluster.indices,points, eta=2.0)
-    #if(len(row_cluster.indices)>5000 or len(col_cluster.indices)>5000):
-    #    jud_admis=False
-    if jud_admis == True or (len(row_cluster.indices) <= mini_leaf or len(col_cluster.indices) <= mini_leaf):
-        # Termination condition: reaching the maximum depth or the matrix block is too small to be further divided
-        return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
+    def is_power_of_four(self,n):
+        if n <= 0:
+            return False
+        while n % 4 == 0:
+            n //= 4
+        return n == 1
+    
+    def init_cluster(self):
+        self.cluster = np.arange(len(self.xg))
+        self.cluster_raw =build_block_tree(self.cluster, self.xg)
+        self.cluster_col =build_block_tree(self.cluster, self.xg)
 
-    row_cluster_left=row_cluster.left
-    row_cluster_right=row_cluster.right
-    col_cluster_left=col_cluster.left
-    col_cluster_right=col_cluster.right
+    def init(self,Para0):
+        self.init_cluster()
+        if(self.plotHmatrix==True):
+            plt.figure(figsize=(10,10))
+        print('start Recursively traverse create the BlockTree.')
+        
+        if(Para0['Lattice Matrice']==False):
+            self.root_block = self.create_recursive_blocks(self.cluster_raw, self.cluster_col,self.cluster,self.cluster,self.xg,self.plotHmatrix)
+            self.tree_block = BlockTree(self.root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
+        else:
+            self.maxdepth=Para0['Lattice Partitioning depth']
+            rowN=pow(2,self.maxdepth)
+            rowN=int(rowN)
+            colN=int(size/rowN)
+            if(size%rowN!=0):
+                print(f"number of rank {size}  is not suitable for lattice matrix!Rank size should be an integer multiples of lattice row {rowN}")
+                sys.exit()
+            self.dims=[rowN,colN]
+            #print('self.maxdepth',self.maxdepth,log(size,4),size)
+            self.root_block = self.create_recursive_truncation_blocks(self.cluster_raw, self.cluster_col,self.cluster,self.cluster,self.xg,self.plotHmatrix,maxdepth=self.maxdepth)
+            self.tree_block = BlockTree(self.root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
+            LMblocks_to_process=self.collect_blocks(self.root_block)
+            LTMtree_block_lst=[]
+            cart_coords=[]
+            
+            # periods = [False, False]
+            # reorder = False
+            # config.init_cart(self.dims,periods=periods, reorder=reorder)
+            # cart_comm = config.get_cart()
+            Nd=self.dims[0]
+            NI=len(self.root_block.row_index)
+            for i in range(len(LMblocks_to_process)):
+                
+                row_cluster_indice=LMblocks_to_process[i].row_cluster
+                col_cluster_indice=LMblocks_to_process[i].col_cluster
+                row_index=LMblocks_to_process[i].row_index
+                col_index=LMblocks_to_process[i].col_index
+                rowI=round((LMblocks_to_process[i].row_index[-1]+1)/NI*Nd)-1
+                colI=round((LMblocks_to_process[i].col_index[-1]+1)/NI*Nd)-1
+                cart_coords.append([rowI,colI])
+                # #print(rowI,colI)
+                # #if(rowI == 0 and colI == 0):
+                # target_coords = [rowI, colI]
+                # target_rank = cart_comm.Get_cart_rank(target_coords)
+                # print(target_coords,target_rank)
+                # index_LTM.append(target_rank)
+                cluster = np.arange(len(self.xg))
+                cluster_raw =build_block_tree(cluster[row_cluster_indice], self.xg[row_cluster_indice])
+                cluster_col =build_block_tree(cluster[col_cluster_indice], self.xg[col_cluster_indice])
+                
+                root_block = self.create_recursive_blocks(cluster_raw, cluster_col,
+                                                        row_index,col_index,self.xg,self.plotHmatrix)
+                LTMtree_block = BlockTree(root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,
+                                       self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
+                #blocks_to_process=self.collect_blocks(LTMtree_block.root_block)
+                LTMtree_block_lst.append(LTMtree_block)
+            self.LTMtree_block_lst=LTMtree_block_lst
+            self.cart_coords=np.array(cart_coords)
 
-
-    if((row_cluster_left==None) or (row_cluster_right==None) or (col_cluster_left==None) or (col_cluster_right==None)):
-        return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
-
-    # rowleftsize=len(row_cluster_left.indices)
-    # rowrightsize=len(row_cluster_right.indices)
-    # colleftsize=len(col_cluster_left.indices)
-    # colrightsize=len(col_cluster_right.indices)
-    #print(colleftsize,colrightsize)
-    #print('depth',depth)
-    if(plotHmatrix==True and len(col_index)>0 and len(row_index)>0):
-        #print('!!!!!!!!!!!!!!')
-        # midr=(row_index[0]+row_index[-1])/2.0
-        # midc=(col_index[0]+col_index[-1])/2.0
-        # midr=row_index[0]+(rowleftsize+rowrightsize)/2
-        # midc=col_index[0]+(colleftsize+colrightsize)/2
-        midr=(row_index[0]+row_index[-1])/2
-        midc=(col_index[0]+col_index[-1])/2
-        plt.plot([col_index[0],col_index[-1]],[midr,midr],c='red')
-        plt.plot([midc,midc],[row_index[0],row_index[-1]],c='red')
+        if(self.plotHmatrix==True):
+            plt.xlim(self.cluster[0],self.cluster[-1])
+            plt.ylim(self.cluster[0],self.cluster[-1])
+            if(Para0['Lattice Matrice']==False):
+                plt.savefig('HmatrixStru.png',dpi=500)
         #plt.show()
 
+    def collect_blocks(self,block):
+        """ Recursively traverse all leaf nodes and collect blocks that need to calculate ACA """
+        blocks_to_process = []
+        def traverse(block):
+            if block.is_leaf():
+                blocks_to_process.append(block)
+            else:
+                for child in block.children:
+                    traverse(child)
+        traverse(block)
+        return blocks_to_process
+        
 
+
+    def assigen_lattice_matrice(self):
+        self.plotrec=[]
+        periods = [False, False]
+        reorder = False
+        #if(Para0['Lattice Matrice']==True):
+        
+        
+        config.init_cart(self.dims,periods=periods, reorder=reorder)
+        cart_comm = config.get_cart()
+        
+        #cart_comm = comm.Create_cart(dims=self.dims, periods=periods, reorder=reorder)
+        if(rank==0):
+            #procs_rows, procs_cols = dims
+            Nd=self.dims[0]
+            NI=len(self.root_block.row_index)
+            LMblocks_to_process=self.collect_blocks(self.root_block)
+            Coord=[]
+            for i in range(len(LMblocks_to_process)):
+                rowI=round((LMblocks_to_process[i].row_index[-1]+1)/NI*Nd)-1
+                colI=round((LMblocks_to_process[i].col_index[-1]+1)/NI*Nd)-1
+                Coord.append([rowI, colI])
+                #print(rowI,colI)
+                #if(rowI == 0 and colI == 0):
+                target_coords = [rowI, colI]
+                target_rank = cart_comm.Get_cart_rank(target_coords)
+                print('Lattice matrix coord:',rowI,colI,target_rank,len(LMblocks_to_process))
+
+                
+                #data = pickle.dumps(LMblocks_to_process[i])
+                #print(LMblocks_to_process[i].row_index[:20])
+                if(target_rank!=0):
+                    #comm.send(LMblocks_to_process[i], dest=target_rank, tag=100)
+                    #cart_comm.send(data, dest=target_rank, tag=100)
+                    cart_comm.send(LMblocks_to_process[i].row_cluster, dest=target_rank, tag=100)
+                    cart_comm.send(LMblocks_to_process[i].col_cluster, dest=target_rank, tag=200)
+                    cart_comm.send(LMblocks_to_process[i].row_index, dest=target_rank, tag=300)
+                    cart_comm.send(LMblocks_to_process[i].col_index, dest=target_rank, tag=400)
+                else:
+                    #LTMroot_block=LMblocks_to_process[i]
+                    row_cluster_indice=LMblocks_to_process[i].row_cluster
+                    col_cluster_indice=LMblocks_to_process[i].col_cluster
+                    row_index=LMblocks_to_process[i].row_index
+                    col_index=LMblocks_to_process[i].col_index
+
+            self.Coord=np.array(Coord)
+        #while cart_comm.Iprobe(source=0, tag=100):
+        else:
+            row_cluster_indice = cart_comm.recv(source=0, tag=100)
+            col_cluster_indice = cart_comm.recv(source=0, tag=200)
+            row_index = cart_comm.recv(source=0, tag=300)
+            col_index = cart_comm.recv(source=0, tag=400)
+            
+            # Nd=self.dims[0]
+            # NI=len(self.root_block.row_index)
+            # rowI=round((self.LTMroot_block.row_index[-1]+1)/NI*Nd)-1
+            # colI=round((self.LTMroot_block.col_index[-1]+1)/NI*Nd)-1
+            # print('rece',rowI,colI,rank)
+        # #print(type(LTMroot_block))
+        cart_comm.Barrier()
+        cluster = np.arange(len(self.xg))
+        cluster_raw =build_block_tree(cluster[row_cluster_indice], self.xg[row_cluster_indice])
+        cluster_col =build_block_tree(cluster[col_cluster_indice], self.xg[col_cluster_indice])
+        
+        
+        self.root_block = self.create_recursive_blocks(cluster_raw, cluster_col,
+                                                        row_index,col_index,self.xg,self.plotHmatrix)
+        self.LTMtree_block = BlockTree(self.root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,
+                                       self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
+        if(self.plotHmatrix==True):
+            #print('start to plot.')
+            FIXED_SHAPE = (5, 2)
+            ELEMENTS_PER_ARRAY=FIXED_SHAPE[0] * FIXED_SHAPE[1]
+            # 步骤 2：提取元数据
+            data=np.array(self.plotrec,dtype=np.int32)
+            
+            num_arrays = len(data)  # 每个进程的数组数量
+            sendcount = num_arrays * ELEMENTS_PER_ARRAY  # 总元素数 = 数组数量 * 每个数组的元素数
+            sendbuf = np.concatenate([arr.ravel() for arr in data])  # 拼接为连续缓冲区
+
+            # 步骤 3：收集元数据
+            # (1) 收集每个进程的 num_arrays
+            num_arrays_all = cart_comm.gather(num_arrays, root=0)
+
+            # (2) 收集每个进程的 sendcount
+            recvcounts = cart_comm.gather(sendcount, root=0)
+
+            # 步骤 4：计算偏移量并分配接收缓冲区
+            if rank == 0:
+                displs = [0] * size
+                total_count = recvcounts[0]
+                for i in range(1, size):
+                    displs[i] = displs[i-1] + recvcounts[i-1]
+                    total_count += recvcounts[i]
+                recvbuf = np.empty(total_count, dtype=np.int32)
+            else:
+                recvbuf = None
+                displs = None  # 为非根进程定义 displs，避免 UnboundLocalError
+
+            # 步骤 5：使用 Gatherv 收集数据
+            comm.Gatherv(sendbuf, [recvbuf, recvcounts, displs, MPI.INT], root=0)
+            
+            if rank == 0:
+                plt.figure(figsize=(10,10))
+                #plt.rcParams['font.family'] = 'Arial'
+                plt.rcParams.update({'font.size': 14})
+
+                offset = 0
+                result = []
+                for i in range(size):
+                    proc_data = []
+                    for j in range(num_arrays_all[i]):
+                        proc_data.append(recvbuf[offset:offset + ELEMENTS_PER_ARRAY].reshape(FIXED_SHAPE))
+                        offset += ELEMENTS_PER_ARRAY
+                    result.append(proc_data)
+
+            
+
+                for i in range(len(result)):
+                    plotrec=result[i]
+                    plotrec=np.array(plotrec)
+                    
+                    # Plot the rectangle
+                    for j in range(len(plotrec)):
+                        plt.plot(plotrec[j,:, 0], plotrec[j,:, 1], c=self.colormpi[i])
+
+                plt.xlim(0,len(self.xg)-1)
+                plt.ylim(0,len(self.xg)-1)
+                plt.savefig('LatMStru_mpi.png',dpi=500)
+    
+
+            
 
     
 
+    def addplotrec(self,row_index,col_index):
+        if(len(row_index)>0 and len(col_index)>0):
+            rect = np.array([[row_index[0], col_index[0]], 
+                            [row_index[-1], col_index[0]], 
+                            [row_index[-1], col_index[-1]], 
+                            [row_index[0], col_index[-1]], 
+                            [row_index[0], col_index[0]]])
+            self.plotrec.append(rect)
+
+    # --------------------------
+    # Recursive construction BlockTree
+    # --------------------------
+    def create_recursive_blocks(self,row_cluster,col_cluster,row_index,col_index,points,plotHmatrix,mini_leaf=16, depth=0):
+        """
+        Recursively create BlockTree
+        :param matrix: target matrix
+        :param row_range: current block row index range
+        :param col_range: current block column index range
+        :param max_depth: maximum recursive depthc
+        :param depth: current depth
+        :return: Block object
+        """
+
+        hf_Nindex=int(len(row_index)/2)
+        
+        jud_admis=is_admissible(row_cluster.indices,col_cluster.indices,points, eta=2.0)
+        #if(len(row_cluster.indices)>5000 or len(col_cluster.indices)>5000):
+        #    jud_admis=False
+        if jud_admis == True or (len(row_cluster.indices) <= mini_leaf or len(col_cluster.indices) <= mini_leaf):
+            # Termination condition: reaching the maximum depth or the matrix block is too small to be further divided
+            if(self.Lt_jud==True):
+                
+                self.addplotrec(row_index,col_index)
+            return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth,rank0=rank)
+            
+        row_cluster_left=row_cluster.left
+        row_cluster_right=row_cluster.right
+        col_cluster_left=col_cluster.left
+        col_cluster_right=col_cluster.right
+
+
+        if((row_cluster_left==None) or (row_cluster_right==None) or (col_cluster_left==None) or (col_cluster_right==None)):
+            if(self.Lt_jud==True):
+                self.addplotrec(row_index,col_index)
+            return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth,rank0=rank)
+        
+        # rowleftsize=len(row_cluster_left.indices)
+        # rowrightsize=len(row_cluster_right.indices)
+        # colleftsize=len(col_cluster_left.indices)
+        # colrightsize=len(col_cluster_right.indices)
+        #print(colleftsize,colrightsize)
+        #print('depth',depth)
+        if(plotHmatrix==True and len(col_index)>0 and len(row_index)>0):
+            #print('!!!!!!!!!!!!!!')
+            # midr=(row_index[0]+row_index[-1])/2.0
+            # midc=(col_index[0]+col_index[-1])/2.0
+            # midr=row_index[0]+(rowleftsize+rowrightsize)/2
+            # midc=col_index[0]+(colleftsize+colrightsize)/2
+            midr=(row_index[0]+row_index[-1])/2
+            midc=(col_index[0]+col_index[-1])/2
+            plt.plot([col_index[0],col_index[-1]],[midr,midr],c=self.colormpi[rank])
+            plt.plot([midc,midc],[row_index[0],row_index[-1]],c=self.colormpi[rank])
+            #plt.show()
+            
+            
+
+
+        # 创建四个子块
+        children = [
+            self.create_recursive_blocks(row_cluster_left, col_cluster_left,
+                            row_index[:hf_Nindex],col_index[:hf_Nindex],points, plotHmatrix,mini_leaf,depth + 1),
+            self.create_recursive_blocks(row_cluster_left, col_cluster_right,
+                            row_index[:hf_Nindex],col_index[hf_Nindex:],points, plotHmatrix,mini_leaf,depth + 1),
+            self.create_recursive_blocks(row_cluster_right, col_cluster_left, 
+                            row_index[hf_Nindex:],col_index[:hf_Nindex],points,plotHmatrix,mini_leaf,depth + 1),
+            self.create_recursive_blocks(row_cluster_right, col_cluster_right, 
+                            row_index[hf_Nindex:],col_index[hf_Nindex:],points,plotHmatrix,mini_leaf,depth + 1),
+        ]
+
+        return Block(row_cluster.indices,col_cluster.indices,row_index,col_index,children=children, level=depth,rank0=rank)
     
 
-    # 创建四个子块
-    children = [
-        create_recursive_blocks(row_cluster_left, col_cluster_left,
-                        row_index[:hf_Nindex],col_index[:hf_Nindex],points, plotHmatrix,mini_leaf,depth + 1),
-        create_recursive_blocks(row_cluster_left, col_cluster_right,
-                        row_index[:hf_Nindex],col_index[hf_Nindex:],points, plotHmatrix,mini_leaf,depth + 1),
-        create_recursive_blocks(row_cluster_right, col_cluster_left, 
-                        row_index[hf_Nindex:],col_index[:hf_Nindex],points,plotHmatrix,mini_leaf,depth + 1),
-        create_recursive_blocks(row_cluster_right, col_cluster_right, 
-                        row_index[hf_Nindex:],col_index[hf_Nindex:],points,plotHmatrix,mini_leaf,depth + 1),
-    ]
+    def create_recursive_truncation_blocks(self,row_cluster,col_cluster,row_index,col_index,points,plotHmatrix,maxdepth=2,mini_leaf=16, depth=0):
+        """
+        Recursively create BlockTree
+        :param matrix: target matrix
+        :param row_range: current block row index range
+        :param col_range: current block column index range
+        :param max_depth: maximum recursive depth
+        :param depth: current depth
+        :return: Block object
+        """
 
-    return Block(row_cluster.indices,col_cluster.indices,row_index,col_index,children=children, level=depth)
+        hf_Nindex=int(len(row_index)/2)
+        
+        
+        
+        #if(len(row_cluster.indices)>5000 or len(col_cluster.indices)>5000):
+        #    jud_admis=False
+        #if(depth<maxdepth):
+        if(len(row_cluster.indices) <= mini_leaf or len(col_cluster.indices) <= mini_leaf):
+            print('elements are too few!')
+            return
 
+        if(depth == maxdepth):
+            # Termination condition: reaching the maximum depth or the matrix block is too small to be further divided
+            return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
+        # else:
+        #     jud_admis=is_admissible(row_cluster.indices,col_cluster.indices,points, eta=2.0)
+        #     if jud_admis == True or (len(row_cluster.indices) <= mini_leaf or len(col_cluster.indices) <= mini_leaf):
+        #         # Termination condition: reaching the maximum depth or the matrix block is too small to be further divided
+        #         return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
+
+        
+        row_cluster_left=row_cluster.left
+        row_cluster_right=row_cluster.right
+        col_cluster_left=col_cluster.left
+        col_cluster_right=col_cluster.right
+
+
+        if((row_cluster_left==None) or (row_cluster_right==None) or (col_cluster_left==None) or (col_cluster_right==None)):
+            return Block(row_cluster.indices,col_cluster.indices,row_index,col_index, level=depth)
+
+        # rowleftsize=len(row_cluster_left.indices)
+        # rowrightsize=len(row_cluster_right.indices)
+        # colleftsize=len(col_cluster_left.indices)
+        # colrightsize=len(col_cluster_right.indices)
+        #print(colleftsize,colrightsize)
+        #print('depth',depth)
+        if(plotHmatrix==True and len(col_index)>0 and len(row_index)>0):
+            #print('!!!!!!!!!!!!!!')
+            # midr=(row_index[0]+row_index[-1])/2.0
+            # midc=(col_index[0]+col_index[-1])/2.0
+            # midr=row_index[0]+(rowleftsize+rowrightsize)/2
+            # midc=col_index[0]+(colleftsize+colrightsize)/2
+            midr=(row_index[0]+row_index[-1])/2
+            midc=(col_index[0]+col_index[-1])/2
+            plt.plot([col_index[0],col_index[-1]],[midr,midr],self.colormpi[rank])
+            plt.plot([midc,midc],[row_index[0],row_index[-1]],self.colormpi[rank])
+            #plt.show()
+
+
+
+        # 创建四个子块
+        children = [
+            self.create_recursive_truncation_blocks(row_cluster_left, col_cluster_left,
+                            row_index[:hf_Nindex],col_index[:hf_Nindex],points, plotHmatrix,maxdepth,mini_leaf,depth + 1),
+            self.create_recursive_truncation_blocks(row_cluster_left, col_cluster_right,
+                            row_index[:hf_Nindex],col_index[hf_Nindex:],points, plotHmatrix,maxdepth,mini_leaf,depth + 1),
+            self.create_recursive_truncation_blocks(row_cluster_right, col_cluster_left, 
+                            row_index[hf_Nindex:],col_index[:hf_Nindex],points,plotHmatrix,maxdepth,mini_leaf,depth + 1),
+            self.create_recursive_truncation_blocks(row_cluster_right, col_cluster_right, 
+                            row_index[hf_Nindex:],col_index[hf_Nindex:],points,plotHmatrix,maxdepth,mini_leaf,depth + 1),
+        ]
+
+        return Block(row_cluster.indices,col_cluster.indices,row_index,col_index,children=children, level=depth)
+
+    def createHmatrix(self,Para0,mini_leaf=32):
+        if(Para0['GPU']==True):
+            global cp
+            import cupy as cp
+        if(self.plotHmatrix==True):
+            plt.figure(figsize=(10,10))
+        print('start Recursively traverse create the BlockTree.')
+        root_block = self.create_recursive_truncation_blocks(self.cluster_raw, self.cluster_col,self.cluster,self.cluster,self.xg,self.plotHmatrix,self.maxdepth,mini_leaf)
+        # assigen_lattice_matrix(root_block,self.dims)
+        # print('Recursively traverse create the BlockTree.')
+        # tree_block = BlockTree(root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud,mini_leaf)
+        # print('Recursively traverse create the BlockTree completed.')
+        # tree_block.useC=Para0['Using C++ green function']
+        # if(self.plotHmatrix==True):
+        #     plt.xlim(self.cluster[0],self.cluster[-1])
+        #     plt.ylim(self.cluster[0],self.cluster[-1])
+        #     plt.savefig('HmatrixStru.png',dpi=500)
+        #plt.show()
+        #return tree_block
 
 
 #def createHmatrix(xg,nodelst,elelst,eleVec,mu_,lambda_,halfspace_jud,mini_leaf=32,plotHmatrix=False,GPU=False):
-def createHmatrix(xg,nodelst,elelst,eleVec,Para0,mini_leaf=32):
+
+# def createHmatrix(xg,nodelst,elelst,eleVec,Para0,mini_leaf=32):
     
-    if(Para0['GPU']==True):
-        global cp
-        import cupy as cp
+#     if(Para0['GPU']==True):
+#         global cp
+#         import cupy as cp
     
-    mu_,lambda_,halfspace_jud=Para0['Shear modulus'],Para0['Lame constants'],Para0['Half space']
-    plotHmatrix=Para0['Hmatrix_mpi_plot']
+#     mu_,lambda_,halfspace_jud=Para0['Shear modulus'],Para0['Lame constants'],Para0['Half space']
+#     plotHmatrix=Para0['Hmatrix_mpi_plot']
+#     maxdepth=4
+#     dim=pow(4,maxdepth-1)
+#     dimsq=int(sqrt(dim))
+#     dims=[dimsq,dimsq]
+#     #useC=comm.bcast(useC, root=0)
+
+#     cluster = np.arange(len(xg))
+#     cluster_raw =build_block_tree(cluster, xg)
+#     cluster_col =build_block_tree(cluster, xg)
+
+#     #print(len(cluster_raw.left.indices))
+#     #testblock.print_tree(tree_root)
+#     if(plotHmatrix==True):
+#         plt.figure(figsize=(10,10))
+#     print('start Recursively traverse create the BlockTree.')
+#     root_block = create_recursive_truncation_blocks(cluster_raw, cluster_col,cluster,cluster,xg,plotHmatrix,maxdepth,mini_leaf)
+#     assigen_lattice_matrix(root_block,dims)
+#     print('Recursively traverse create the BlockTree.')
+#     tree_block = BlockTree(root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud,mini_leaf)
+#     print('Recursively traverse create the BlockTree completed.')
+#     tree_block.useC=Para0['Using C++ green function']
+#     #print('Recursively traverse the BlockTree to obtain the interpolation index positions.')
+#     #tree_block.traverse()
+#     #print('Recursively traverse completed.')
+#     #tree_block.Intep_rowindex=np.concatenate(tree_block.Intep_rowindex)
+#     #tree_block.Intep_colindex=np.concatenate(tree_block.Intep_colindex)
+#     #print(root_block.children[0].children[3].col_index)
+
+#     #sparse_matrix_coo = coo_matrix((np.ones(len(tree_block.Intep_rowindex)), 
+#     #        (tree_block.Intep_rowindex, tree_block.Intep_colindex)), shape=(len(xg), len(xg)))
+#     #sparse_csr = sparse_matrix_coo.tocsr()
+#     #sparse_csr=calc_Sgreenfunc_spr(sparse_csr)
+#     #tree_block.sparse_csr=sparse_csr
+#     #tree_block.apply_spr_values(sparse_csr)
+
+#     #print(root_block.row_cluster)
+#     # print('Recursively traverse the BlockTree to apply SVD...')
+#     # tree_block.traverse_SVD()
+#     # print('Apply SVD complete.')
+
+#     if(plotHmatrix==True):
+#         plt.xlim(cluster[0],cluster[-1])
+#         plt.ylim(cluster[0],cluster[-1])
+#         plt.savefig('HmatrixStru.png',dpi=500)
+#         #plt.show()
+#     return tree_block
+
+
+
+
+
+
+
+
+
     
-    #useC=comm.bcast(useC, root=0)
-
-    cluster = np.arange(len(xg))
-    cluster_raw =build_block_tree(cluster, xg)
-    cluster_col =build_block_tree(cluster, xg)
-
-    #print(len(cluster_raw.left.indices))
-    #testblock.print_tree(tree_root)
-    if(plotHmatrix==True):
-        plt.figure(figsize=(10,10))
-    print('start Recursively traverse create the BlockTree.')
-    root_block = create_recursive_blocks(cluster_raw, cluster_col,cluster,cluster,xg,plotHmatrix,mini_leaf)
-    print('Recursively traverse create the BlockTree.')
-    tree_block = BlockTree(root_block,nodelst,elelst,eleVec,mu_,lambda_, xg,halfspace_jud,mini_leaf)
-    print('Recursively traverse create the BlockTree completed.')
-    tree_block.useC=Para0['Using C++ green function']
-    #print('Recursively traverse the BlockTree to obtain the interpolation index positions.')
-    #tree_block.traverse()
-    #print('Recursively traverse completed.')
-    #tree_block.Intep_rowindex=np.concatenate(tree_block.Intep_rowindex)
-    #tree_block.Intep_colindex=np.concatenate(tree_block.Intep_colindex)
-    #print(root_block.children[0].children[3].col_index)
-
-    #sparse_matrix_coo = coo_matrix((np.ones(len(tree_block.Intep_rowindex)), 
-    #        (tree_block.Intep_rowindex, tree_block.Intep_colindex)), shape=(len(xg), len(xg)))
-    #sparse_csr = sparse_matrix_coo.tocsr()
-    #sparse_csr=calc_Sgreenfunc_spr(sparse_csr)
-    #tree_block.sparse_csr=sparse_csr
-    #tree_block.apply_spr_values(sparse_csr)
-
-    #print(root_block.row_cluster)
-    # print('Recursively traverse the BlockTree to apply SVD...')
-    # tree_block.traverse_SVD()
-    # print('Apply SVD complete.')
-
-    if(plotHmatrix==True):
-        plt.xlim(cluster[0],cluster[-1])
-        plt.ylim(cluster[0],cluster[-1])
-        plt.savefig('HmatrixStru.png',dpi=500)
-        #plt.show()
-    return tree_block
-
-
-
-
 

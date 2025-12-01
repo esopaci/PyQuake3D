@@ -94,13 +94,13 @@ def get_eleVec(nodelst,elelst,jud_ele_order):
        
         
         #jud_ele_order=True
-        if(jud_ele_order==True): 
+        if(jud_ele_order==True):
             #节点顺时针ac*ab
             ev31 = vca[1]*vba[2]-vca[2]*vba[1]
             ev32 = vca[2]*vba[0]-vca[0]*vba[2]
             ev33 = vca[0]*vba[1]-vca[1]*vba[0]
         else:
-            #节点逆时针WMF
+            #节点逆时针ab*ac
             ev31 = vba[1]*vca[2]-vba[2]*vca[1]
             ev32 = vba[2]*vca[0]-vba[0]*vca[2]
             ev33 = vba[0]*vca[1]-vba[1]*vca[0]
