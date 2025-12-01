@@ -119,20 +119,24 @@ Together, these additions greatly enhance PyQuake3D’s capability to model mult
       \frac{\tau V \exp\left(-y^2 / (2 w^2)\right)}{\rho c \sqrt{2 \pi} w}
       :label: temp_eqs
 
-   with boundary conditions:
+with boundary conditions:
 
-   **Thermal pressurization only**
-   .. math::
-      \left. \frac{\partial p}{\partial y} \right|_{y=0^+} = 0, \qquad
-      \left. \frac{\partial T}{\partial y} \right|_{y=0^+} = 0
+**Thermal pressurization only**
 
-   **Coupled dilatancy + thermal pressurization**
-   .. math::
-      \left. \frac{\partial p}{\partial y} \right|_{y=0^+} =
-      \frac{h \dot{\phi}}{2 \beta c_{hyd}}, \qquad
-      \left. \frac{\partial T}{\partial y} \right|_{y=0^+} = 0
+.. math::
 
-   where:
+    \left. \frac{\partial p}{\partial y} \right|_{y=0^+} = 0, \qquad
+    \left. \frac{\partial T}{\partial y} \right|_{y=0^+} = 0
+
+**Coupled dilatancy + thermal pressurization**
+
+.. math::
+
+    \left. \frac{\partial p}{\partial y} \right|_{y=0^+} =
+    \frac{h \dot{\phi}}{2 \beta c_{hyd}}, \qquad
+    \left. \frac{\partial T}{\partial y} \right|_{y=0^+} = 0
+
+where:
 
    - :math:`T` — pore fluid temperature  
    - :math:`p` — pore pressure  
