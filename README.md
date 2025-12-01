@@ -5,6 +5,26 @@
 <h1 align="center">PyQuake3D</h1>
 <h3 align="center">A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip</h3>
 
+<p align="center">
+  <!-- badges -->
+  <a href="https://doi.org/10.1029/2025JH000871">
+    <img src="https://img.shields.io/badge/DOI-10.1029%2F2025JH000871-blue.svg" alt="DOI">
+  </a>
+  <a href="https://github.com/Computational-Geophysics/PyQuake3D/actions">
+    <img src="https://github.com/Computational-Geophysics/PyQuake3D/actions/workflows/tests.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://pypi.org/project/pyquake3d/">
+    <img src="https://img.shields.io/pypi/v/pyquake3d.svg" alt="PyPI">
+  </a>
+  <a href="https://anaconda.org/conda-forge/pyquake3d">
+    <img src="https://img.shields.io/conda/vn/conda-forge/pyquake3d.svg" alt="Conda">
+  </a>
+  <a href="https://pyquake3d.readthedocs.io/en/latest/">
+    <img src="https://readthedocs.org/projects/pyquake3d/badge/?version=latest" alt="Docs">
+  </a>
+  <img src="https://img.shields.io/github/license/Computational-Geophysics/PyQuake3D" alt="License">
+</p>
+
 **PyQuake3D** is a high-performance Python-based Boundary Element Method (BEM) code for simulating sequences of seismic and aseismic slip (SEAS) on a complex 3D fault geometry governed by rate- and state-dependent friction. It combines physics-based modeling with modern parallel computing tools (MPI, GPU acceleration via CuPy) to solve a variety of earthquake cycle and rupture problems. This document provides an overview of how to use the script, as well as a detailed description of the input parameters.
 
 ## Authors and Contact
