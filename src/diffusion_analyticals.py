@@ -9,6 +9,11 @@ from datetime import datetime
 from mpi4py import MPI
 from scipy.linalg import lu_factor, lu_solve
 
+plt.rcParams.update({
+    'font.family': 'Arial',   # 设置字体为 Arial
+    'font.size': 16           # 字体大小，根据需要修改
+})
+
 c=0.00001
 cp=1
 num=300
@@ -119,7 +124,7 @@ for i in range(len(t)-1):
 plt.figure(figsize=(10, 6))
 plt.plot(t,Qana/Qana_tmin,label='analytical solution', linewidth=1.5)
 plt.plot(t[idx:-1],Tbound[idx:]/Qana_tmin,label='numericial solution',linestyle='--', linewidth=2.0)
-
+plt.grid(True, which='both', linestyle='--', linewidth=0.4)
 
 plt.xscale('log')
 plt.yscale('log')
@@ -127,5 +132,5 @@ plt.legend()
 plt.xlabel('Time(s)')
 plt.ylabel('Q/Qf')
 plt.xlim([1e-2,1e14])
-plt.savefig('compare_analytical.png',dpi=500)
+plt.savefig('compare_analytical.eps',dpi=500)
 plt.show()

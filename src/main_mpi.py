@@ -62,7 +62,7 @@ if __name__ == "__main__":
             fnamePara='examples/BP5-QD/parameter.txt'
             # fnamegeo='examples/cascadia/50km_43dense_35w.msh'
             # fnamePara='examples/cascadia/parameter.txt'
-            # fnamegeo='examples/WMF/WMF3.msh'
+            # fnamegeo='examples/WMF/WMF20251202.msh'
             # fnamePara='examples/WMF/parameter.txt'
         
         

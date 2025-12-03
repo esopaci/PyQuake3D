@@ -258,7 +258,7 @@ class QDsim:
         file.write('average elesize:%f\n'%self.ave_elesize)
         file.write('Critical nucleation size:%f\n'%self.hRA)
         file.write('Cohesive zone::%f\n'%self.A0)
-        file.write('iteration time_step(s) maximum_slip_rate(m/s) time(s) time(h)\n')
+        
 
         
     
@@ -456,6 +456,7 @@ class QDsim:
         #self.Init_mpi_local_variables()
         self.init_mpi_local_variables()
         self.monitor_total_memory(comm, prefix=f"Init:")
+        file.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(h)\n')
         for i in range(totaloutputsteps):
         #for i in range(0):
             self.step=i
@@ -489,7 +490,7 @@ class QDsim:
                 #     break
                 #Output vtk once every outsteps
                 outsteps=int(self.Para0['outsteps'])
-                directory='out_vtk'
+                directory='out_vtu'
                 if not os.path.exists(directory):
                     os.mkdir(directory)
                 #output slipv and Tt
@@ -1006,6 +1007,8 @@ class QDsim:
             self.P=self.P*1e6
             self.dTdtmatrix=np.zeros([N,num])
             self.Calc_Pmatrix()
+            self.porosity=np.zeros(N)
+            
         
         if(self.Ifthermal==True):
             self.dTdt0=np.zeros(N)
@@ -1493,7 +1496,7 @@ class QDsim:
         e = self.DilatancyC  
         h = self.hs  
         beta = self.EPermeability    
-        c_hyd = self.Chyd  
+        c_hyd = self.Chyd
         dc=self.dc[self.local_index]
         f0=self.f0[self.local_index]
         b=self.b[self.local_index]
@@ -1515,10 +1518,13 @@ class QDsim:
         #dstatedt = self.b / dc * (self.V0 * np.exp((self.f0 - self.state) / self.b) - self.slipv)
         if(self.Ifcouple==True and self.Ifdila==True):
             g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
+            self.porosity[self.local_index]=self.porosity[self.local_index]-e/theta*dthetadt
         elif(self.Ifdila==True and self.Ifthermal==False):
             g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
+            self.porosity[self.local_index]=self.porosity[self.local_index]-e/theta*dthetadt
         else:
             g=dthetadt*0.0
+        
         #print('gmax:',np.max(g[self.local_index]),'   gmin:',np.min(g[self.local_index]))
         
         for i in range(len(self.local_index)):
@@ -1853,6 +1859,13 @@ class QDsim:
                     self.diag_comm.Reduce(self.P, recvbuf, op=MPI.SUM, root=0)
                     if(cart_rank==0):
                         self.P=recvbuf
+                    
+                    self.porosity[self.index_]=0
+                    recvbuf = np.zeros(len(self.porosity), dtype=np.float64) 
+                    self.diag_comm.Reduce(self.porosity, recvbuf, op=MPI.SUM, root=0)
+                    if(cart_rank==0):
+                        self.porosity=recvbuf
+                    
                 
                 t1 = MPI.Wtime()
                 self.comm_time += (t1 - t0)
@@ -2006,12 +2019,23 @@ class QDsim:
             comm.Gatherv(sendbuf=Tno_yhk,recvbuf=(self.Tno, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt1o_yhk,recvbuf=(self.Tt1o, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=Tt2o_yhk,recvbuf=(self.Tt2o, (self.counts, self.displs)), root=0)
+            comm.Gatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)), root=0)
+            
+            self.porosity[self.index_]=0
+            recvbuf = np.zeros(len(self.porosity), dtype=np.float64) 
+            comm.Reduce(self.porosity, recvbuf, op=MPI.SUM, root=0)
+            if(rank==0):
+                self.porosity=recvbuf
+            
             t1 = MPI.Wtime()
             self.comm_time += (t1 - t0)
             if(rank==0):
                 self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
                 self.rake=np.arctan2(self.Tt2o,self.Tt1o)
                 self.fric=self.Tt/(self.Tno-self.P*1e-6)
+
+                
+
             if(self.Ifdila==False):
                 t0 = MPI.Wtime()
                 comm.Gatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)), root=0)
@@ -2037,6 +2061,7 @@ class QDsim:
         if(self.Ifdila==True):
             #comm.Allgatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)))
             Pre,dPdt0,Parr=self.Calc_P_implicit_mpi(h)
+            
             self.dPdt0=dPdt0
             self.P=Pre
             self.Parr=Parr
@@ -2376,6 +2401,7 @@ class QDsim:
         add_scalar("slip2[m]", self.slip2)
         if(self.Ifdila==True):
             add_scalar("Pore_pressure[MPa]", self.P*1e-6)
+            add_scalar("Porosity[Degree]", self.porosity)
         if(self.Ifthermal==True):
             add_scalar("Temperature[Degree]", self.Tempe)
         if(init==True):
