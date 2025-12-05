@@ -51,6 +51,7 @@ Please refer to the [Code Manual (PDF)](PyQuake3D_User_Manual.pdf)
 -  MPI acceleration support 
 -  Suitable for large model earthquake cycle simulation
 -  Support for pore fluid pressure varing with slip due to inelastic processes including dilatancy, pore compaction.
+-  Supports fluid thermal pressurization caused by friction heating.
 
 <p align="center">
   <img src="https://github.com/Computational-Geophysics/PyQuake3D//raw/main/images/framework/framework_new.png" alt="Framework Overview">
