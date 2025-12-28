@@ -1518,10 +1518,11 @@ class QDsim:
         #dstatedt = self.b / dc * (self.V0 * np.exp((self.f0 - self.state) / self.b) - self.slipv)
         if(self.Ifcouple==True and self.Ifdila==True):
             g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
-            self.porosity[self.local_index]=self.porosity[self.local_index]-e/theta*dthetadt
+            
+            self.porosity[self.local_index]=self.porosity[self.local_index]-e/theta*dthetadt*dt
         elif(self.Ifdila==True and self.Ifthermal==False):
             g=-e*h/(2.0*beta*c_hyd*theta)*dthetadt
-            self.porosity[self.local_index]=self.porosity[self.local_index]-e/theta*dthetadt
+            self.porosity[self.local_index]=self.porosity[self.local_index]-e/theta*dthetadt*dt
         else:
             g=dthetadt*0.0
         
@@ -2021,11 +2022,12 @@ class QDsim:
             comm.Gatherv(sendbuf=Tt2o_yhk,recvbuf=(self.Tt2o, (self.counts, self.displs)), root=0)
             comm.Gatherv(sendbuf=state_yhk,recvbuf=(self.state, (self.counts, self.displs)), root=0)
             
-            self.porosity[self.index_]=0
-            recvbuf = np.zeros(len(self.porosity), dtype=np.float64) 
-            comm.Reduce(self.porosity, recvbuf, op=MPI.SUM, root=0)
-            if(rank==0):
-                self.porosity=recvbuf
+            if(self.Ifdila==True):
+                self.porosity[self.index_]=0
+                recvbuf = np.zeros(len(self.porosity), dtype=np.float64) 
+                comm.Reduce(self.porosity, recvbuf, op=MPI.SUM, root=0)
+                if(rank==0):
+                    self.porosity=recvbuf
             
             t1 = MPI.Wtime()
             self.comm_time += (t1 - t0)
