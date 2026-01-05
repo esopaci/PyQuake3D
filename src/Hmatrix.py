@@ -650,6 +650,7 @@ class BlockTree:
     
     
     #Use A(i, j) to construct a row extraction function
+    #Use A(i, j) to construct a row extraction function
     def calc_rowsS(self,Istart, Iend,row_cluster,col_cluster):
         #A1=A1s[np.ix_(row_cluster[Istart: Iend],col_cluster)]
         A1s,A2s,Bs=self.calc_stressfunc_fromC_rowS(row_cluster[Istart: Iend],col_cluster)
@@ -1402,7 +1403,7 @@ class BlockTree:
     
 
     #Assign tasks in each submatrix for calculating green functions
-    def master(self,dir,blocks_to_process,num_workers,save_corefunc=False,rank0=0):
+    def master(self,dir,blocks_to_process,num_workers,save_corefunc=False):
         task_id = 1
         next_task = 0
         active_workers = num_workers
@@ -1492,12 +1493,8 @@ class BlockTree:
 
         if(save_corefunc==True):
             
-            #dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
-            if(rank0==-1):
-                dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
-            else:
-                dump(self.blocks_to_process,dir+ "/blocks_to_process%d.joblib"%rank0)
-            #blocks_to_process_trans=self.convert_to_standard_format(self.blocks_to_process)
+            dump(self.blocks_to_process,dir+ "/blocks_to_process.joblib")
+
             #self.save_to_HDF5(dir+ "/blocks_to_process.hdf5",blocks_to_process_trans)
         print("Master: all tasks completed.", flush=True)
     
@@ -1927,6 +1924,10 @@ class BlockTree:
                     #print(blocks_to_process[i].Mf_A1s.shape,len(blocks_to_process[i].row_cluster),len(blocks_to_process[i].col_cluster),x_.shape)
                     Ax_rsvd=blocks_to_process[i].Mf_A1s @ x_
                 
+                # if(hasattr(blocks_to_process[i], 'judaca') and blocks_to_process[i].judaca==True):
+                #     print(blocks_to_process[i].ACA_dictS['U_ACA_A1s'][:5])
+                    
+                
                 yvector[blocks_to_process[i].row_cluster]=yvector[blocks_to_process[i].row_cluster]+Ax_rsvd
         if(type=='A2s'):
             for i in range(len(blocks_to_process)):
@@ -2241,7 +2242,7 @@ class Hmatrix:
         self.nodelst=nodelst
         self.elelst=elelst
         self.eleVec=eleVec
-        self.halfspace_jud=Para0['Hmatrix_mpi_plot']
+        #self.halfspace_jud=Para0['Hmatrix_mpi_plot']
         self.Lt_jud=Para0['Lattice Matrice']
         self.colormpi=['darkred','darkblue','lime','blue','y','cyan','darkgreen','steelblue','tomato','chocolate','slateblue']*size
         
@@ -2268,7 +2269,7 @@ class Hmatrix:
         print('start Recursively traverse create the BlockTree.')
         
         if(Para0['Lattice Matrice']==False):
-            self.root_block = self.create_recursive_blocks(self.cluster_raw, self.cluster_col,self.cluster,self.cluster,self.xg,self.plotHmatrix)
+            self.root_block = self.create_recursive_blocks(self.cluster_raw, self.cluster_col,self.cluster,self.cluster,self.xg,self.plotHmatrix,mini_leaf=self.mini_leaf)
             self.tree_block = BlockTree(self.root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
         else:
             self.maxdepth=Para0['Lattice Partitioning depth']
@@ -2312,7 +2313,7 @@ class Hmatrix:
                 cluster_col =build_block_tree(cluster[col_cluster_indice], self.xg[col_cluster_indice])
                 
                 root_block = self.create_recursive_blocks(cluster_raw, cluster_col,
-                                                        row_index,col_index,self.xg,self.plotHmatrix)
+                                                        row_index,col_index,self.xg,self.plotHmatrix,mini_leaf=self.mini_leaf)
                 LTMtree_block = BlockTree(root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,
                                        self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
                 #blocks_to_process=self.collect_blocks(LTMtree_block.root_block)
@@ -2406,7 +2407,7 @@ class Hmatrix:
         
         
         self.root_block = self.create_recursive_blocks(cluster_raw, cluster_col,
-                                                        row_index,col_index,self.xg,self.plotHmatrix)
+                                                        row_index,col_index,self.xg,self.plotHmatrix,mini_leaf=self.mini_leaf)
         self.LTMtree_block = BlockTree(self.root_block,self.nodelst,self.elelst,self.eleVec,self.mu_,
                                        self.lambda_, self.xg,self.halfspace_jud,self.mini_leaf)
         if(self.plotHmatrix==True):
@@ -2456,7 +2457,6 @@ class Hmatrix:
                         offset += ELEMENTS_PER_ARRAY
                     result.append(proc_data)
 
-            
 
                 for i in range(len(result)):
                     plotrec=result[i]
@@ -2470,8 +2470,6 @@ class Hmatrix:
                 plt.ylim(0,len(self.xg)-1)
                 plt.savefig('LatMStru_mpi.png',dpi=500)
     
-
-            
 
     
 

@@ -778,7 +778,7 @@ class QDsim:
                 if(self.Lt_jud==True):
                     print('Assign tasks for lattice Hmatrix')
                     blocks_to_process=self.get_LMTblocks()
-                self.tree_block.master(self.Para0['Corefunc directory'],blocks_to_process,size-1,save_corefunc=self.save_corefunc,rank0=-1)
+                self.tree_block.master(self.Para0['Corefunc directory'],blocks_to_process,size-1,save_corefunc=self.save_corefunc)
             else:
                 #Calculat green functions
                 self.tree_block.worker()
