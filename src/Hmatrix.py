@@ -1636,6 +1636,10 @@ class BlockTree:
         local_blocks = []
         n_task_per_proc = 50
         
+        Nb=comm.bcast(len(blocks_to_process),root=0)
+        if(Nb/size<n_task_per_proc):
+            n_task_per_proc=int(Nb/size*0.9)
+        #print('n_task_per_proc',n_task_per_proc,size)
         if rank == 0:
             num_blocks = len(blocks_to_process)
             print(f'num_blocks: {num_blocks}')
@@ -1690,22 +1694,29 @@ class BlockTree:
                 batch_size = max(1, len(chunk) // n_task_per_proc)
                 start = 0
                 base_tag = 77 + tgt * 100  # 独特 tag 基数
+                
                 for j in range(n_task_per_proc):
                     end = start + batch_size if j < n_task_per_proc - 1 else len(chunk)
+                    
                     sub_chunk = chunk[start:end]
                     if sub_chunk:
                         comm.send(sub_chunk, dest=tgt, tag=base_tag + j)
                     start = end
+                    if(end==len(chunk)):
+                        break
+                    
                 print(f'rank {tgt} assigned {len(chunk)} blocks')
         
         else:
             # 非 rank 0：只有 target_ranks 中的进程接收
             if target_ranks is None:
                 target_ranks = list(range(size))  # 匹配默认
+                
             if rank in target_ranks:
                 local_blocks = []
                 base_tag = 77 + rank * 100
                 for j in range(n_task_per_proc):
+                    #print(j,rank)
                     try:
                         task = comm.recv(source=0, tag=base_tag + j)
                         local_blocks.extend(task)
@@ -1714,12 +1725,32 @@ class BlockTree:
                 #print(f'rank {rank} received {len(local_blocks)} blocks')
             else:
                 print(f'rank {rank} idle (not targeted)')
+            
+            # if rank in target_ranks:
+            #     local_blocks = []
+            #     base_tag = 77 + rank * 100
+            #     received_count = 0
+            #     while True:
+            #         status = MPI.Status()
+            #         # 探测任何来自 rank 0 的消息
+                    
+            #         if not comm.Iprobe(source=0, tag=MPI.ANY_TAG, status=status):
+            #             break
+
+            #         # 只接收属于自己的 tag 范围
+            #         if base_tag <= status.tag < base_tag + n_task_per_proc:
+            #             task = comm.recv(source=0, tag=status.tag, status=status)
+            #             local_blocks.extend(task)
+            #             received_count += 1
         
         # 统一打印
         print(f'rank {rank} final Hmatrix sub-blocks number: {len(local_blocks)}')
 
         
         return local_blocks
+
+
+    
 
     #Assign missions for forward iteration each rank with completed blocks submatrice
     def parallel_block_scatter_send_(self, blocks_to_process,rows,cols, plotHmatrix=False):
