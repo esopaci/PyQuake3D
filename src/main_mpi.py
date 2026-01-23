@@ -62,8 +62,10 @@ if __name__ == "__main__":
             fnamePara='examples/BP5-QD/parameter.txt'
             # fnamegeo='examples/cascadia/50km_43dense_35w.msh'
             # fnamePara='examples/cascadia/parameter.txt'
-            # fnamegeo='examples/WMF/WMF20251202.msh'
-            # fnamePara='examples/WMF/parameter.txt'
+            #fnamegeo='examples/WMF/WMF20251203.msh'
+            #fnamePara='examples/WMF/parameter.txt'
+            # fnamegeo='examples/case1/model1.msh'
+            # fnamePara='examples/case1/parameter.txt'
         
         
         print('Input msh geometry file:',fnamegeo, flush=True)
@@ -92,6 +94,10 @@ if __name__ == "__main__":
     sim0.calc_greenfuncs_mpi()
     
     #print(rank,len(sim0.local_index))
+    # if(rank==0):
+    #     AdotV1=sim0.tree_block.blocks_process_MVM(sim0.slipv1,sim0.blocks_to_process,'A1s')
+    #     print(AdotV1[:20])
+    
     sim0.start()
     
 

@@ -66,14 +66,15 @@ def readPara(data_dir):
     Para['Rock density']=float(Para0['Rock density'])
     Para['InputHetoparamter']=Para0['InputHetoparamter']=='True'
     Para['Inputparamter file']=Para0['Inputparamter file']
-    
+    Para['Shearing zone width']=float(Para0['Shearing zone width'])
+
     try:
         Para['If Coupledthermal']=Para0['If Coupledthermal']=='True'
         Para['If Dilatancy']=Para0['If Dilatancy']=='True'
         Para['Dilatancy coefficient']=float(Para0['Dilatancy coefficient'])
         Para['Hydraulic diffusivity']=float(Para0['Hydraulic diffusivity'])
         #self.hw=float(self.Para0['Low permeability zone thickness'])
-        Para['Actively shearing zone thickness']=float(Para0['Actively shearing zone thickness'])
+        #Para['Actively shearing zone thickness']=float(Para0['Actively shearing zone thickness'])
         Para['Effective compressibility']=float(Para0['Effective compressibility'])
         Para['Constant porepressure']=float(Para0['Constant porepressure'])
         Para['Initial porepressure']=float(Para0['Initial porepressure'])
@@ -87,7 +88,7 @@ def readPara(data_dir):
         #self.hw=float(self.Para0['Low permeability zone thickness'])
         Para['Ratio of thermal expansivity to compressibility']=float(Para0['Ratio of thermal expansivity to compressibility'])
         Para['Heat capacity']=float(Para0['Heat capacity'])
-        Para['Half width']=float(Para0['Half width'])
+        #Para['Half width']=float(Para0['Half width'])
         Para['Initial temperature']=float(Para0['Initial temperature'])
         Para['Background temperature']=float(Para0['Background temperature'])
         

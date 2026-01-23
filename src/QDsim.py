@@ -154,13 +154,17 @@ class QDsim:
         self.hmatrix_mpi_plot=self.Para0['Hmatrix_mpi_plot']
         self.Ifdila=False
         self.Ifthermal=False
+        
+        #self.halfwidth=self.Para0['Half width']
+
         try:
+            
             self.Ifdila=self.Para0['If Dilatancy']
             self.Ifcouple=self.Para0['If Coupledthermal']
             self.DilatancyC=self.Para0['Dilatancy coefficient']
             self.Chyd=self.Para0['Hydraulic diffusivity']
             #self.hw=float(self.Para0['Low permeability zone thickness'])
-            self.hs=self.Para0['Actively shearing zone thickness']
+            #self.hs=self.Para0['Actively shearing zone thickness']
             self.EPermeability=self.Para0['Effective compressibility']
         except:
             print('No Dilatancy parameters or incomplete parameters.')
@@ -769,7 +773,7 @@ class QDsim:
             print('memorary:',s)
         
         jud_coredir = comm.bcast(jud_coredir, root=0)
-
+        
         if(jud_coredir==False):#Calculate green functions and compress in Hmatrix
             #sim0.local_blocks=sim0.tree_block.parallel_traverse_SVD(sim0.Para0['Corefunc directory'],plotHmatrix=sim0.Para0['Hmatrix_mpi_plot'])
             
@@ -791,12 +795,14 @@ class QDsim:
         else:
             '''Assign forward modelling missions for each rank with completed blocks submatrice'''
             if(self.Lt_jud==False):
+                
                 self.local_blocks=self.tree_block.parallel_block_scatter_send(blocks_to_process,plotHmatrix=self.Para0['Hmatrix_mpi_plot'])
             else:
                 self.local_blocks=self.parallel_LTMblock_assign(blocks_to_process)
        
         #if(self.Ifdila==True):
         #print('parallel_cells_scatter_send')
+        
         if(self.Lt_jud==False):
             self.local_index=self.parallel_cells_scatter_send(nsize=size)
             #print(rank,self.local_index)
@@ -979,6 +985,8 @@ class QDsim:
         trac_nor=self.Para0['Vertical principal stress value']
         
         
+        
+        
         self.P0=0
         self.P=np.zeros(N)
         self.dPdt0=np.zeros(N)
@@ -991,7 +999,7 @@ class QDsim:
         ymax=100
         if(self.Ifdila==True):
             
-            
+            self.hs=self.Para0['Shearing zone width']*np.ones(N)
             self.P0=self.Para0['Constant porepressure']
             self.P=np.ones(N)*self.Para0['Initial porepressure']
             # self.yp=np.logspace(start=-3, stop=10, num=num, base=10)
@@ -1011,10 +1019,11 @@ class QDsim:
             
         
         if(self.Ifthermal==True):
+            self.hs=self.Para0['Shearing zone width']*np.ones(N)
             self.dTdt0=np.zeros(N)
             self.T0=self.Para0['Initial temperature']
             self.Tempe=np.ones(N)*self.Para0['Background temperature']
-            self.halfwidth=self.Para0['Half width']
+            #self.halfwidth=self.Para0['Half width']
             self.yp=np.logspace(start=log(scaleC*c), stop=log(ymax), num=num, base=np.e)-scaleC*c
             self.zp=np.log(c+self.yp)
             self.Tempearr=np.ones([N,num])*self.T0
@@ -1353,8 +1362,9 @@ class QDsim:
 
         try:
             self.P=values[:Ncell,10]*1e6
+            self.hs=values[:Ncell,11]
         except:
-            print('No Initial porepressure data!')
+            print('No external Initial porepressure and shear zone width data!')
         #     return
 
         #slipv1=1e-9
@@ -1494,13 +1504,14 @@ class QDsim:
 
     def Calc_P_implicit_mpi(self,dt):
         e = self.DilatancyC  
-        h = self.hs  
+        
         beta = self.EPermeability    
         c_hyd = self.Chyd
         dc=self.dc[self.local_index]
         f0=self.f0[self.local_index]
         b=self.b[self.local_index]
         slipv=self.slipv[self.local_index]
+        h = self.hs[self.local_index]
         P=np.copy(self.P)
         dPdt0=np.copy(self.dPdt0)
         Parr=np.copy(self.Parr)
@@ -1577,13 +1588,15 @@ class QDsim:
         #print('gmax:',np.max(g[self.local_index]),'   gmin:',np.min(g[self.local_index]))
         maxval=0
         maxtra=0
+        halfwidth=self.hs*0.5
         for i in range(len(self.local_index)):
             k=self.local_index[i]
             bv=np.copy(Tarr[k,:-1])
             bv[0]=bv[0]-2.0*self.cth*np.exp(-(z_k[0]-dz[0]/2))*g[i]*dt/dz[0]
             #B1.append(b[0])
             bv[-1]=bv[-1]+dt/(dz[-1]*dz[-1])*self.cth*np.exp(-(2.0*z_k[-2]+dz[-1]/2))*self.T0
-            Ind_term=trac[i]*1e6*slipv[i]/(self.c)*np.exp(-self.yp[:-1]*self.yp[:-1]/(2.0*self.halfwidth*self.halfwidth))/(sqrt(2.0*np.pi)*self.halfwidth)
+            
+            Ind_term=trac[i]*1e6*slipv[i]/(self.c)*np.exp(-self.yp[:-1]*self.yp[:-1]/(2.0*halfwidth[k]*halfwidth[k]))/(sqrt(2.0*np.pi)*halfwidth[k])
             bv=bv+Ind_term*dt
             if(Ind_term[0]>maxval):
                 maxval=Ind_term[0]
@@ -2411,6 +2424,8 @@ class QDsim:
             add_scalar("b", self.b)
             add_scalar("a-b", self.a - self.b)
             add_scalar("dc", self.dc)
+            if(self.Ifdila==True or self.Ifthermal==True):
+                add_scalar("shear zone width[m]", self.hs)
             add_scalar("slip_plate[m/s]", self.slipvC)
 
         # 5. 写文件（binary + zlib 压缩）
