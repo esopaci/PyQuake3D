@@ -36,7 +36,7 @@ For questions, suggestions, or collaboration opportunities, feel free to reach o
 -  rongjiang@csj.uestc.edu.cn  
 -  luca.dalzilio@ntu.edu.sg
 
-Please refer to the [Code Manual (PDF)](PyQuake3D_User_Manual.pdf)
+Please refer to the [Code Manual](pyquake3d-v102.readthedocs.io/en/latest/)
 
 <p align="center">
   <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/framework/turkey_displacement.png" alt="Turkey Displacement">
