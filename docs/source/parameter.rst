@@ -8,8 +8,8 @@ The simulation parameters are implemented by modifying the ``parameter.txt`` fil
 the source code. The input variable list is in :numref:`General Parameters Settings`. If ``InputHetoparamter`` in :numref:`General Parameters Settings` is ``True``, heterogeneous stress and friction parameters are 
 imported from external files. The external filename is defined in ``parameter.txt`` and must remain in the 
 same directory as ``parameter.txt``. In this case, you don't need to set the parameters of 
-:numref:` Stress and Friction Settings` and :numref:`Nucleation Settings`. Otherwise, you need to appropriately set the parameters of stress and frictional initial conditions shown 
-in :numref:` Stress and Friction Settings` and :numref:`Nucleation Settings`. :numref:`Fluid Parameters Settings` and :numref:`Thermal Pressurization Parameter Settings` must be set up if fluid-induced dilatancy and thermal pressurization are considered.
+:numref:`Stress and Friction Settings` and :numref:`Nucleation Settings`. Otherwise, you need to appropriately set the parameters of stress and frictional initial conditions shown 
+in :numref:`Stress and Friction Settings` and :numref:`Nucleation Settings`. :numref:`Fluid Parameters Settings` and :numref:`Thermal Pressurization Parameter Settings` must be set up if fluid-induced dilatancy and thermal pressurization are considered.
 
 
 .. _General Parameters Settings:
