@@ -1,4 +1,4 @@
-How to Cite
+Citation
 ===========
 
 If you use **PyQuake3D** in a publication, or wish to refer to it, please cite the following paper:

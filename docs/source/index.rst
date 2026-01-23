@@ -24,9 +24,10 @@ Welcome to the documentation for **PyQuake3D**, a Python tool for
    :caption: Contents
 
    introduction
+   Theoretical background
+   Code Framework
+   Installation and Tutorials
+   parameter
    cite
    acknowledgments
-   framework
-   installation
-   tutorials
    versions

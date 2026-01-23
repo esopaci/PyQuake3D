@@ -111,7 +111,7 @@ Together, these additions greatly enhance PyQuake3D’s capability to model mult
 
    .. math::
       \frac{\partial p}{\partial t} = c_{hy} \frac{\partial^2 p}{\partial y^2} + \Lambda \frac{\partial T}{\partial t}
-      :label: fluid_eqs1
+      :label: fluid_eqs1_
 
    .. math::
       \frac{\partial T}{\partial t} = \alpha_{th} \frac{\partial^2 T}{\partial y^2} +

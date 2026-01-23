@@ -24,8 +24,6 @@ The code supports multiple execution backends:
   parallelism is implemented with MPI (``mpi4py``) to enable efficient large-scale 
   simulations on high-performance computing (HPC) platforms.
 
-Scalability and Applications
-----------------------------
 
 **PyQuake3D** is designed to scale from local workstations to HPC clusters, making 
 it a flexible and extensible platform for researchers, students, and educators 
@@ -36,3 +34,13 @@ PyQuake3D is developed and maintained by Rongjiang Tang and Luca Dal Zilio.
 The source code, documentation, and tutorials are hosted on GitHub:
 
     https://github.com/Computational-Geophysics/PyQuake3D
+  
+
+We welcome feedback, testing, and contributions from the broader community.  
+For inquiries, collaborations, or support, please contact:
+
+   Luca Dal Zilio (luca.dalzilio@ntu.edu.sg) 
+
+   Rongjiang Tang(rongjiang.igp@hotmail.com)
+   
+   Earth Observatory of Singapore, Nanyang Technological University
