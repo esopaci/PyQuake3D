@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools >= 61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyquake3d"
+version = "1.0.2"
+description = "A Python tool for 3-D earthquake sequence simulations of seismic and aseismic slip"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    { name = "Rongjiang Tang", email = "rongjiang.igp@hotmail.com" },
+    { name = "Luca Dal Zilio", email = "luca.dalzilio@ntu.edu.sg" },
+]
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "pyvista",
+    "imageio",
+    "scipy",
+    "joblib",
+    "mpi4py",
+    "h5py",
+    "psutil",
+]
+
+[project.urls]
+Homepage = "https://github.com/Computational-Geophysics/PyQuake3D/tree/main"  
+
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+
+[tool.setuptools.package-data]
+"pyquake3d" = ["pyquake3d/TDstressFS_C.so"]
