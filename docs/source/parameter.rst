@@ -208,7 +208,7 @@ in :numref:`Stress and Friction Settings` and :numref:`Nucleation Settings`. :nu
      - Minimum horizontal principal stress scale.
    * - Angle between ssh1 and X-axis
      - 30°
-     - Angle between maximum horizontal principal stress and X-axis.
+     - The angle by which the principal stress orientation rotates counterclockwise with the X-axis.
    * - Vertical principal stress value
      - 50 MPa
      - Vertical principal stress value when ``Shear traction solved from stress tensor`` is True, or normal stress when it is False.

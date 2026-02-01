@@ -2,7 +2,7 @@ Installation and Tutorials
 ====================================
 We provides a step-by-step guide to use **PyQuake3D**. We'll cover installation, compilation, setup, and running a simple simulation. 
 
-Standard Execution single GPU/CPU version on Windows. The dependent files and the same guide from jupyter-based tutorials are available from:
+Standard Execution single GPU/CPU version on Windows. The same guide from jupyter-based tutorials are available from:
 
 https://github.com/Computational-Geophysics/PyQuake3D/blob/main/tutorials
 
@@ -23,15 +23,7 @@ How to install PyQuake3D
 #. Download from https://github.com/Computational-Geophysics/PyQuake3D
 #. Install PyQuake3D in conda Prompt using pip:
 
-   *pip install -r requirements.txt*
-
-   or
-
-   *python -m pip install -r requirements.txt*
-
-   or
-
-   *conda env update -f environment.yml*
+   *pip install -e .*
 
    (make sure PyQuake3D environment is activated)
 
@@ -77,20 +69,22 @@ You can also run the BP5-QD example case in the terminal:
    :caption: Import all sub-functions and libraries
 
    #Let runing PyQuake3D
-   #First Import all sub-functions
+    #First Import all sub-functions
 
-   import readmsh
-   import numpy as np
-   import sys
-   import matplotlib.pyplot as plt
-   import QDsim_gpu
-   from math import *
-   import time
-   import argparse
-   import os
-   import psutil
-   from datetime import datetime
-   process = psutil.Process(os.getpid())
+    import pyquake3d.readmsh as readmsh
+    import numpy as np
+    import sys
+    import matplotlib.pyplot as plt
+    import pyquake3d.QDsim_gpu as QDsim_gpu
+    from math import *
+    import time
+    import argparse
+    import os
+    import psutil
+    from datetime import datetime
+    process = psutil.Process(os.getpid())
+
+
 
 
 **Step 1: read the model file, parameter file, and create a basic class**
@@ -216,70 +210,67 @@ output:
    Figure 1:mesh model and spatial distribution of a-b.
 
 
-**Step 2: Calculating Qusi-Dynamic model by loop**
+**Step 2: calculate greenfunctions,we encapsulate all calculations in a class QDsim**
+The Green function calculation is saved in the Corefunc directory defined in parameter.txt. The next time you start the program, you no longer need to calculate the Green function.
+
+.. code-block:: python
+   :caption: Calculating core functions
+    sim0=QDsim_gpu.QDsim(elelst,nodelst,fnamePara,calc_greenfunc=True)
+
+
+**Step 3: Calculating Qusi-Dynamic model by loop**
 
 .. code-block:: python
    :caption: Calculating Qusi-Dynamic model by loop
 
-   start_time=time.time()
-       
-   totaloutputsteps=int(sim0.Para0['totaloutputsteps'])
-   directory='outvtk'
-   if not os.path.exists(directory):
-       os.mkdir(directory)
+   
 
-   f=open('state.txt','w')
-   f.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(h)\n')
+    start_time=time.time()
+        
+    totaloutputsteps=int(sim0.Para0['totaloutputsteps'])
+    directory='outvtk'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
 
-   if(sim0.useGPU==False):  # CPU case
-       for i in range(totaloutputsteps): 
-           
-           if(i==0):
-               dttry=sim0.htry
-           else:
-               dttry=dtnext
-           dttry,dtnext=sim0.simu_forward(dttry)
-           year=sim0.time/3600/24/365
-           if(i%10==0):
-               print('iteration:',i)
-               print(
-                   'dt:',dttry,
-                   ' max_vel:',np.max(np.abs(sim0.slipv)),
-                   ' Seconds:',sim0.time,
-                   '  Days:',sim0.time/3600/24,
-                   'year',year
-               )
-               memory_info = process.memory_info()
-               print(f"Memory usage: {memory_info.rss / (1024 ** 2)} MB")
+    f=open('state.txt','w')
+    f.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(h)\n')
 
-           f.write(
-               '%d %f %.16e %.16e %f %f\n'
-               %(
-                   i,
-                   dttry,
-                   np.max(np.abs(sim0.slipv1)),
-                   np.max(np.abs(sim0.slipv2)),
-                   sim0.time,
-                   sim0.time/3600.0/24.0
-               )
-           )
+    if(sim0.useGPU==False):  #CPU case
+        for i in range(totaloutputsteps): 
+            
 
-           if(sim0.Para0['outputvtk']=='True'):
-               outsteps=int(sim0.Para0['outsteps'])  # output steps
-               if(i%outsteps==0):
-                   fname=directory+'/step'+str(i)+'.vtk'
-                   sim0.ouputVTK(fname)
+            if(i==0):
+                dttry=sim0.htry
+            else:
+                dttry=dtnext
+            dttry,dtnext=sim0.simu_forward(dttry)
+            year=sim0.time/3600/24/365
+            if(i%10==0):
+                print('iteration:',i)
+                print('dt:',dttry,' max_vel:',np.max(np.abs(sim0.slipv)),' Seconds:',sim0.time,'  Days:',sim0.time/3600/24,
+                    'year',year)
+                memory_info = process.memory_info()
+                print(f"Memory usage: {memory_info.rss / (1024 ** 2)} MB")
+            f.write('%d %f %.16e %.16e %f %f\n' %(i,dttry,np.max(np.abs(sim0.slipv1)),np.max(np.abs(sim0.slipv2)),sim0.time,sim0.time/3600.0/24.0))
 
-   end_time = time.time()
-   timetake=end_time-start_time
-   f.write('Program end time: %s\n'%str(datetime.now()))
-   f.write("Time taken: %.2f seconds\n"%timetake)
+            
+            
+            if(sim0.Para0['outputvtk']=='True'):
+                outsteps=int(sim0.Para0['outsteps']) #output steps
+                if(i%outsteps==0):
+                    fname=directory+'/step'+str(i)+'.vtk'
+                    sim0.ouputVTK(fname)
 
-   print('Program end time: %s\n'%str(datetime.now()))
-   print("Time taken: %.2f seconds\n"%timetake)
+    end_time = time.time()
+    timetake=end_time-start_time
+    f.write('Program end time: %s\n'%str(datetime.now()))
+    f.write("Time taken: %.2f seconds\n"%timetake)
+
+    print('Program end time: %s\n'%str(datetime.now()))
+    print("Time taken: %.2f seconds\n"%timetake)
 
 
-**Step 3: Visualize Results**
+**Step 4: Visualize Results**
 
 The simulation generates VTK files, visualize them using PyVista.
 You can also output all results in your own format by accessing the member variables of sim0 (e.g. sim0.slip).
@@ -287,102 +278,101 @@ You can also output all results in your own format by accessing the member varia
 .. code-block:: python
    :caption: Visualize Results
 
-   import pyvista as pv
-   import glob
-   import os
+   
 
-   # set vtk file path
-   folder_path = "outvtk/"  
+    import pyvista as pv
+    import glob
+    import os
 
-   vtk_files = glob.glob(os.path.join(folder_path, "*.vtk")) + \
-               glob.glob(os.path.join(folder_path, "*.vtu"))
+    # set vtk file path
+    folder_path = "outvtk/"  
 
-   # read state file for time show
-   def is_number(s):
-       try:
-           float(s)
-           return True
-       except ValueError:
-           return False
+    vtk_files = glob.glob(os.path.join(folder_path, "*.vtk")) + glob.glob(os.path.join(folder_path, "*.vtu"))
 
-   def readstate(fname):
-       f=open(fname,'r')
-       K=0
-       data0=[]
-       for line in f:
-           tem=line.split()
-           if(len(tem)==6 and is_number(tem[0])==True):
-               data0.append(np.array(tem).astype(float))
-       return np.array(data0)
 
-   state=readstate('state.txt')
-   print(state.shape)
+    #read state file for time show
+    def is_number(s):
+        try:
+            float(s) 
+            return True
+        except ValueError:
+            return False
 
-   # show one figure
-   plotter = pv.Plotter(off_screen=True)
-   mesh = pv.read(vtk_files[10])
-   slip_velocity = mesh['Slipv[m/s]']
+    def readstate(fname):
+        f=open(fname,'r')
+        K=0
+        data0=[]
+        for line in f:
+            tem=line.split()
+            
+            if(len(tem)==6 and is_number(tem[0])==True):
+                data0.append(np.array(tem).astype(float))
+        return np.array(data0)
+    state=readstate('state.txt')
+    print(state.shape)
 
-   # Apply logarithmic transformation (e.g., base 10)
-   # Add small constant (e.g., 1e-10) to avoid log(0) issues
-   log_slip_velocity = np.log10(slip_velocity)
+    # # show one figure 
+    plotter = pv.Plotter(off_screen=True)
+    mesh = pv.read(vtk_files[10])
+    slip_velocity = mesh['Slipv[m/s]']
+    # Apply logarithmic transformation (e.g., base 10)
+    # Add small constant (e.g., 1e-10) to avoid log(0) issues
+    log_slip_velocity = np.log10(slip_velocity)
 
-   # Assign the transformed scalars back to the mesh
-   mesh['Log_Slipv[m/s]'] = log_slip_velocity
-   scalar_range = (-12, 0)
+    # Assign the transformed scalars back to the mesh
+    mesh['Log_Slipv[m/s]'] = log_slip_velocity
+    scalar_range = (-12, 0)
+    scalar_bar_args={
+            'title': 'log10(slip rate)[m/s]',
+            'position_x': 0.22, 
+            'position_y': 0.85,  
+        }
+    plotter.add_mesh(mesh, scalars='Log_Slipv[m/s]', cmap="plasma", show_edges=True,clim=scalar_range,scalar_bar_args=scalar_bar_args)  # show shear stress
 
-   scalar_bar_args={
-       'title': 'log10(slip rate)[m/s]',
-       'position_x': 0.22,
-       'position_y': 0.85,
-   }
+    #plotter.camera_position =[(0, -5, 0), (0, 0, 0), (0, 0, 1)]
+    # plotter.add_scalar_bar(
+    #         title='log10(Slip rate)[m/s]',  # Label for the colorbar
+    #         position_x=0.25,         # Horizontal position (0 to 1, 0.25 centers it with width=0.5)
+    #         position_y=0.05,         # Vertical position (close to bottom)
+    #         width=0.5,              # Width of the colorbar (0 to 1, relative to plot)
+    #         height=0.1,             # Height of the colorbar
+    #         vertical=False          # Horizontal orientation
+    #     )
+    plotter.show(cpos='xz')
 
-   plotter.add_mesh(
-       mesh,
-       scalars='Log_Slipv[m/s]',
-       cmap="plasma",
-       show_edges=True,
-       clim=scalar_range,
-       scalar_bar_args=scalar_bar_args
-   )
+    # create animation
+    outsteps=int(sim0.Para0['outsteps'])
+    plotter = pv.Plotter(off_screen=True)
+    plotter.open_gif('animation.gif')  # Initialize GIF output
 
-   plotter.show(cpos='xz')
+    for i, vtk_file in enumerate(vtk_files):
+        if(i*outsteps<len(state)):
+            mesh = pv.read(folder_path+'step'+str(i*outsteps)+'.vtk')
+            slip_velocity = mesh['Slipv[m/s]']
+            # Apply logarithmic transformation (e.g., base 10)
+            # Add small constant (e.g., 1e-10) to avoid log(0) issues
+            log_slip_velocity = np.log10(slip_velocity)
+            
+            # Assign the transformed scalars back to the mesh
+            mesh['Log_Slipv[m/s]'] = log_slip_velocity
+            plotter.clear()  # Clear previous mesh
+            plotter.add_mesh(
+                mesh,
+                scalars='Log_Slipv[m/s]',
+                cmap="plasma",
+                show_edges=False,
+                clim=scalar_range,
+                scalar_bar_args=scalar_bar_args
+            )
+            
+            timeyear=state[i*outsteps,-1]/365
+            plotter.add_text(f"Time: {timeyear:.8f} yr", position="upper_left", font_size=14, color="white", shadow=True)
+            plotter.camera_position = 'xz'
+            plotter.write_frame()  # Write frame to GIF
 
-   # create animation
-   outsteps=int(sim0.Para0['outsteps'])
-   plotter = pv.Plotter(off_screen=True)
-   plotter.open_gif('animation.gif')  # Initialize GIF output
+    plotter.close()
+    print('Video has been saved.')
 
-   for i, vtk_file in enumerate(vtk_files):
-       mesh = pv.read(folder_path+'step'+str(i*outsteps)+'.vtk')
-       slip_velocity = mesh['Slipv[m/s]']
-       log_slip_velocity = np.log10(slip_velocity)
-       mesh['Log_Slipv[m/s]'] = log_slip_velocity
-
-       plotter.clear()
-       plotter.add_mesh(
-           mesh,
-           scalars='Log_Slipv[m/s]',
-           cmap="plasma",
-           show_edges=False,
-           clim=scalar_range,
-           scalar_bar_args=scalar_bar_args
-       )
-
-       timeyear=state[i*outsteps,-1]/365
-       plotter.add_text(
-           f"Time: {timeyear:.8f} yr",
-           position="upper_left",
-           font_size=14,
-           color="white",
-           shadow=True
-       )
-
-       plotter.camera_position = 'xz'
-       plotter.write_frame()
-
-   plotter.close()
-   print('Video has been saved.')
 
 output:
 
@@ -558,7 +548,7 @@ MPI-Based Execution on Linux
 
 3. Install PyQuake3D using pip:
 
-   ``pip install -r requirements``
+   ``pip install -e .``
 
    (make sure PyQuake3D environment is activated).
 
@@ -582,11 +572,11 @@ MPI-Based Execution on Linux
 .. code-block:: python
    :caption: Examples for MPI-based backend
 
-    import readmsh
+    import pyquake3d.readmsh as readmsh
     import numpy as np
     import sys
     import matplotlib.pyplot as plt
-    import QDsim
+    import pyquake3d.QDsim as QDsim
     from math import *
     import time
     import argparse
@@ -594,8 +584,8 @@ MPI-Based Execution on Linux
     import psutil
     from datetime import datetime
     from mpi4py import MPI
-    import config
-    import Hmatrix as Hmat
+    import pyquake3d.config as config
+    import pyquake3d.Hmatrix as Hmat
 
     #Limit threads to 1 to avoid performance issues or resource conflicts caused by multi-threaded parallelism.
     os.environ["OMP_NUM_THREADS"] = "1"
@@ -672,14 +662,14 @@ For large-scale simulations using the MPI-parallel H-matrix version, use the fol
 
 .. code-block:: bash
 
-    mpirun -n <N> python src/main_mpi.py -g <input_geometry_file> -p <input_parameter_file>
+    mpirun -n <N> python -m pyquake3d.main_mpi -g <input_geometry_file> -p <input_parameter_file>
 
 
 For example, using 10 parallel mpi processes on BP5-QD model:
 
 .. code-block:: bash
 
-   mpirun-np 10 python src/main_mpi.py-g examples/BP5-QD/bp5t.msh-p examples/BP5-QD/parameter.txt
+   mpirun-np 10 python -m pyquake3d.main_mpi -g examples/BP5-QD/bp5t.msh-p examples/BP5-QD/parameter.txt
 
 
 Post-Processing
