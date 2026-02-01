@@ -79,11 +79,7 @@ PyQuake3D supports Python 3.8 and above, so there is no need to specify any vers
 
   Use pip for the quick installation:
 ```bash
-pip install -r requirements.txt
-```
-Or use conda to install:
-```bash
-conda env update -f environment.yml
+pip install -e .
 ```
 Install cupy if you want to use GPU acceleration, we recommened to use conda (e.g. CUDA 11.8):conda install -c conda-forge cupy cudatoolkit=11.8
 
