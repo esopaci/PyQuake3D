@@ -36,7 +36,7 @@ For questions, suggestions, or collaboration opportunities, feel free to reach o
 -  rongjiang@csj.uestc.edu.cn  
 -  luca.dalzilio@ntu.edu.sg
 
-Please refer to the [Code Manual](https://pyquake3d-v102.readthedocs.io/en/latest/) for more details.
+Please refer to the [Code Manual](https://pyquake.readthedocs.io/en/latest/) for more details.
 
 
 <p align="center">
