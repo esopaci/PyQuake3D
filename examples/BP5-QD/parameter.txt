@@ -27,7 +27,7 @@ If Dilatancy:False
 If Coupledthermal:False
 Dilatancy coefficient: 3e-4
 Hydraulic diffusivity: 1e-5
-Actively shearing zone thickness: 3e-3
+Shear zone width: 2e-3
 Effective compressibility: 8e-11
 Constant porepressure: 2
 Initial porepressure: 2
@@ -35,6 +35,7 @@ Initial porepressure: 2
 #Thermal pressurization
 If thermal: False
 Thermal diffusivity:1e-6
+Shear zone width: 2e-3
 Ratio of thermal expansivity to compressibility:0.1e6
 Heat capacity: 2.7e6
 Half width: 0.01
@@ -89,6 +90,7 @@ outputSLIPV: False
 totaloutputsteps: 1000
 outsteps: 10
 outputvtu: True
+
 
 
 
