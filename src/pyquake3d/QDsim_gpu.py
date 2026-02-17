@@ -1003,6 +1003,7 @@ class QDsim:
         #print(type(dtnext))
         #Tno_yhk[Tno_yhk<1.0]=1.0
         #Tt_yhk[Tt_yhk<0]=0
+        Tno_yhk[Tno_yhk<0.1]=0.1 #constrain normal stress above 0.1 MPa
         self.Tno_gpu=Tno_yhk
         self.Tt1o_gpu=Tt1o_yhk
         self.Tt2o_gpu=Tt2o_yhk
@@ -1234,7 +1235,7 @@ class QDsim:
 
         #state1_yhk_err=cp.abs(state1_yhk8-state1_yhk)
         state_yhk_err=cp.abs(state_yhk8-state_yhk)
-        Tno_yhk_err=cp.abs(Tno_yhk8-Tno_yhk)
+        #Tno_yhk_err=cp.abs(Tno_yhk8-Tno_yhk)
         Tt1o_yhk_err=cp.abs(Tt1o_yhk8-Tt1o_yhk)
         Tt2o_yhk_err=cp.abs(Tt2o_yhk8-Tt2o_yhk)
 
@@ -1249,8 +1250,8 @@ class QDsim:
         
         Relerrormax2=cp.max(cp.abs(Tt1o_yhk_err/Tt1o_yhk8))
         Relerrormax2o=cp.max(cp.abs(Tt2o_yhk_err/Tt2o_yhk8))
-        Relerrormax2_=cp.max(cp.abs(Tno_yhk_err/Tno_yhk8))
-        self.Relerrormax2=cp.maximum(Relerrormax2,Relerrormax2o,Relerrormax2_)+1e-10
+        #Relerrormax2_=cp.max(cp.abs(Tno_yhk_err/Tno_yhk8))
+        self.Relerrormax2=cp.maximum(Relerrormax2,Relerrormax2o)+1e-10
         #self.Relerrormax2=cp.linalg.norm(Tt1o_yhk_err/Tt1o_yhk8)+1e-10
 
         #print('errormax1,errormax2,relaemax1,relaemax2:',errormax1,errormax2,self.Relerrormax1,self.Relerrormax2)

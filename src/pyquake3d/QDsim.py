@@ -1839,6 +1839,7 @@ class QDsim:
             self.time=self.time+h
             #if(rank==0):
             #update slip rate and rake
+            Tno_yhk[Tno_yhk<0.1]=0.1
             self.Tno_local=Tno_yhk
             self.Tt1o_local=Tt1o_yhk
             self.Tt2o_local=Tt2o_yhk
@@ -2040,7 +2041,9 @@ class QDsim:
 
         #if(rank==0):
         #update slip rate and rake
+        Tno_yhk[Tno_yhk<0.1]=0.1 #constrain normal stress above 0.1 MPa
         self.Tno_local=Tno_yhk
+        
         self.Tt1o_local=Tt1o_yhk
         self.Tt2o_local=Tt2o_yhk
         self.state_local=state_yhk
@@ -2254,7 +2257,7 @@ class QDsim:
 
         #state1_yhk_err=cp.abs(state1_yhk8-state1_yhk)
         state_yhk_err=np.abs(state_yhk8-state_yhk)
-        Tno_yhk_err=np.abs(Tno_yhk8-Tno_yhk)
+        #Tno_yhk_err=np.abs(Tno_yhk8-Tno_yhk)
         #P_yhk_err=np.abs(P_yhk8-P_yhk)
         Tt1o_yhk_err=np.abs(Tt1o_yhk8-Tt1o_yhk)
         Tt2o_yhk_err=np.abs(Tt2o_yhk8-Tt2o_yhk)
@@ -2266,12 +2269,12 @@ class QDsim:
         
         Relerrormax2=np.max(np.abs(Tt1o_yhk_err/Tt1o_yhk8))
         Relerrormax2o=np.max(np.abs(Tt2o_yhk_err/Tt2o_yhk8))
-        Relerrormax2_=np.max(np.abs(Tno_yhk_err/Tno_yhk8))
+        #Relerrormax2_=np.max(np.abs(Tno_yhk_err/Tno_yhk8))
         #Relerrormax2_P=np.max(np.abs(P_yhk_err/P_yhk8))
         #print('error: ',np.max(Relerrormax2),np.max(Relerrormax2o),np.max(Relerrormax2_),np.max(Relerrormax2_P))
 
         #self.Relerrormax2=max(Relerrormax2,Relerrormax2o,Relerrormax2_,Relerrormax2_P)+1e-10
-        self.Relerrormax2=max(Relerrormax2,Relerrormax2o,Relerrormax2_)+1e-10
+        self.Relerrormax2=max(Relerrormax2,Relerrormax2o)+1e-10
         #self.Relerrormax2=cp.linalg.norm(Tt1o_yhk_err/Tt1o_yhk8)+1e-10
 
         #print('errormax1,errormax2,relaemax1,relaemax2:',errormax1,errormax2,self.Relerrormax1,self.Relerrormax2)
