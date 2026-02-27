@@ -2,8 +2,8 @@ import numpy as np
 import struct
 import matplotlib.pyplot as plt
 from math import *
-import SH_greenfunction
-import DH_greenfunction
+import pyquake3d.SH_greenfunction as SH_greenfunction
+import pyquake3d.DH_greenfunction as DH_greenfunction
 import os
 import sys
 #import json
@@ -11,14 +11,14 @@ from concurrent.futures import ProcessPoolExecutor
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from scipy.interpolate import griddata
-import readmsh
+import pyquake3d.readmsh as readmsh
 #import cupy as cp
 from collections import deque
 from scipy.ndimage import gaussian_filter1d
-import Hmatrix as Hmat
+import pyquake3d.Hmatrix as Hmat
 import joblib
-import config
-from config import comm, rank, size
+import pyquake3d.config
+from pyquake3d.config import comm, rank, size
 from mpi4py import MPI
 import pyvista as pv
 from scipy.linalg import lu_factor, lu_solve
@@ -27,6 +27,7 @@ from datetime import datetime
 import vtk
 import gc  # Garbage collection
 import psutil
+
 
 
 
@@ -2582,4 +2583,5 @@ class QDsim:
 
 
         
+
     
