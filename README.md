@@ -125,7 +125,7 @@ mpirun -np 10 python src/main_mpi.py -g examples/Lab-model/lab.msh -p examples/L
 
 
 ## Parameters Setting
-The simulation parameters are implemented by modifying the parameter.txt file, rather than by changing the source code. The heterogeneous stress and friction parameters are imported from external files. Please refer to [Code Manual (PDF)](PyQuake3D_User_Manual.pdf) for description of parameter details. 
+The simulation parameters are implemented by modifying the parameter.txt file, rather than by changing the source code. The heterogeneous stress and friction parameters are imported from external files. Please refer to [Code Manual](https://pyquake3d.readthedocs.io/en/latest/)  for description of parameter details. 
 
 ## License
 
