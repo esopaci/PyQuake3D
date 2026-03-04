@@ -1935,7 +1935,8 @@ class QDsim:
 
                 if(cart_rank==0):
                     self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
-                    self.rake=np.arctan2(self.Tt2o,self.Tt1o)
+                    #self.rake=np.arctan2(self.Tt2o,self.Tt1o)
+                    self.rake=np.arctan2(self.slip2,self.slip1)
                     self.fric=self.Tt/(self.Tno-self.P*1e-6)
                 
                 
@@ -2097,7 +2098,8 @@ class QDsim:
             self.comm_time += (t1 - t0)
             if(rank==0):
                 self.Tt=np.sqrt(self.Tt1o*self.Tt1o+self.Tt2o*self.Tt2o)
-                self.rake=np.arctan2(self.Tt2o,self.Tt1o)
+                #self.rake=np.arctan2(self.Tt2o,self.Tt1o)
+                self.rake=np.arctan2(self.slip2,self.slip1)
                 self.fric=self.Tt/(self.Tno-self.P*1e-6)
 
                 
@@ -2585,3 +2587,4 @@ class QDsim:
         
 
     
+
