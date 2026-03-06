@@ -40,3 +40,8 @@ namespaces = false
 
 [tool.setuptools.package-data]
 "pyquake3d" = ["pyquake3d/TDstressFS_C.so"]
+
+
+[project.scripts]
+pyquake-plot = "pyquake_tools.cli:main"
+

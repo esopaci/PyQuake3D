@@ -55,7 +55,7 @@ For questions, suggestions, or collaboration opportunities, feel free to reach o
 -  rongjiang@csj.uestc.edu.cn  
 -  luca.dalzilio@ntu.edu.sg
 
-Please refer to the [Code Manual](https://pyquake3d-v102.readthedocs.io/en/latest/) for more details.
+Please refer to the [Code Manual](https://pyquake3d.readthedocs.io/en/latest/) for more details.
 
 
 <p align="center">
@@ -98,11 +98,7 @@ PyQuake3D supports Python 3.8 and above, so there is no need to specify any vers
 
   Use pip for the quick installation:
 ```bash
-pip install -r requirements.txt
-```
-Or use conda to install:
-```bash
-conda env update -f environment.yml
+pip install -e .
 ```
 Install cupy if you want to use GPU acceleration, we recommened to use conda (e.g. CUDA 11.8):conda install -c conda-forge cupy cudatoolkit=11.8
 
@@ -148,7 +144,7 @@ mpirun -np 10 python src/main_mpi.py -g examples/Lab-model/lab.msh -p examples/L
 
 
 ## Parameters Setting
-The simulation parameters are implemented by modifying the parameter.txt file, rather than by changing the source code. The heterogeneous stress and friction parameters are imported from external files. Please refer to [Code Manual (PDF)](PyQuake3D_User_Manual.pdf) for description of parameter details. 
+The simulation parameters are implemented by modifying the parameter.txt file, rather than by changing the source code. The heterogeneous stress and friction parameters are imported from external files. Please refer to [Code Manual](https://pyquake3d.readthedocs.io/en/latest/)  for description of parameter details. 
 
 ## License
 
