@@ -36,6 +36,7 @@ def create_parser():
     parser.add_argument("--a2", action="store_true", help="Create 2D animation")
     parser.add_argument("--a3", action="store_true", help="Create 3D animation")
     parser.add_argument("--event", action="store_true", help="Extract earthquake events")
+    parser.add_argument("--phase", action="store_true", help="Generates phase plot (V vs Psi)")
 
     # Visualization parameters
     parser.add_argument("--var", type=str, help="Variable to plot (V, Omega, state)")
@@ -118,6 +119,10 @@ def main():
 
     if args.a3:
         tool.animation3D()
+        
+        
+    if args.phase:
+        tool.phase_plot()
 
 
 if __name__ == "__main__":
