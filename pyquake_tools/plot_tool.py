@@ -384,7 +384,6 @@ class Ptool:
         steps_filtered = self.steps[(self.steps>step_min) & (self.steps<step_max)]
         N_steps = len(steps_filtered)
         
-        df
         
         ax1.set_xlabel('time [yr]')
         ax1.set_ylabel('V [m/s]')
@@ -453,14 +452,19 @@ class Ptool:
             surf.set_norm(norm)
         elif self.var =='state':
             label = '$\\phi$ [-]'
-            cmap = 'plasma_r'
             dummy = 'state'
             data = mesh.cell_data['state']
             surf.set_array(data)
-            boundaries = np.linspace(self.theta_min,self.theta_max, 
-                                     num=100,endpoint=True)
-            norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
-            surf.set_norm(norm)        
+            norm = LogNorm(vmin=1e-5, 
+                           vmax=1)
+            # boundaries = np.linspace(self.thet
+            # norm = LogNorm(vmin=self.theta_min, 
+            #                vmax=self.theta_max)
+            # boundaries = np.linspace(self.theta_min,self.theta_max, 
+            #                          num=100,endpoint=True)
+            # norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
+            surf.set_norm(norm)   
+            cmap = 'plasma_r'
             surf.set_cmap(cmap)
             
         fig.colorbar(surf, ax=ax, shrink=0.3, 
