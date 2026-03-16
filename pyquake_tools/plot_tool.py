@@ -211,29 +211,36 @@ class Ptool:
         vmax['Slipv[m/s]'] = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
 
         ax.set_xlabel('time [yr]')
-        ax.set_ylabel('log($V_{max}$) [m/s]')
  
-        # if self.var == 'V':
-        #     ax.set_ylabel('log($V_{max}$) [m/s]')
-        #     # V = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
-        #     V = vmax['Slipv[m/s]']
-            
-        # if self.var == 'Omega':
-        #     ax.set_ylabel('$\\Omega [-]$')
+        if self.var == 'V':
+            ax.set_ylabel('log($V_{max}$) [m/s]')
+            # V = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
+            V = vmax['Slipv[m/s]']
+            ax.plot(vmax['time(s)']/self.t_yr, 
+                        V)
+            ax.set_ylabel('log($V_{max}$) [m/s]')
 
-        #     V = vmax['Slipv[m/s]'] * vmax['state'] / vmax['dc']
+        if self.var == 'theta':
+            ax.set_ylabel('$\\Omega [-]$')
+            ax.plot(vmax['time(s)']/self.t_yr, 
+                        vmax['theta'])
+            ax.set_ylabel('$\\theta$ [s]')
             
-        # if self.var == 'slip':
-        #     ax.set_ylabel('Slip [m]$')
-        #     ax.set_yscale('linear')
-        #     V = vmax['slip']
+        if self.var == 'fric':
+            ax.set_ylabel('Slip [m]$')
+            ax.set_yscale('linear')
+            ax.plot(vmax['time(s)']/self.t_yr, 
+                        vmax['fric'])
+            
+        if self.var == 'shear':
+            ax.set_ylabel('Slip [m]$')
+            ax.set_yscale('linear')
+            ax.plot(vmax['time(s)']/self.t_yr, 
+                        vmax['Shear_[MPa]'])
 
-        
-        ax.plot(vmax['time(s)']/self.t_yr, 
-                    np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
-                    )
-        
-        fig.savefig(os.path.join(self.path,f'max_{self.var}.jpg'), dpi = 300, bbox_inches='tight')
+
+        fig.savefig(os.path.join(self.path,f'max_{self.var}.jpg'), 
+                    dpi = 300, bbox_inches='tight')
         
         
         
@@ -279,7 +286,8 @@ class Ptool:
                     df['slipv'].iloc[0], color = 'r', marker = 'o')
         
         # This is the time information
-        timetext = ax1.text(0.0,1.0, "Y{:0>5.0f} D{:0>3.0f}-{:0>2.0f}:{:0>2.0f}:{:0>2.0f}".format(0,
+        timetext = ax1.text(0.0,1.0, 
+                "Y{:0>5.0f} D{:0>3.0f}-{:0>2.0f}:{:0>2.0f}:{:0>2.0f}".format(0,
                                                   0,
                                                   0,
                                                   0,
@@ -334,7 +342,8 @@ class Ptool:
             line.set_data([time/self.t_yr], [sliprate])
 
                         
-            timetext.set_text("Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format( time/(365*3600*24),
+            timetext.set_text(
+                "Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format( time/(365*3600*24),
                                                   (time/3600/24)%(365),
                                                   (time/3600)%24,
                                                   (time/60)%60,
