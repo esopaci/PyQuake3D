@@ -455,18 +455,18 @@ class Ptool:
             dummy = 'state'
             data = mesh.cell_data['state']
             surf.set_array(data)
-            norm = LogNorm(vmin=1e-5, 
-                           vmax=1)
+            # norm = LogNorm(vmin=1e-5, 
+            #                vmax=1)
             # boundaries = np.linspace(self.thet
             # norm = LogNorm(vmin=self.theta_min, 
             #                vmax=self.theta_max)
-            # boundaries = np.linspace(self.theta_min,self.theta_max, 
-            #                          num=100,endpoint=True)
-            # norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
-            surf.set_norm(norm)   
+            boundaries = np.linspace(0.1,1, 
+                                     num=100,endpoint=True)
+            norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
             cmap = 'plasma_r'
             surf.set_cmap(cmap)
-            
+            surf.set_norm(norm)   
+
         fig.colorbar(surf, ax=ax, shrink=0.3, 
                      label=f"{label}", 
                      orientation = 'vertical',
@@ -504,7 +504,7 @@ class Ptool:
                         )
             
             surf.set_array(data)
-            surf.set_norm(norm)
+            # surf.set_norm(norm)
             return surf, timetext, line
 
         
@@ -677,4 +677,39 @@ class Ptool:
             
         with open(os.path.join(self.path, "events.txt"), "w") as file:
             file.write(event_string)
+            
+            
+    def phase_plot(self):
+        '''
+        This is a phase plot Velocity versus Psi
+        Psi=f_0 + b * ln(theta V_0/dc)
+
+        Returns
+        -------
+        Plot.
+
+        '''
+        
+        fig,ax = plt.subplots(1,1)
+        ax.set_xlabel('V [m/s]')
+        ax.set_ylabel('$\\psi$')
+        
+        Vmean_data = np.empty(self.N_steps)
+        statemean_data = np.empty(self.N_steps)
+
+        i = 0
+        for step in self.steps:
+            # print(step)
+            mesh = self.read_mesh(step)
+            Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
+            statemean_data[i] = mesh.cell_data['state'].mean()    
+            i+=1
+            # ax.scatter(np.log10(V), state) 
+            
+
+
+        ax.semilogx(Vmean_data, statemean_data, color = 'k', lw = 0.8) 
+        
+        fig.savefig(os.path.join(self.path,'phase_plot.jpg'), 
+                dpi = 300, bbox_inches='tight')
 
