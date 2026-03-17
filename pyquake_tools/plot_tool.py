@@ -79,7 +79,7 @@ class Ptool:
     elevation = 15       # Elevation angle for 3D plot
     interval = 10        # Interval of reading outputs for animations
 
-    depth = -10e3        # Depth for event plot 
+    depth = 10e3        # Depth for event plot 
     event_no = 3        # Event number to be plotted
 
 
@@ -775,7 +775,9 @@ class Ptool:
         
         x_fine = np.linspace(self.x_min+10,self.x_max-10,1000, 
                              endpoint=True)
-        z_depth = self.depth
+        
+        # Depth to be plotted!
+        z_depth = -self.depth
         
         V_m = np.empty((selected_steps.size, x_fine.size))
         time_m = np.empty((selected_steps.size)).flatten()
@@ -826,5 +828,5 @@ class Ptool:
                             label = 'Slip rate [m/s]') 
 
 
-        fig.savefig(os.path.join(self.path,f'event_{self.event_no}.jpg'), 
+        fig.savefig(os.path.join(self.path,f'event_{self.event_no}_depth{self.depth*1e-3:.0f}.jpg'), 
                     dpi = 200, bbox_inches='tight' )

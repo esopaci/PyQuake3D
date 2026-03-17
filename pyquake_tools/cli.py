@@ -58,8 +58,8 @@ def create_parser():
 
     parser.add_argument("--interval", type=int)
     
-    parser.add_argument("--event_no", type=int, help ='Required for ...')
-    parser.add_argument("--depth", type=float, help ='Required for ...')
+    parser.add_argument("--event_no", type=int, help ='Required for event_plot')
+    parser.add_argument("--depth",  type=float, help ='Required for event_plot')
 
     # Physics parameters
     parser.add_argument("--V_dyn", type=float, help ='Dynamic slip rate')
