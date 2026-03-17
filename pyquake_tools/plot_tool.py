@@ -29,6 +29,7 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 import traceback
 from scipy.integrate import simpson
+from scipy.interpolate import LinearNDInterpolator
 
 
 class Ptool:
@@ -55,9 +56,10 @@ class Ptool:
     # ------------------------------------------------------------------
     # Physical constants
     # ------------------------------------------------------------------
-    G = 32038120320     # Shear Modulus
-    V_dyn = 1e-3    ## Dynamic slip rate, when elastodynamic effects dominate
-
+    G = 32038120320                 # Shear Modulus
+    rho = 2670                      # Density of the rocth
+    c_s = 0.5*(G/rho)**(1/2)        # Shear Wave Velocity
+    V_dyn = 1e-2    ## Dynamic slip rate, when elastodynamic effects dominate
     t_yr = 365*3600*24  # year to second converion
 
     # ------------------------------------------------------------------
@@ -76,6 +78,9 @@ class Ptool:
     azimuth = -80        # Azimuth angle for 3D plot
     elevation = 15       # Elevation angle for 3D plot
     interval = 10        # Interval of reading outputs for animations
+
+    depth = -10e3        # Depth for event plot 
+    event_no = 3        # Event number to be plotted
 
 
     # ------------------------------------------------------------------
@@ -116,19 +121,19 @@ class Ptool:
 
         if os.path.isdir(out_vtu):
             self.out_folder = out_vtu
-            extension = ".vtu"
+            self.extension = ".vtu"
         elif os.path.isdir(out_vtk):
             self.out_folder = out_vtk
-            extension = ".vtu"
+            self.extension = ".vtu"
         else:
             raise FileNotFoundError(
                 f"No output folder found. Checked: {out_vtu} and {out_vtk}"
             )
 
         files = [
-            int(f.split(extension)[0][4:])
+            int(f.split(self.extension)[0][4:])
             for f in os.listdir(self.out_folder)
-            if f.endswith(extension)
+            if f.endswith(self.extension)
         ]
 
         self.steps = np.sort(files)
@@ -137,8 +142,38 @@ class Ptool:
         self.state_file = os.path.join(path, "state.txt")
         
         
+        '''
+        This function reads the initial variables and frictional parameters
+        Returns
+        -------
+        Saves to the class object.
+
+        '''
+        init_mesh = pv.read(
+            os.path.join(self.path, 'Init.vtu')
+            )
+        self.Init_mesh = init_mesh
         
+        # Get data
+        cells = init_mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
+        triangles = cells[:, 1:]         # drop the "3"
+        points = init_mesh.points[triangles]  # shape (n_cells, 3, 3)
+        points = np.mean(points, axis = 1 )
         
+        ## Center of the trinages in X, Y, Z 
+        self.x, self.y, self.z = points[:,0],points[:,1], points[:,2]  
+        
+        self.x_min = self.x.min() 
+        self.x_max = self.x.max() 
+        self.x_mean= self.x.mean() 
+
+        self.y_min = self.y.min() 
+        self.y_max = self.y.max() 
+        self.y_mean= self.y.mean() 
+        
+        self.z_min = self.z.min() 
+        self.z_max = self.z.max() 
+        self.z_mean= self.z.mean()         
         
         
     # ----------------------------------------------------------------------- #
@@ -148,6 +183,7 @@ class Ptool:
     def read_mesh(self, step):
         """Load mesh for a given simulation step."""
         return pv.read(os.path.join(self.out_folder, f"step{step}.vtu"))
+
             
     
     def read_statefile(self):
@@ -544,7 +580,7 @@ class Ptool:
         
         i_steps = self.steps
         
-        event_string=f'{"Evnt":10}{"Year":10}{"Day":10}{"Hour":10}{"Min":10}{"Duration":10}{"Nuc_X":10}{"Nuc_y":10}{"Nuc_z":10}{"X_min":10}{"X_max":10}{"Y_min":10}{"Y_max":10}{"Z_min":10}{"Z_max":10}{"slip_mean":10}{"slip_max":10}{"State_drop":16}{"Stress_drop":16}{"M0":16}{"M0_dot_mean":16}{"Mw":16}\n'
+        event_string=f'{"Evnt":10}{"I_start":10}{"I_finish":10}{"Year":10}{"Day":10}{"Hour":10}{"Min":10}{"Duration":10}{"Nuc_X":10}{"Nuc_y":10}{"Nuc_z":10}{"X_min":10}{"X_max":10}{"Y_min":10}{"Y_max":10}{"Z_min":10}{"Z_max":10}{"slip_mean":10}{"slip_max":10}{"State_drop":16}{"Stress_drop":16}{"M0":16}{"M0_dot_mean":16}{"Mw":16}\n'
         
         ## Loop over events
         for i in range(Nevents-1):
@@ -560,8 +596,10 @@ class Ptool:
             
             # earthquake_ind = df[(df.Iteration>=iter1) & (df.Iteration<=iter1)]['slip_v'].argmax()
             
+            # Get the indices of the event
             iter_indices = ((i_steps>=iter1) & (i_steps<=iter2))
-            
+            step_min = self.steps[iter_indices].min() # Start index of the event
+            step_max = self.steps[iter_indices].max() # Finish index of the event
             N_iter = self.steps[iter_indices].size
             
             X_min = []
@@ -659,13 +697,13 @@ class Ptool:
                 # ttime = time[vv.argmax()]
                 ttime0 = time[0]
                 ttime1 = time[-1]
-                t_year = ttime0 / self.t_yr 
+                t_year = ttime0 // self.t_yr 
                 t_day  = (ttime0 / 3600 / 24 ) % 365
                 t_hour = (ttime0 / 3600 ) % 24
                 t_min  = (ttime0 / 60 ) % 60
                 t_dur = ttime1 - ttime0
                 
-                event_string += f'{i:5.0f}{t_year:10.0f}{t_day:10.0f}{t_hour:10.0f}{t_min:10.2f}{t_dur:10.2f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_drop:16.6E}{stress_drop:16.6E}{M0:16.6E}{M0_dot_mean:16.6E}{Mw:16.3f}\n'
+                event_string += f'{i:5.0f}{step_min:10.0f}{step_max:10.0f}{t_year:10.0f}{t_day:10.0f}{t_hour:10.0f}{t_min:10.2f}{t_dur:10.2f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_drop:16.6E}{stress_drop:16.6E}{M0:16.6E}{M0_dot_mean:16.6E}{Mw:16.3f}\n'
 
                 
             except Exception as e:
@@ -713,3 +751,80 @@ class Ptool:
         fig.savefig(os.path.join(self.path,'phase_plot.jpg'), 
                 dpi = 300, bbox_inches='tight')
 
+
+    def event_plot(self):
+        
+        # read max file
+        vmax = self.read_statefile()
+        
+        # read Event file 
+        event = pd.read_csv(
+            os.path.join(self.path, 'events.txt'), sep = '\\s+'
+            )
+        
+        s_event = event[event['Evnt'] == self.event_no]
+        
+        I_start = s_event['I_start'].values[0]
+        
+        I_finish = s_event['I_finish'].values[0]
+        
+        selected_steps = self.steps[(self.steps>=I_start) & 
+                                    (self.steps<I_finish)]
+        
+        pp = np.stack([self.x,self.z]).T
+        
+        x_fine = np.linspace(self.x_min+10,self.x_max-10,1000, 
+                             endpoint=True)
+        z_depth = self.depth
+        
+        V_m = np.empty((selected_steps.size, x_fine.size))
+        time_m = np.empty((selected_steps.size)).flatten()
+        
+        i = 0
+        
+        for step in selected_steps:
+            
+            vtu_file = f'{self.out_folder}/step{step}{self.extension}'
+            
+            time = vmax[vmax.Iteration==step]['time(s)'].values[0]
+            print(time, step)
+            
+            mesh_v = pv.read(vtu_file)
+            slip_rate = mesh_v.cell_data["Slipv[m/s]"]
+            
+            p_fine = np.stack([x_fine, np.ones(x_fine.size)*z_depth]).T 
+            
+            interp = LinearNDInterpolator(pp, slip_rate)
+            
+            V_m[i,:] = interp(p_fine)
+                
+            time_m[i] = time   
+            
+            i+=1
+        
+        V_m[:,0] = V_m[:,1] 
+        
+        
+        fig, ax = plt.subplots(layout='constrained')
+        ax.set_xlabel('Position [km]')
+        ax.set_ylabel('Time [s]')
+        
+        t1 = np.arange(0,10) 
+        x1 = t1*self.c_s
+        
+        levs = np.logspace(-8, 1, 50)
+        
+        
+        # ax.set_ylim(bottom = 60)
+        cs = ax.contourf(x_fine*1e-3, time_m, V_m, levels=levs, 
+                         norm=LogNorm(), cmap='Reds') 
+        ax.plot( (self.x_mean + x1) * 1e-3, t1 + time_m.min()+5,ls = '--', color = 'k')
+        ax.plot( (self.x_mean - x1) * 1e-3, t1 + time_m.min()+5,ls = '--', color = 'k')
+        
+        cbar = fig.colorbar(cs, format='%.0e', 
+                            shrink = 0.5, 
+                            label = 'Slip rate [m/s]') 
+
+
+        fig.savefig(os.path.join(self.path,f'event_{self.event_no}.jpg'), 
+                    dpi = 200, bbox_inches='tight' )

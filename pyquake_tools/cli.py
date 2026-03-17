@@ -37,6 +37,7 @@ def create_parser():
     parser.add_argument("--a3", action="store_true", help="Create 3D animation")
     parser.add_argument("--event", action="store_true", help="Extract earthquake events")
     parser.add_argument("--phase", action="store_true", help="Generates phase plot (V vs Psi)")
+    parser.add_argument("--event_plot", action="store_true", help="Generates rupture prop. in xvs time")
 
     # Visualization parameters
     parser.add_argument("--var", type=str, help="Variable to plot (V, Omega, state)")
@@ -56,10 +57,14 @@ def create_parser():
     parser.add_argument("--elevation", type=float)
 
     parser.add_argument("--interval", type=int)
+    
+    parser.add_argument("--event_no", type=int, help ='Required for ...')
+    parser.add_argument("--depth", type=float, help ='Required for ...')
 
     # Physics parameters
-    parser.add_argument("--V_dyn", type=float)
-    parser.add_argument("--G", type=float)
+    parser.add_argument("--V_dyn", type=float, help ='Dynamic slip rate')
+    parser.add_argument("--G", type=float, help ='Shear modulus')
+    parser.add_argument("--rho", type=float, help ='Rock density')
 
     return parser
 
@@ -85,6 +90,9 @@ def apply_parameters(tool, args):
         "interval",
         "V_dyn",
         "G",
+        "rho",
+        "depth",
+        "event_no"
     ]
 
     for param in parameters:
@@ -120,10 +128,11 @@ def main():
     if args.a3:
         tool.animation3D()
         
-        
     if args.phase:
         tool.phase_plot()
 
+    if args.event_plot:
+        tool.event_plot()
 
 if __name__ == "__main__":
     main()
