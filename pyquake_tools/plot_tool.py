@@ -78,9 +78,9 @@ class Ptool:
     azimuth = -80        # Azimuth angle for 3D plot
     elevation = 15       # Elevation angle for 3D plot
     interval = 10        # Interval of reading outputs for animations
-
     depth = 10e3        # Depth for event plot 
     event_no = 3        # Event number to be plotted
+    next_event = 0      # This number is used for plotting how manu number of events
 
 
     # ------------------------------------------------------------------
@@ -301,7 +301,7 @@ class Ptool:
         
         
         s_event1 = event[event['Evnt'] == self.event_no]
-        s_event2 = event[event['Evnt'] == self.event_no+3]
+        s_event2 = event[event['Evnt'] == self.event_no+self.next_event]
 
         
         I_start = s_event1['I_start'].values[0]

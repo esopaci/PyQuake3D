@@ -61,6 +61,8 @@ def create_parser():
     parser.add_argument("--interval", type=int)
     
     parser.add_argument("--event_no", type=int, help ='Required for event_plot')
+    parser.add_argument("--next_event", type=int, help ='Required for ts2 plot')
+
     parser.add_argument("--depth",  type=float, help ='Required for event_plot')
 
     # Physics parameters
