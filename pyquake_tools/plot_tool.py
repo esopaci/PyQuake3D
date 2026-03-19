@@ -347,7 +347,7 @@ class Ptool:
             i+=1
                 
         Time = Time/365/3600/24
-        fig,(ax,ax1,ax2,ax3) = plt.subplots(3,1, figsize = (10,12), sharex =True, clear=True)
+        fig,(ax,ax1,ax2,ax3) = plt.subplots(4,1, figsize = (10,12), sharex =True, clear=True)
         
         
         ax.set_ylabel('V')
