@@ -310,7 +310,9 @@ class Ptool:
         selected_steps = self.steps[(self.steps>=I_start) & 
                                     (self.steps<I_finish)]
         
-        V = np.empty(selected_steps.size)
+        V_max = np.empty(selected_steps.size)
+        V_mean = np.empty(selected_steps.size)
+
         Psi = np.empty(selected_steps.size)
         Fric = np.empty(selected_steps.size)
 
@@ -331,14 +333,16 @@ class Ptool:
             
             mesh_v = pv.read(vtu_file)
             
-            V[i] = mesh_v.cell_data["Slipv[m/s]"]
-            Psi[i] = mesh_v.cell_data["state"]
-            Fric[i] = mesh_v.cell_data["fric"]
+            V_max[i] = mesh_v.cell_data["Slipv[m/s]"].max()
+            V_mean[i] = mesh_v.cell_data["Slipv[m/s]"].mean()
 
-            P[i] = mesh_v.cell_data['Pore_pressure[MPa]']
-            S[i] = mesh_v.cell_data['Normal_[MPa]']
-            Por[i] = mesh_v.cell_data['Porosity[Degree]']
-            T[i] = mesh_v.cell_data['Temperature[Degree]']
+            Psi[i] = mesh_v.cell_data["state"].mean()
+            Fric[i] = mesh_v.cell_data["fric"].mean()
+
+            P[i] = mesh_v.cell_data['Pore_pressure[MPa]'].mean()
+            S[i] = mesh_v.cell_data['Normal_[MPa]'].mean()
+            Por[i] = mesh_v.cell_data['Porosity[Degree]'].mean()
+            T[i] = mesh_v.cell_data['Temperature[Degree]'].mean()
 
             i+=1
                 
@@ -352,18 +356,18 @@ class Ptool:
         ax3.set_ylabel('Porosity')
         ax3.set_xlabel('Time [year]')
         
-        ax.semilogy(Time, V.max(), label='V_max')
-        ax.semilogy(Time, V.mean(), label='V_mean')
+        ax.semilogy(Time, V_max, label='V_max')
+        ax.semilogy(Time, V_mean, label='V_mean')
         
-        ax1.plot(Time, Fric.mean(), label='friction')
-        ax1.plot(Time, Psi.mean(), label='Restrengthening')
+        ax1.plot(Time, Fric, label='friction')
+        ax1.plot(Time, Psi, label='Restrengthening')
         
-        ax2.plot(Time, S.mean(), label='$\\sigma_n$ [MPa]')
-        ax2.plot(Time, P.mean(), label='P [MPa]')
+        ax2.plot(Time, S, label='$\\sigma_n$ [MPa]')
+        ax2.plot(Time, P, label='P [MPa]')
         
-        ax3.plot(Time, Por.mean(), label='Porosity [Degree]')
+        ax3.plot(Time, Por, label='Porosity [Degree]')
         ax4 = ax3.twinx()
-        ax4.plot(Time, T.mean(), color = 'k', lw = 1, label='Temperature [Degree]')
+        ax4.plot(Time, T, color = 'k', lw = 1, label='Temperature [Degree]')
         ax4.set_ylabel('Temperature')
 
         ax.legend()
