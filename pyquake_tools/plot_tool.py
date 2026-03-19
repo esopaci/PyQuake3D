@@ -369,8 +369,9 @@ class Ptool:
         ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
         ax2.semilogy(Time, S-P_mean, label= '$\\sigma_n - P_{mean}$ [MPa]')
         
-        ax4 = ax2.twinx()
-        ax4.plot(Time, T, color = 'k', lw = 1, label='Temperature [Degree]')
+        ax4 = ax1.twinx()
+        ax4.semilogy(Time, T, color = 'k', lw = 0.8, 
+                     ls = '--', label='Temperature [Degree]')
         ax4.set_ylabel('Temperature')
         
         ax4.set_ylim(top=50)
