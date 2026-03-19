@@ -96,7 +96,8 @@ def apply_parameters(tool, args):
         "G",
         "rho",
         "depth",
-        "event_no"
+        "event_no",
+        "next_event"
     ]
 
     for param in parameters:
