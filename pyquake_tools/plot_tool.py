@@ -278,6 +278,102 @@ class Ptool:
         fig.savefig(os.path.join(self.path,f'max_{self.var}.jpg'), 
                     dpi = 300, bbox_inches='tight')
         
+
+
+    def plot_timeseries2(self):
+        '''
+        This module plots time vs maximum slip rate for each the output 
+        time steps
+
+        Returns
+        -------
+        Saves the figure into the simulation directory.
+
+        '''
+
+        # read max file
+        vmax = self.read_statefile()
+        
+        # read Event file 
+        event = pd.read_csv(
+            os.path.join(self.path, 'events.txt'), sep = '\\s+'
+            )
+        
+        s_event = event[event['Evnt'] == self.event_no]
+        
+        I_start = s_event['I_start'].values[0]
+        
+        I_finish = s_event['I_finish'].values[0]
+        
+        selected_steps = self.steps[(self.steps>=I_start) & 
+                                    (self.steps<I_finish)]
+        
+        V = np.empty(selected_steps.size)
+        Psi = np.empty(selected_steps.size)
+        Fric = np.empty(selected_steps.size)
+
+        P = np.empty(selected_steps.size)
+        Por = np.empty(selected_steps.size)
+
+        S = np.empty(selected_steps.size)
+        T = np.empty(selected_steps.size)
+        Time = np.empty(selected_steps.size)
+
+        i = 0
+        
+        for step in selected_steps:
+            
+            Time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            vtu_file = f'{self.out_folder}/step{step}{self.extension}'
+            
+            mesh_v = pv.read(vtu_file)
+            
+            V[i] = mesh_v.cell_data["Slipv[m/s]"]
+            Psi[i] = mesh_v.cell_data["state"]
+            Fric[i] = mesh_v.cell_data["fric"]
+
+            P[i] = mesh_v.cell_data['Pore_pressure[MPa]']
+            S[i] = mesh_v.cell_data['Normal_[MPa]']
+            Por[i] = mesh_v.cell_data['Porosity[Degree]']
+            T[i] = mesh_v.cell_data['Temperature[Degree]']
+
+            i+=1
+                
+        Time = Time/365/3600/24
+        fig,(ax,ax1,ax2,ax3) = plt.subplots(3,1, figsize = (10,12), sharex =True, clear=True)
+        
+        
+        ax.set_ylabel('V')
+        ax1.set_ylabel('$friction$')
+        ax2.set_ylabel('[MPa]')
+        ax3.set_ylabel('Porosity')
+        ax3.set_xlabel('Time [year]')
+        
+        ax.semilogy(Time, V.max(), label='V_max')
+        ax.semilogy(Time, V.mean(), label='V_mean')
+        
+        ax1.plot(Time, Fric.mean(), label='friction')
+        ax1.plot(Time, Psi.mean(), label='Restrengthening')
+        
+        ax2.plot(Time, S.mean(), label='$\\sigma_n$ [MPa]')
+        ax2.plot(Time, P.mean(), label='P [MPa]')
+        
+        ax3.plot(Time, Por.mean(), label='Porosity [Degree]')
+        ax4 = ax3.twinx()
+        ax4.plot(Time, T.mean(), color = 'k', lw = 1, label='Temperature [Degree]')
+        ax4.set_ylabel('Temperature')
+
+        ax.legend()
+        ax1.legend()
+        ax2.legend()
+        
+        fig.savefig(os.path.join(self.path, f'ts2_{self.event_no}.jpg'), 
+                    dpi = 300, bbox_inches='tight')
+        
+
+
+
         
         
     def animation2D(self):
@@ -735,6 +831,10 @@ class Ptool:
         Vmean_data = np.empty(self.N_steps)
         statemean_data = np.empty(self.N_steps)
 
+        mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
+        a = mesh_init.cell_data['a'] 
+        b = mesh_init.cell_data['b'] 
+        dc = mesh_init.cell_data['dc'] 
         i = 0
         for step in self.steps:
             # print(step)
