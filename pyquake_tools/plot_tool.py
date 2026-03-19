@@ -300,6 +300,8 @@ class Ptool:
             )
         
         s_event = event[event['Evnt'] == self.event_no]
+        s_event = event[event['Evnt'] == self.event_no+2]
+
         
         I_start = s_event['I_start'].values[0]
         
