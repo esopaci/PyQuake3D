@@ -299,12 +299,14 @@ class Ptool:
             os.path.join(self.path, 'events.txt'), sep = '\\s+'
             )
         
-        s_event = event[(event['Evnt'] >= self.event_no) & event['Evnt'] <= self.event_no+3]
+        
+        s_event1 = event[event['Evnt'] == self.event_no]
+        s_event2 = event[event['Evnt'] == self.event_no+3]
 
         
-        I_start = s_event['I_start'].values[0]
+        I_start = s_event1['I_start'].values[0]
         
-        I_finish = s_event['I_finish'].values[0]
+        I_finish = s_event2['I_finish'].values[0]
         
         selected_steps = self.steps[(self.steps>=I_start) & 
                                     (self.steps<I_finish)]
