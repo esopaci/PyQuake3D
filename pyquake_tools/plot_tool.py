@@ -317,7 +317,9 @@ class Ptool:
         Psi = np.empty(selected_steps.size)
         Fric = np.empty(selected_steps.size)
 
-        P = np.empty(selected_steps.size)
+        P_max = np.empty(selected_steps.size)
+        P_mean = np.empty(selected_steps.size)
+
         Por = np.empty(selected_steps.size)
 
         S = np.empty(selected_steps.size)
@@ -340,7 +342,9 @@ class Ptool:
             Psi[i] = mesh_v.cell_data["state"].mean()
             Fric[i] = mesh_v.cell_data["fric"].mean()
 
-            P[i] = mesh_v.cell_data['Pore_pressure[MPa]'].mean()
+            P_max[i] = mesh_v.cell_data['Pore_pressure[MPa]'].max()
+            P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'].max()
+
             S[i] = mesh_v.cell_data['Normal_[MPa]'].mean()
             Por[i] = mesh_v.cell_data['Porosity[Degree]'].mean()
             T[i] = mesh_v.cell_data['Temperature[Degree]'].mean()
@@ -363,8 +367,8 @@ class Ptool:
         ax1.plot(Time, Fric, label='friction')
         ax1.plot(Time, Psi, label='Restrengthening')
         
-        ax2.semilogy(Time, S, label='$\\sigma_n$ [MPa]')
-        ax2.semilogy(Time, P, label='P [MPa]')
+        ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
+        ax2.semilogy(Time, S-P_mean, label= '$\\sigma_n - P_{mean}$ [MPa]')
         
         ax3.semilogy(Time, Por, label='Porosity [Degree]')
         ax4 = ax3.twinx()
