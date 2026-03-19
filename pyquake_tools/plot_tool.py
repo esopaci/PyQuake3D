@@ -343,7 +343,7 @@ class Ptool:
             Fric[i] = mesh_v.cell_data["fric"].mean()
 
             P_max[i] = mesh_v.cell_data['Pore_pressure[MPa]'].max()
-            P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'].max()
+            P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'].mean()
 
             S[i] = mesh_v.cell_data['Normal_[MPa]'].mean()
             Por[i] = mesh_v.cell_data['Porosity[Degree]'].mean()
@@ -352,14 +352,13 @@ class Ptool:
             i+=1
                 
         Time = Time/365/3600/24
-        fig,(ax,ax1,ax2,ax3) = plt.subplots(4,1, figsize = (10,12), sharex =True, clear=True)
+        fig,(ax,ax1,ax2) = plt.subplots(3,1, figsize = (10,12), sharex =True, clear=True)
         
         
         ax.set_ylabel('V')
         ax1.set_ylabel('$friction$')
         ax2.set_ylabel('[MPa]')
-        ax3.set_ylabel('Porosity')
-        ax3.set_xlabel('Time [year]')
+        ax2.set_xlabel('Time [year]')
         
         ax.semilogy(Time, V_max, label='V_max')
         ax.semilogy(Time, V_mean, label='V_mean')
@@ -370,10 +369,11 @@ class Ptool:
         ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
         ax2.semilogy(Time, S-P_mean, label= '$\\sigma_n - P_{mean}$ [MPa]')
         
-        ax3.semilogy(Time, Por, label='Porosity [Degree]')
-        ax4 = ax3.twinx()
-        ax4.semilogy(Time, T, color = 'k', lw = 1, label='Temperature [Degree]')
+        ax4 = ax2.twinx()
+        ax4.plot(Time, T, color = 'k', lw = 1, label='Temperature [Degree]')
         ax4.set_ylabel('Temperature')
+        
+        ax4.set_ylim(top=50)
 
         ax.legend()
         ax1.legend()
