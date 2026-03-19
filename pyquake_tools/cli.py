@@ -33,6 +33,8 @@ def create_parser():
 
     # Operations
     parser.add_argument("--ts", action="store_true", help="Plot time series")
+    parser.add_argument("--ts2", action="store_true", help="Plot time series2")
+
     parser.add_argument("--a2", action="store_true", help="Create 2D animation")
     parser.add_argument("--a3", action="store_true", help="Create 3D animation")
     parser.add_argument("--event", action="store_true", help="Extract earthquake events")
@@ -118,6 +120,9 @@ def main():
 
     if args.ts:
         tool.plot_timeseries()
+        
+    if args.ts2:
+        tool.plot_timeseries2()
 
     if args.event:
         tool.extract_slip_info()
