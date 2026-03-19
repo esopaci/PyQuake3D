@@ -299,8 +299,7 @@ class Ptool:
             os.path.join(self.path, 'events.txt'), sep = '\\s+'
             )
         
-        s_event = event[event['Evnt'] == self.event_no]
-        s_event = event[event['Evnt'] == self.event_no+2]
+        s_event = event[(event['Evnt'] >= self.event_no) & event['Evnt'] <= self.event_no+3]
 
         
         I_start = s_event['I_start'].values[0]
