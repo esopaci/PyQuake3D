@@ -371,18 +371,18 @@ numerically stable earthquake cycle simulations.
 
 Fluid diffusion equation and Dilatancy Law
 ------------------------------------------
-We model earthquake cycles with 3-D elasticity, rate-state friction, and a dilatancy law where porosity evolves toward steady state over distance :math:`d_c`, using BIEM coupled with Finite Difference Method (FDM). Following :cite:`segall1995dilatancy` and :cite:`segall2010dilatant`, we assume a constitutive equation for the inelastic change in porosity :math:`\delta \phi`, including both dilatancy and compaction. We associate dilatancy/compaction with changes in the average lifetime of asperity contacts within the fault gouge, such that
+We model earthquake cycles with 3-D elasticity, rate-state friction, and a dilatancy law where porosity evolves toward steady state over distance :math:`d_c`, using BIEM coupled with Finite Difference Method (FDM). Following :cite:`segall1995dilatancy` and :cite:`segall2010dilatant`, we assume a constitutive equation for the inelastic change in porosity :math:`\phi`, including both dilatancy and compaction. We associate dilatancy/compaction with changes in the average lifetime of asperity contacts within the fault gouge, such that
 
 .. math::
 
-   \delta \phi = -\epsilon \ln \left( \frac{V_0 \theta}{c} \right)
+   \phi = -\epsilon \ln \left( \frac{V_0 \theta}{d_c} \right)
 
 .. math::
    :label: dfdt
 
    \frac{d\phi}{dt}
-   = -\epsilon \frac{d}{dt} \ln \left( \frac{V_0 \theta}{c} \right)
-   = -\epsilon \frac{d\theta}{dt}
+   = -\epsilon \frac{d}{dt} \ln \left( \frac{V_0 \theta}{d_c} \right)
+   = -\frac{\epsilon}{\theta} \frac{d\theta}{dt}
 
 Where :math:`\epsilon` represents the empirically derived constant of order :math:`10^{-4}`, based on :cite:`marone1990frictional` experiments. Above steady state, that is for :math:`\theta > d_c / V`, :math:`\theta` decreases :eq:`dthetadt`, and the gouge dilates, while below steady state, :math:`\theta` increases and the gouge compacts.
 
