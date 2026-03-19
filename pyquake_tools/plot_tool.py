@@ -299,9 +299,9 @@ class Ptool:
             os.path.join(self.path, 'events.txt'), sep = '\\s+'
             )
         
-        
+        event_no2 = self.event_no+self.next_event
         s_event1 = event[event['Evnt'] == self.event_no]
-        s_event2 = event[event['Evnt'] == self.event_no+self.next_event]
+        s_event2 = event[event['Evnt'] == event_no2]
 
         
         I_start = s_event1['I_start'].values[0]
@@ -363,19 +363,19 @@ class Ptool:
         ax1.plot(Time, Fric, label='friction')
         ax1.plot(Time, Psi, label='Restrengthening')
         
-        ax2.plot(Time, S, label='$\\sigma_n$ [MPa]')
-        ax2.plot(Time, P, label='P [MPa]')
+        ax2.semilogy(Time, S, label='$\\sigma_n$ [MPa]')
+        ax2.semilogy(Time, P, label='P [MPa]')
         
-        ax3.plot(Time, Por, label='Porosity [Degree]')
+        ax3.semilogy(Time, Por, label='Porosity [Degree]')
         ax4 = ax3.twinx()
-        ax4.plot(Time, T, color = 'k', lw = 1, label='Temperature [Degree]')
+        ax4.semilogy(Time, T, color = 'k', lw = 1, label='Temperature [Degree]')
         ax4.set_ylabel('Temperature')
 
         ax.legend()
         ax1.legend()
         ax2.legend()
         
-        fig.savefig(os.path.join(self.path, f'ts2_{self.event_no}.jpg'), 
+        fig.savefig(os.path.join(self.path, f'ts2_{self.event_no}-{event_no2}.jpg'), 
                     dpi = 300, bbox_inches='tight')
         
 
