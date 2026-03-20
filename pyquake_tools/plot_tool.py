@@ -328,7 +328,7 @@ class Ptool:
         V_max = np.empty(selected_steps.size)
         V_mean = np.empty(selected_steps.size)
 
-        Psi = np.empty(selected_steps.size)
+        # Psi = np.empty(selected_steps.size)
         theta = np.empty(selected_steps.size)
 
         Fric = np.empty(selected_steps.size)
@@ -356,7 +356,9 @@ class Ptool:
             V_max[i] = mesh_v.cell_data["Slipv[m/s]"][ind].max()
             V_mean[i] = mesh_v.cell_data["Slipv[m/s]"][ind].mean()
                         
-            Psi[i] = mesh_v.cell_data["state"][ind].mean()
+            Psi = mesh_v.cell_data["state"][ind]
+            theta[i] = dc/V_0 * np.exp((Psi-0.6)/b)
+            
             Fric[i] = mesh_v.cell_data["fric"][ind].mean()
 
             # P_max[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].max()
@@ -383,7 +385,7 @@ class Ptool:
         ax.semilogy(Time, V_mean, label='V_mean')
         
         # ax1.plot(Time, Fric, label='friction')
-        ax1.plot(Time, dc/V_0 * np.exp((Psi-0.6)/b) / 365/ 3600/24, label='Healing [yr]')
+        ax1.plot(Time,  theta/ 365/ 3600/24, label='Healing [yr]')
         
         ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
         ax2.semilogy(Time, tau, label= '$\\tau$ [MPa]')
