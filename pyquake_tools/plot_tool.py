@@ -364,14 +364,13 @@ class Ptool:
             
             Fric[i] = mesh_v.cell_data["fric"][ind].mean()
 
-            # P_max[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].max()
-            P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].mean()
             tau[i] = mesh_v.cell_data['Shear_[MPa]'][ind].mean()
 
 
             S[i] = mesh_v.cell_data['Normal_[MPa]'][ind].mean()
             
             try:
+                P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].mean()
                 Por[i] = mesh_v.cell_data['Porosity[Degree]'][ind].mean()
                 T[i] = mesh_v.cell_data['Temperature[Degree]'][ind].mean()
             except Exception as e:
