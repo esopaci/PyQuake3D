@@ -327,6 +327,8 @@ class Ptool:
         
         V_max = np.empty(selected_steps.size)
         V_mean = np.empty(selected_steps.size)
+        V_mean2 = np.empty(selected_steps.size)
+
 
         # Psi = np.empty(selected_steps.size)
         theta = np.empty(selected_steps.size)
@@ -355,7 +357,8 @@ class Ptool:
             
             V_max[i] = mesh_v.cell_data["Slipv[m/s]"][ind].max()
             V_mean[i] = mesh_v.cell_data["Slipv[m/s]"][ind].mean()
-                        
+            V_mean[i] = mesh_v.cell_data["Slipv[m/s]"][~ind].mean()
+     
             Psi = mesh_v.cell_data["state"][ind]
             theta[i] = (dc/V_0 * np.exp((Psi-0.6)/b)).mean()
             
@@ -367,8 +370,13 @@ class Ptool:
 
 
             S[i] = mesh_v.cell_data['Normal_[MPa]'][ind].mean()
-            Por[i] = mesh_v.cell_data['Porosity[Degree]'][ind].mean()
-            T[i] = mesh_v.cell_data['Temperature[Degree]'][ind].mean()
+            
+            try:
+                Por[i] = mesh_v.cell_data['Porosity[Degree]'][ind].mean()
+                T[i] = mesh_v.cell_data['Temperature[Degree]'][ind].mean()
+            except Exception as e:
+                print(e)
+                print('Plotting continues')
 
             i+=1
                 
@@ -382,20 +390,25 @@ class Ptool:
         ax2.set_xlabel('Time [year]')
         
         ax.semilogy(Time, V_max, label='V_max')
-        ax.semilogy(Time, V_mean, label='V_mean')
+        ax.semilogy(Time, V_mean, label='V_mean - VW')
+        ax.semilogy(Time, V_mean2, label='V_mean - VS')
+
         
         # ax1.plot(Time, Fric, label='friction')
         ax1.plot(Time,  theta/ 365/ 3600/24, label='Healing [yr]')
-        
-        ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
         ax2.semilogy(Time, tau, label= '$\\tau$ [MPa]')
         
-        ax4 = ax1.twinx()
-        ax4.semilogy(Time, T, color = 'k', lw = 0.8, 
-                     ls = '--', label='Temperature [Degree]')
-        ax4.set_ylabel('Temperature')
-        
-        ax4.set_ylim(top=10)
+        try: 
+            ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
+            ax4 = ax1.twinx()
+            ax4.semilogy(Time, T, color = 'k', lw = 0.8, 
+                         ls = '--', label='Temperature [Degree]')
+            ax4.set_ylabel('Temperature')
+            ax4.set_ylim(top=10)
+        except Exception as e:
+            print(e)
+            ax2.semilogy(Time, S, label='$\\sigma_n - P_{max}$ [MPa]')
+
 
         ax.legend()
         ax1.legend()
