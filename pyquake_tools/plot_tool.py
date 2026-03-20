@@ -357,7 +357,7 @@ class Ptool:
             
             V_max[i] = mesh_v.cell_data["Slipv[m/s]"][ind].max()
             V_mean[i] = mesh_v.cell_data["Slipv[m/s]"][ind].mean()
-            V_mean2[i] = mesh_v.cell_data["Slipv[m/s]"][~ind].mean()
+            # V_mean2[i] = mesh_v.cell_data["Slipv[m/s]"][~ind].mean()
      
             Psi = mesh_v.cell_data["state"][ind]
             theta[i] = (dc/V_0 * np.exp((Psi-0.6)/b)).mean()
@@ -390,7 +390,7 @@ class Ptool:
         
         ax.semilogy(Time, V_max, label='V_max')
         ax.semilogy(Time, V_mean, label='V_mean - VW')
-        ax.semilogy(Time, V_mean2, label='V_mean - VS')
+        # ax.semilogy(Time, V_mean2, label='V_mean - VS')
 
         
         # ax1.plot(Time, Fric, label='friction')
