@@ -292,14 +292,16 @@ class Ptool:
         '''
 
         mesh = self.Init_mesh.cell_data 
-        a = mesh['a']
-        b = mesh['b']
+
         a_min_b = mesh['a-b']
         
         # index of asperity
         ind = a_min_b<0
-        dc = mesh['dc']
-        V_0 =  mesh['Slipv[m/s]']
+        
+        a = mesh['a'][ind]
+        b = mesh['b'][ind]
+        dc = mesh['dc'][ind]
+        V_0 =  mesh['Slipv[m/s]'][ind]
         
 
 
