@@ -291,7 +291,7 @@ class Ptool:
 
         '''
 
-        mesh = self.init_mesh.cell_data 
+        mesh = self.Init_mesh.cell_data 
         a = mesh['a']
         b = mesh['b']
         a_min_b = mesh['a-b']
