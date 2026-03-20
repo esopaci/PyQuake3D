@@ -291,6 +291,18 @@ class Ptool:
 
         '''
 
+        mesh = self.init_mesh.cell_data 
+        a = mesh['a']
+        b = mesh['b']
+        a_min_b = mesh['a-b']
+        
+        # index of asperity
+        ind = a_min_b<0
+        dc = mesh['dc']
+        V_0 =  mesh['Slipv[m/s]']
+        
+
+
         # read max file
         vmax = self.read_statefile()
         
@@ -315,10 +327,13 @@ class Ptool:
         V_mean = np.empty(selected_steps.size)
 
         Psi = np.empty(selected_steps.size)
+        theta = np.empty(selected_steps.size)
+
         Fric = np.empty(selected_steps.size)
 
         P_max = np.empty(selected_steps.size)
         P_mean = np.empty(selected_steps.size)
+        tau = np.empty(selected_steps.size)
 
         Por = np.empty(selected_steps.size)
 
@@ -336,18 +351,20 @@ class Ptool:
             
             mesh_v = pv.read(vtu_file)
             
-            V_max[i] = mesh_v.cell_data["Slipv[m/s]"].max()
-            V_mean[i] = mesh_v.cell_data["Slipv[m/s]"].mean()
+            V_max[i] = mesh_v.cell_data["Slipv[m/s]"][ind].max()
+            V_mean[i] = mesh_v.cell_data["Slipv[m/s]"][ind].mean()
+                        
+            Psi[i] = mesh_v.cell_data["state"][ind].mean()
+            Fric[i] = mesh_v.cell_data["fric"][ind].mean()
 
-            Psi[i] = mesh_v.cell_data["state"].mean()
-            Fric[i] = mesh_v.cell_data["fric"].mean()
+            # P_max[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].max()
+            P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].mean()
+            tau[i] = mesh_v.cell_data['Shear_[MPa]'][ind].mean()
 
-            P_max[i] = mesh_v.cell_data['Pore_pressure[MPa]'].max()
-            P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'].mean()
 
-            S[i] = mesh_v.cell_data['Normal_[MPa]'].mean()
-            Por[i] = mesh_v.cell_data['Porosity[Degree]'].mean()
-            T[i] = mesh_v.cell_data['Temperature[Degree]'].mean()
+            S[i] = mesh_v.cell_data['Normal_[MPa]'][ind].mean()
+            Por[i] = mesh_v.cell_data['Porosity[Degree]'][ind].mean()
+            T[i] = mesh_v.cell_data['Temperature[Degree]'][ind].mean()
 
             i+=1
                 
@@ -356,25 +373,25 @@ class Ptool:
         
         
         ax.set_ylabel('V')
-        ax1.set_ylabel('$friction$')
+        ax1.set_ylabel('$\\theta$')
         ax2.set_ylabel('[MPa]')
         ax2.set_xlabel('Time [year]')
         
         ax.semilogy(Time, V_max, label='V_max')
         ax.semilogy(Time, V_mean, label='V_mean')
         
-        ax1.plot(Time, Fric, label='friction')
-        ax1.plot(Time, Psi, label='Restrengthening')
+        # ax1.plot(Time, Fric, label='friction')
+        ax1.plot(Time, dc/V_0 * np.exp((Psi-0.6)/b) / 365/ 3600/24, label='Healing [yr]')
         
         ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
-        ax2.semilogy(Time, S-P_mean, label= '$\\sigma_n - P_{mean}$ [MPa]')
+        ax2.semilogy(Time, tau, label= '$\\tau$ [MPa]')
         
         ax4 = ax1.twinx()
         ax4.semilogy(Time, T, color = 'k', lw = 0.8, 
                      ls = '--', label='Temperature [Degree]')
         ax4.set_ylabel('Temperature')
         
-        ax4.set_ylim(top=50)
+        ax4.set_ylim(top=10)
 
         ax.legend()
         ax1.legend()
