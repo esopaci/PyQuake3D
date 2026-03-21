@@ -33,7 +33,7 @@ We welcome contributions to the project—please follow the contribution guideli
 
 For questions, suggestions, or collaboration opportunities, feel free to reach out:
 
--  rongjiang@csj.uestc.edu.cn  
+-  rongjiang.tang@ntu.edu.sg 
 -  luca.dalzilio@ntu.edu.sg
 
 Please refer to the [Code Manual](https://pyquake3d.readthedocs.io/en/latest/) for more details.
