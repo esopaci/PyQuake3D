@@ -193,14 +193,17 @@ class Ptool:
             vmax = pd.read_csv(
             self.state_file,
             sep = '\\s+', skiprows=15,low_memory=True,
-            names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)']
-           	     )
+            names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
+       	         on_bad_lines="skip"
+                    )
         except:
             vmax = pd.read_csv(
             self.state_file,
             sep = '\\s+', skiprows=18,low_memory=True,
             names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
-            skipfooter=0, engine='python' )
+            skipfooter=0, engine='python',
+            on_bad_lines="skip"
+                    )
 	
         vmax = vmax.dropna().astype(float)
         return vmax
@@ -423,7 +426,7 @@ class Ptool:
 
         
         
-    def animation2D(self):
+    def animation2D_scatter(self):
         '''
         
 
