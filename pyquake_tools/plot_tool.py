@@ -649,7 +649,7 @@ class Ptool:
             surf.set_norm(norm)   
             
         elif self.var =='normal':
-            label = '$\\sigam_n-P$ [-]'
+            label = '$\\sigma_n-P$ [-]'
             dummy = 'Normal_[MPa]'
             data = mesh.cell_data[f'{dummy}']
             surf.set_array(data)
