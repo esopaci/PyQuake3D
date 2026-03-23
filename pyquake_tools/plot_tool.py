@@ -189,27 +189,46 @@ class Ptool:
             
     
     def read_statefile(self):
-        try:
-            vmax = pd.read_csv(
-            self.state_file,
-            sep = '\\s+', skiprows=15,low_memory=True,
-            names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
-       	         on_bad_lines="skip"
-                    )
-        except:
-            vmax = pd.read_csv(
-            self.state_file,
-            sep = '\\s+', skiprows=18,low_memory=True,
-            names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
-            skipfooter=0, engine='python',
-            on_bad_lines="skip"
-                    )
-	
-        if hasattr(vmax, "ndim") and vmax.ndim > 1:
-            vmax = vmax.iloc[:, 0]
         
-        vmax = pd.to_numeric(vmax, errors="coerce").dropna()      
+        def filter_columns(bad_line):
+        # bad_line is a list of strings split by the delimiter
+        # Return None to skip the line entirely
+            if len(bad_line) != 5:  # Example: Skip if NOT exactly 5 columns
+                return None
+            return bad_line
         
+        skip_count = 0
+        
+        # Find how many lines to skip
+        with open(self.state_file, 'r') as f:
+            for i, line in enumerate(f):
+                if line.startswith('iteration'):
+                    skip_count = i
+                    break
+                
+        footer_count = 0
+        # Read lines in reverse to find non-numeric footers
+        with open(self.state_file, 'r') as f:
+            lines = f.readlines()
+            for line in reversed(lines):
+                # Check if the first character is NOT a digit
+                if line.strip() and not line.strip()[0].isdigit():
+                    footer_count += 1
+                else:
+                    break
+        
+        
+        vmax = pd.read_csv(
+        self.state_file,
+        sep = '\\s+', low_memory=True, 
+        skipfooter=footer_count, 
+        skiprows= skip_count+1,
+        names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
+        engine='python',
+        on_bad_lines=filter_columns
+                )
+        
+    
         return vmax
     
     def seismic_moment(self, time, MO_dot):

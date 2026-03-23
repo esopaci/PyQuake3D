@@ -137,13 +137,13 @@ def main():
         tool.extract_slip_info()
 
     if args.a2:
-        tool.animation2D()
+        tool.animation2D_scatter()
 
     if args.a3:
         tool.animation3D()
         
-    if args.a3_2:
-        tool.animation2D_scatter()
+    # if args.a3_2:
+    #     tool.animation2D_scatter()
         
     if args.phase:
         tool.phase_plot()
