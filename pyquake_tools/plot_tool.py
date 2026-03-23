@@ -205,7 +205,8 @@ class Ptool:
             on_bad_lines="skip"
                     )
 	
-        vmax = vmax.dropna().astype(float)
+        vmax = pd.to_numeric(vmax, errors="coerce").dropna()
+        
         return vmax
     
     def seismic_moment(self, time, MO_dot):
