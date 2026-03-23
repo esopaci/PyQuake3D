@@ -650,8 +650,8 @@ class Ptool:
             
         elif self.var =='normal':
             label = '$\\sigam_n-P$ [-]'
-            dummy = 'state'
-            data = mesh.cell_data['Normal_[MPa]']
+            dummy = 'Normal_[MPa]'
+            data = mesh.cell_data[f'dummy']
             surf.set_array(data)
 
             
