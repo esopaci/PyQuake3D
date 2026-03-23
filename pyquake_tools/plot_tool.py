@@ -205,7 +205,10 @@ class Ptool:
             on_bad_lines="skip"
                     )
 	
-        vmax = pd.to_numeric(vmax, errors="coerce").dropna()
+        if hasattr(vmax, "ndim") and vmax.ndim > 1:
+            vmax = vmax.iloc[:, 0]
+        
+        vmax = pd.to_numeric(vmax, errors="coerce").dropna()      
         
         return vmax
     
