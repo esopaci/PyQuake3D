@@ -75,6 +75,8 @@ class Ptool:
     Omega_max = 1        # Maximum Omega to be plotted (LOG10 SCALE)
     theta_min = 0      # Minimum theta to be plotted (LOG10 SCALE)
     theta_max = 1        # Maximum theta to be plotted (LOG10 SCALE)
+    normal_min = 10        # Minimum effective normal stress to be plotted (LOG10 SCALE)
+    normal_max = 100        # Maximum effective normal stress  to be plotted (LOG10 SCALE)
     azimuth = -80        # Azimuth angle for 3D plot
     elevation = 15       # Elevation angle for 3D plot
     interval = 10        # Interval of reading outputs for animations
@@ -618,6 +620,7 @@ class Ptool:
                            vmax=10**self.V_max)
 
             surf.set_norm(norm)
+            
         elif self.var =='Omega':
             label = '$\\Omega$ [-]'
             cmap = 'seismic'
@@ -627,6 +630,7 @@ class Ptool:
             norm = LogNorm(vmin=10**self.Omega_min, 
                            vmax=10**self.Omega_max)
             surf.set_norm(norm)
+            
         elif self.var =='state':
             label = '$\\phi$ [-]'
             dummy = 'state'
@@ -640,6 +644,22 @@ class Ptool:
             boundaries = np.linspace(0.1,1, 
                                      num=100,endpoint=True)
             norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
+            cmap = 'plasma_r'
+            surf.set_cmap(cmap)
+            surf.set_norm(norm)   
+            
+        elif self.var =='normal':
+            label = '$\\sigam_n-P$ [-]'
+            dummy = 'state'
+            data = mesh.cell_data['Normal_[MPa]']
+            surf.set_array(data)
+
+            
+            norm = LogNorm(vmin=self.normal_min, 
+                           vmax=self.normal_max)
+            # boundaries = np.linspace(0.1,1, 
+                                     # num=100,endpoint=True)
+            # norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
             cmap = 'plasma_r'
             surf.set_cmap(cmap)
             surf.set_norm(norm)   
@@ -681,7 +701,7 @@ class Ptool:
                         )
             
             surf.set_array(data)
-            # surf.set_norm(norm)
+
             return surf, timetext, line
 
         
@@ -689,7 +709,7 @@ class Ptool:
                              frames=np.arange(0,N_steps,self.interval), 
                              blit=True)
         
-        writer = animation.PillowWriter(fps=10)
+        writer = animation.PillowWriter(fps=20)
 
         anim.save(os.path.join(self.path, f"animation_{self.var}.gif"), 
                   writer = writer)

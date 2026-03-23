@@ -54,11 +54,14 @@ def create_parser():
 
     parser.add_argument("--theta_min", type=float)
     parser.add_argument("--theta_max", type=float)
+    
+    parser.add_argument("--normal_min", type=float, help = "minimum normal stress to be plotted")
+    parser.add_argument("--normal_max", type=float, help = "maximum normal stress to be plotted")
 
-    parser.add_argument("--azimuth", type=float)
-    parser.add_argument("--elevation", type=float)
+    parser.add_argument("--azimuth", type=float, help = "azimuth angle for 3D plot")
+    parser.add_argument("--elevation", type=float, help = "elevation angle for 3D plot")
 
-    parser.add_argument("--interval", type=int)
+    parser.add_argument("--interval", type=int, help = "Interval for snapshots for animation plot")
     
     parser.add_argument("--event_no", type=int, help ='Required for event_plot')
     parser.add_argument("--next_event", type=int, help ='Required for ts2 plot')
@@ -88,6 +91,9 @@ def apply_parameters(tool, args):
         "Omega_min",
         "Omega_max",
         "theta_min",
+        "theta_max",
+        "normal_min",
+        "normal_max",
         "theta_max",
         "azimuth",
         "elevation",
