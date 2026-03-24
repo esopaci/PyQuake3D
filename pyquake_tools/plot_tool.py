@@ -270,37 +270,106 @@ class Ptool:
         fig,ax = plt.subplots(1,1, figsize = (10,6), clear=True)
         
         ax.set_yscale('log')
-    
-        vmax = self.read_statefile()
-        vmax['Slipv[m/s]'] = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
-
         ax.set_xlabel('time [yr]')
+
+        vmax = self.read_statefile()
+
  
         if self.var == 'V':
-            ax.set_ylabel('log($V_{max}$) [m/s]')
-            # V = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
+            vmax['Slipv[m/s]'] = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
             V = vmax['Slipv[m/s]']
             ax.plot(vmax['time(s)']/self.t_yr, 
                         V)
             ax.set_ylabel('log($V_{max}$) [m/s]')
 
         if self.var == 'theta':
-            ax.set_ylabel('$\\Omega [-]$')
-            ax.plot(vmax['time(s)']/self.t_yr, 
-                        vmax['theta'])
+            
+            theta = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                theta[i] = mesh.cell_data['state'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('$f_0 + b \ln \\frac{\t\heta}{\\theta_0}$')
+            ax.semilogy(time/self.t_yr, 
+                        theta)
+            
             ax.set_ylabel('$\\theta$ [s]')
             
-        if self.var == 'fric':
-            ax.set_ylabel('Slip [m]$')
-            ax.set_yscale('linear')
-            ax.plot(vmax['time(s)']/self.t_yr, 
-                        vmax['fric'])
             
         if self.var == 'shear':
-            ax.set_ylabel('Slip [m]$')
-            ax.set_yscale('linear')
-            ax.plot(vmax['time(s)']/self.t_yr, 
-                        vmax['Shear_[MPa]'])
+            
+            tau = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                tau[i] = mesh.cell_data['Shear_[MPa]'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('$\\tau$ [MPa]')
+            ax.plot(time/self.t_yr, 
+                        tau)
+            
+            
+        if self.var == 'fric':
+            
+            fric = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                fric[i] = mesh.cell_data['fric'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('\\mu')
+            ax.plot(time/self.t_yr, 
+                        fric)
+            
+            
+        if self.var == 'normal':
+            normal = np.empty(self.N_steps)
+            P = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                normal[i] = mesh.cell_data['Normal_[MPa]'].mean()
+                P[i] = mesh.cell_data['Pore_pressure[MPa]'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('$\\sigma_n - P$ [MPa]')
+            ax.plot(time/self.t_yr, 
+                        normal - P)
+            
+            
+        if self.var == 'porosity':
+            porosity = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                porosity[i] = mesh.cell_data['Porosity[Degree]'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('$\\sigma_n - P$ [MPa]')
+            ax.plot(time/self.t_yr, 
+                        porosity)
+            
+        if self.var == 'temperature':
+            temperature = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                temperature[i] = mesh.cell_data['Temperature[Degree]'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('$\\sigma_n - P$ [MPa]')
+            ax.plot(time/self.t_yr, 
+                        temperature)
 
 
         fig.savefig(os.path.join(self.path,f'max_{self.var}.jpg'), 
