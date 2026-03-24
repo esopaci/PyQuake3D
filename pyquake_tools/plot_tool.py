@@ -111,6 +111,24 @@ class Ptool:
         "slip_plate",
     ]
     
+    '''
+    ['Normal_[MPa]', 
+     'Shear_[MPa]', 
+     'Shear_1[MPa]', 
+     'Shear_2[MPa]', 
+     'rake[Degree]', 
+     'state', 'Slipv[m/s]', 
+     'Slipv1[m/s]', 
+     'Slipv2[m/s]', 
+     'fric', 
+     'slip[m]', 
+     'slip1[m]', 
+     'slip2[m]', 
+     'Pore_pressure[MPa]', 
+     'Porosity[Degree]', 
+     'Temperature[Degree]']
+    '''
+    
 
     def __init__(self, path):
     
@@ -257,8 +275,16 @@ class Ptool:
     
     def plot_timeseries(self):
         '''
-        This module plots time vs maximum slip rate for each the output 
-        time steps
+        This module plots time vs variable
+        VARIABLES:
+            'V'             : maximum slip rate
+            'theta'         : state variable of frictional restrengthening
+                                Psi = f_0 + b ln(theta/theta_0)
+            'shear'         : Shear stress 
+            'normal'        : Effective normal stress
+            'fric'          : Friction: shear/normal 
+            'porosity'      : Pororsity degree (if applicable)
+            'temperature'   : Temperatre degree (if applicable)
 
         Returns
         -------
@@ -269,11 +295,13 @@ class Ptool:
         
         fig,ax = plt.subplots(1,1, figsize = (10,6), clear=True)
         
-        ax.set_yscale('log')
         ax.set_xlabel('time [yr]')
 
         vmax = self.read_statefile()
-
+        
+        
+        mesh0 = pv.read(os.path.join(self.path,'Init.vtu') )
+        asp_index = mesh0.cell_data["a-b"] < 0
  
         if self.var == 'V':
             vmax['Slipv[m/s]'] = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
@@ -284,34 +312,46 @@ class Ptool:
 
         if self.var == 'theta':
             
-            theta = np.empty(self.N_steps)
+            theta_1 = np.empty(self.N_steps)
+            theta_2 = np.empty(self.N_steps)
+
             time = np.empty(self.N_steps)
             for i in range(self.N_steps):
                 step = self.steps[i]
                 mesh = self.read_mesh(step = step)
-                theta[i] = mesh.cell_data['state'].mean()
+                theta_1[i] = mesh.cell_data['state'][asp_index].mean()
+                theta_2[i] = mesh.cell_data['state'][~asp_index].mean()
+
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
-            ax.set_ylabel('$f_0 + b \ln \\frac{\t\heta}{\\theta_0}$')
-            ax.semilogy(time/self.t_yr, 
-                        theta)
-            
-            ax.set_ylabel('$\\theta$ [s]')
+            ax.plot(time/self.t_yr, 
+                        theta_1, label = 'VW (a-b<0)')
+            ax.plot(time/self.t_yr, 
+                        theta_2, label = 'VS (a-b>0')
+            ax.set_ylabel('$f_0 + b ln (\\frac{\\theta}{\\theta_0})$')
+
+            ax.legend()
             
             
         if self.var == 'shear':
             
-            tau = np.empty(self.N_steps)
+            tau_1 = np.empty(self.N_steps)
+            tau_2 = np.empty(self.N_steps)
+
             time = np.empty(self.N_steps)
             for i in range(self.N_steps):
                 step = self.steps[i]
                 mesh = self.read_mesh(step = step)
-                tau[i] = mesh.cell_data['Shear_[MPa]'].mean()
+                tau_1[i] = mesh.cell_data['Shear_[MPa]'][asp_index].mean()
+                tau_2[i] = mesh.cell_data['Shear_[MPa]'][~asp_index].mean()
+
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
             ax.set_ylabel('$\\tau$ [MPa]')
             ax.plot(time/self.t_yr, 
-                        tau)
+                        tau_1, label = 'VW (a-b<0)')
+            ax.plot(time/self.t_yr, 
+                        tau_2, label = 'VW (a-b<0)')
             
             
         if self.var == 'fric':
@@ -336,12 +376,18 @@ class Ptool:
             for i in range(self.N_steps):
                 step = self.steps[i]
                 mesh = self.read_mesh(step = step)
+                
                 normal[i] = mesh.cell_data['Normal_[MPa]'].mean()
-                P[i] = mesh.cell_data['Pore_pressure[MPa]'].mean()
+                
+                if 'Pore_pressure[MPa]' in mesh.cell_data.keys():
+                    P[i] = mesh.cell_data['Pore_pressure[MPa]'].mean()
+                else :
+                    P[i] = 0
+               
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
             ax.set_ylabel('$\\sigma_n - P$ [MPa]')
-            ax.plot(time/self.t_yr, 
+            ax.semilogy(time/self.t_yr, 
                         normal - P)
             
             
@@ -351,12 +397,18 @@ class Ptool:
             for i in range(self.N_steps):
                 step = self.steps[i]
                 mesh = self.read_mesh(step = step)
-                porosity[i] = mesh.cell_data['Porosity[Degree]'].mean()
+                
+                if 'Porosity[Degree]' in mesh.cell_data.keys():
+                    porosity[i] = mesh.cell_data['Porosity[Degree]'].mean()
+                else :
+                    porosity[i] = 0
+
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
-            ax.set_ylabel('$\\sigma_n - P$ [MPa]')
+            ax.set_ylabel('Porosity')
             ax.plot(time/self.t_yr, 
                         porosity)
+            
             
         if self.var == 'temperature':
             temperature = np.empty(self.N_steps)
@@ -364,16 +416,48 @@ class Ptool:
             for i in range(self.N_steps):
                 step = self.steps[i]
                 mesh = self.read_mesh(step = step)
-                temperature[i] = mesh.cell_data['Temperature[Degree]'].mean()
+                if 'Temperature[Degree]' in mesh.cell_data.keys():
+                    temperature[i] = mesh.cell_data['porosity'].mean()
+                else :
+                    temperature[i] = 1e-6
+
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
-            ax.set_ylabel('$\\sigma_n - P$ [MPa]')
+            ax.set_ylabel('T Degrees')
             ax.plot(time/self.t_yr, 
                         temperature)
+            
+            
+        if self.var == 'slip':
+            slip_1 = np.empty(self.N_steps)
+            slip_2 = np.empty(self.N_steps)
+            slip_3 = np.empty(self.N_steps)
 
+            time = np.empty(self.N_steps)
+            
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                slip_1[i] = mesh.cell_data['slip[m]'].mean()
+                slip_2[i] = mesh.cell_data['slip[m]'][asp_index].mean()
+                slip_3[i] = mesh.cell_data['slip[m]'][~asp_index].mean()
 
-        fig.savefig(os.path.join(self.path,f'max_{self.var}.jpg'), 
-                    dpi = 300, bbox_inches='tight')
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('slip [m]')
+            ax.plot(time/self.t_yr, 
+                        slip_1, label = 'Total mean slip on fault')
+            ax.plot(time/self.t_yr, 
+                        slip_2, label = 'Total mean slip on the asperity')
+            
+            ax.plot(time/self.t_yr, 
+                        slip_3, label = 'Total creep',
+                        ls ='--', color = 'black')
+            
+            ax.legend()
+
+        fig.savefig(os.path.join(self.path,f'time_series_{self.var}.pdf'), 
+                    dpi = 150, bbox_inches='tight')
         
 
 
