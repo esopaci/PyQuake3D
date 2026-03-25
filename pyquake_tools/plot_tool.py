@@ -1108,7 +1108,7 @@ class Ptool:
             # a = mesh_init.cell_data['a'] 
             # b = mesh_init.cell_data['b'] 
 
-            for step in self.selected_steps :
+            for step in selected_steps :
                 mesh = self.read_mesh(step)
                 V = mesh.cell_data['Slipv[m/s]'].mean()
                 Vmean_data[i] = V
@@ -1122,7 +1122,7 @@ class Ptool:
 
                 
         if self.var == 'fric':
-            for step in self.selected_steps :
+            for step in selected_steps :
                 mesh = self.read_mesh(step)
                 V = mesh.cell_data['Slipv[m/s]'].mean()
                 Vmean_data[i] = V
@@ -1133,7 +1133,7 @@ class Ptool:
             
         else:
         
-            for step in self.selected_steps :
+            for step in selected_steps :
                 # print(step)
                 mesh = self.read_mesh(step)
                 Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
