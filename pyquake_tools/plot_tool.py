@@ -1080,7 +1080,7 @@ class Ptool:
         
         if self.var == 'Omega':
             mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
-            dc = mesh_init.cell_data['dc'] 
+            dc = mesh_init.cell_data['dc'].mean()
             # a = mesh_init.cell_data['a'] 
             # b = mesh_init.cell_data['b'] 
 
