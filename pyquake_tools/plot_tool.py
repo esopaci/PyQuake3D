@@ -1068,6 +1068,28 @@ class Ptool:
 
         '''
         
+        
+        # read max file
+        vmax = self.read_statefile()
+        
+        # read Event file 
+        event = pd.read_csv(
+            os.path.join(self.path, 'events.txt'), sep = '\\s+'
+            )
+        
+        s_event0 = event[event['Evnt'] == self.event_no]
+        s_event1 = event[event['Evnt'] == self.event_no+self.next_event]
+
+        
+        I_start = s_event0['I_start'].values[0]
+        
+        I_finish = s_event1['I_finish'].values[0]
+        
+        selected_steps = self.steps[(self.steps>=I_start) & 
+                                    (self.steps<I_finish)]
+        
+        
+        
         fig,ax = plt.subplots(1,1)
         ax.set_xlabel('V [m/s]')
         ax.set_ylabel('$\\psi$')
@@ -1084,7 +1106,7 @@ class Ptool:
             # a = mesh_init.cell_data['a'] 
             # b = mesh_init.cell_data['b'] 
 
-            for step in self.steps:
+            for step in self.selected_steps :
                 mesh = self.read_mesh(step)
                 V = mesh.cell_data['Slipv[m/s]'].mean()
                 Vmean_data[i] = V
@@ -1097,7 +1119,7 @@ class Ptool:
 
                 
         if self.var == 'fric':
-            for step in self.steps:
+            for step in self.selected_steps :
                 mesh = self.read_mesh(step)
                 V = mesh.cell_data['Slipv[m/s]'].mean()
                 Vmean_data[i] = V
@@ -1106,7 +1128,7 @@ class Ptool:
             
         else:
         
-            for step in self.steps:
+            for step in self.selected_steps :
                 # print(step)
                 mesh = self.read_mesh(step)
                 Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
