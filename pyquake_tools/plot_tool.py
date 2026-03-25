@@ -306,7 +306,7 @@ class Ptool:
         if self.var == 'V':
             vmax['Slipv[m/s]'] = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
             V = vmax['Slipv[m/s]']
-            ax.plot(vmax['time(s)']/self.t_yr, 
+            ax.semilogy(vmax['time(s)']/self.t_yr, 
                         V)
             ax.set_ylabel('log($V_{max}$) [m/s]')
 
@@ -344,7 +344,6 @@ class Ptool:
                 mesh = self.read_mesh(step = step)
                 tau_1[i] = mesh.cell_data['Shear_[MPa]'][asp_index].mean()
                 tau_2[i] = mesh.cell_data['Shear_[MPa]'][~asp_index].mean()
-
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
             ax.set_ylabel('$\\tau$ [MPa]')
@@ -382,13 +381,17 @@ class Ptool:
                 if 'Pore_pressure[MPa]' in mesh.cell_data.keys():
                     P[i] = mesh.cell_data['Pore_pressure[MPa]'].mean()
                 else :
-                    P[i] = 0
+                    P[i] = 1e-6
                
                 time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
 
-            ax.set_ylabel('$\\sigma_n - P$ [MPa]')
+            ax.set_ylabel('[MPa]')
             ax.semilogy(time/self.t_yr, 
-                        normal - P)
+                        normal - P, label = '$\\sigma_n-P$')
+            ax.semilogy(time/self.t_yr, 
+                        P, label = 'P$')
+            
+            ax.legend()
             
             
         if self.var == 'porosity':
@@ -810,7 +813,7 @@ class Ptool:
                            vmax=10**self.Omega_max)
             surf.set_norm(norm)
             
-        elif self.var =='state':
+        elif self.var =='theta':
             label = '$\\phi$ [-]'
             dummy = 'state'
             data = mesh.cell_data['state']
@@ -855,9 +858,8 @@ class Ptool:
         def update(i):
 
             step = steps_filtered[i]
-            
-            print('step: {:<10.0f} year: {:<10.4f}'.format(step, df.iloc[i]['time(s)']/self.t_yr))
-            
+            temp = df[df.Iteration==step]
+            print('step: {:<10.0f} year: {:<10.4f}'.format(step, temp['time(s)']/self.t_yr))
             
             mesh = self.read_mesh(step = step)
             
@@ -866,13 +868,11 @@ class Ptool:
             else:
                 data = mesh.cell_data['Slipv[m/s]'] * mesh.cell_data['state'] / mesh.cell_data['dc']
             
-            temp = df[df.Iteration==step]
             time = temp['time(s)'].iloc[0]
             sliprate = temp['slipv1'].iloc[0]            
             line.set_data([time/self.t_yr], [sliprate])
-
                         
-            timetext.set_text("Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format( time/(365*3600*24),
+            timetext.set_text("Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format( np.floor(time/(365*3600*24)),
                                                   (time/3600/24)%(365),
                                                   (time/3600)%24,
                                                   (time/60)%60,
@@ -1073,26 +1073,50 @@ class Ptool:
         ax.set_ylabel('$\\psi$')
         
         Vmean_data = np.empty(self.N_steps)
-        statemean_data = np.empty(self.N_steps)
+        y_data = np.empty(self.N_steps)
 
-        mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
-        a = mesh_init.cell_data['a'] 
-        b = mesh_init.cell_data['b'] 
-        dc = mesh_init.cell_data['dc'] 
+
         i = 0
-        for step in self.steps:
-            # print(step)
-            mesh = self.read_mesh(step)
-            Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
-            statemean_data[i] = mesh.cell_data['state'].mean()    
-            i+=1
-            # ax.scatter(np.log10(V), state) 
-            
-
-
-        ax.semilogx(Vmean_data, statemean_data, color = 'k', lw = 0.8) 
         
-        fig.savefig(os.path.join(self.path,'phase_plot.jpg'), 
+        if self.var == 'Omega':
+            mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
+            dc = mesh_init.cell_data['dc'] 
+            # a = mesh_init.cell_data['a'] 
+            # b = mesh_init.cell_data['b'] 
+
+            for step in self.steps:
+                mesh = self.read_mesh(step)
+                V = mesh.cell_data['Slipv[m/s]'].mean()
+                Vmean_data[i] = V
+                state = mesh.cell_data['state'].mean()    
+                Omega = V*state/dc 
+                y_data[i] = Omega
+                i+=1   
+            ax.axhline(y=1, color = 'b', ls = ':' )
+                
+
+                
+        if self.var == 'fric':
+            for step in self.steps:
+                mesh = self.read_mesh(step)
+                V = mesh.cell_data['Slipv[m/s]'].mean()
+                Vmean_data[i] = V
+                y_data[i] = mesh.cell_data['fric'].mean()    
+                i+=1   
+            
+        else:
+        
+            for step in self.steps:
+                # print(step)
+                mesh = self.read_mesh(step)
+                Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
+                y_data[i] = mesh.cell_data['state'].mean()    
+                i+=1            
+
+        ax.semilogx(Vmean_data, y_data, color = 'k', lw = 0.8) 
+        ax.scatter(Vmean_data[0], y_data[0], color = 'k', marker = '+') 
+
+        fig.savefig(os.path.join(self.path,f'phase_plot_{self.var}.jpg'), 
                 dpi = 300, bbox_inches='tight')
 
 
