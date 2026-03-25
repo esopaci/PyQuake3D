@@ -1077,22 +1077,24 @@ class Ptool:
             os.path.join(self.path, 'events.txt'), sep = '\\s+'
             )
         
-        s_event0 = event[event['Evnt'] == self.event_no]
-        s_event1 = event[event['Evnt'] == self.event_no+self.next_event]
+        event0 = self.event_no
+        event1 = self.event_no + self.next_event
+        
+        s_event0 = event[event['Evnt'] == event0]
+        s_event1 = event[event['Evnt'] == event1]
 
-        
         I_start = s_event0['I_start'].values[0]
-        
         I_finish = s_event1['I_finish'].values[0]
         
         selected_steps = self.steps[(self.steps>=I_start) & 
-                                    (self.steps<I_finish)]
+                                    (self.steps<=I_finish)]
         
+        print(selected_steps)
         
         
         fig,ax = plt.subplots(1,1)
         ax.set_xlabel('V [m/s]')
-        ax.set_ylabel('$\\psi$')
+
         
         Vmean_data = np.empty(self.N_steps)
         y_data = np.empty(self.N_steps)
@@ -1115,6 +1117,7 @@ class Ptool:
                 y_data[i] = Omega
                 i+=1   
             ax.axhline(y=1, color = 'b', ls = ':' )
+            ax.set_ylabel('$\\Omega$')
                 
 
                 
@@ -1125,6 +1128,8 @@ class Ptool:
                 Vmean_data[i] = V
                 y_data[i] = mesh.cell_data['fric'].mean()    
                 i+=1   
+            ax.set_ylabel('$\\mu$')
+
             
         else:
         
@@ -1133,12 +1138,15 @@ class Ptool:
                 mesh = self.read_mesh(step)
                 Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
                 y_data[i] = mesh.cell_data['state'].mean()    
-                i+=1            
+                i+=1         
+                
+            ax.set_ylabel('$\\Psi$')
+
 
         ax.semilogx(Vmean_data, y_data, color = 'k', lw = 0.8) 
         ax.scatter(Vmean_data[0], y_data[0], color = 'k', marker = '+') 
 
-        fig.savefig(os.path.join(self.path,f'phase_plot_{self.var}.jpg'), 
+        fig.savefig(os.path.join(self.path,f'phase_plot_{self.var}_{event0}-{event1}.jpg'), 
                 dpi = 300, bbox_inches='tight')
 
 
