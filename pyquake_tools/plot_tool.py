@@ -859,7 +859,8 @@ class Ptool:
 
             step = steps_filtered[i]
             temp = df[df.Iteration==step]
-            print('step: {:<10.0f} year: {:<10.4f}'.format(step, temp['time(s)']/self.t_yr))
+            time = temp['time(s)'].iloc[0]
+            print(f'step: {step:<10.0f} time: {np.floor(time/self.t_yr):<10.0f}')
             
             mesh = self.read_mesh(step = step)
             
@@ -868,7 +869,7 @@ class Ptool:
             else:
                 data = mesh.cell_data['Slipv[m/s]'] * mesh.cell_data['state'] / mesh.cell_data['dc']
             
-            time = temp['time(s)'].iloc[0]
+            
             sliprate = temp['slipv1'].iloc[0]            
             line.set_data([time/self.t_yr], [sliprate])
                         
@@ -1091,6 +1092,11 @@ class Ptool:
         
         print(selected_steps)
         
+        mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
+        a_min_b = mesh_init.cell_data['a-b']
+        
+        ind_VW = a_min_b < 0
+        
         
         fig,ax = plt.subplots(1,1)
         ax.set_xlabel('V [m/s]')
@@ -1103,17 +1109,23 @@ class Ptool:
         i = 0
         
         if self.var == 'Omega':
-            mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
-            dc = mesh_init.cell_data['dc'].mean()
+            dc = mesh_init['dc'][ind_VW].mean()
+            V_0 =  mesh_init['Slipv[m/s]'][ind_VW].mean()
+            Psi_0 =  mesh_init['state'][ind_VW].mean()
+            b = mesh_init['b'][ind_VW].mean()
+
+            theta_0 = dc/V_0
+            
             # a = mesh_init.cell_data['a'] 
             # b = mesh_init.cell_data['b'] 
 
             for step in selected_steps :
                 mesh = self.read_mesh(step)
-                V = mesh.cell_data['Slipv[m/s]'].mean()
+                V = mesh.cell_data['Slipv[m/s]'][ind_VW].mean()
                 Vmean_data[i] = V
-                state = mesh.cell_data['state'].mean()    
-                Omega = V*state/dc 
+                Psi = mesh.cell_data['state'].mean()    
+                theta = np.exp((Psi - Psi_0)/b) * theta_0
+                Omega = V*theta/dc 
                 y_data[i] = Omega
                 i+=1   
             ax.axhline(y=1, color = 'b', ls = ':' )
@@ -1143,7 +1155,7 @@ class Ptool:
             ax.set_ylabel('$\\Psi$')
 
 
-        ax.semilogx(Vmean_data, y_data, color = 'k', lw = 0.8) 
+        ax.loglog(Vmean_data, y_data, color = 'k', lw = 0.8) 
         ax.scatter(Vmean_data[0], y_data[0], color = 'k', marker = '+') 
 
         fig.savefig(os.path.join(self.path,f'phase_plot_{self.var}_{event0}-{event1}.jpg'), 
