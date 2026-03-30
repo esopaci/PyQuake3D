@@ -38,7 +38,7 @@ If thermal: False
 Thermal diffusivity:1e-6
 Ratio of thermal expansivity to compressibility:0.1e6
 Heat capacity: 2.7e6
-Shear zone width: 0.01
+Shearing zone width: 0.01
 Background temperature: 1
 Initial temperature: 1
 
