@@ -28,7 +28,7 @@ If Dilatancy:False
 If Coupledthermal:False
 Dilatancy coefficient: 3e-4
 Hydraulic diffusivity: 1e-5
-Shear zone width: 0.01
+Shearing zone width: 0.01
 Effective compressibility: 8e-11
 Constant porepressure: 2
 Initial porepressure: 2
