@@ -7,10 +7,13 @@ import pyquake3d.DH_greenfunction as DH_greenfunction
 import os
 import sys
 from mpi4py import MPI
+from mpi4py.util import pkl5
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
+
+comm = pkl5.Intracomm(MPI.COMM_WORLD)
 # global Para
 # Para={}
 

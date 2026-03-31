@@ -768,25 +768,51 @@ class BlockTree:
         RJref,RJref1,RJref2,Jref,scan_all = reset_reference_col(Jref)
         iter=0
         for k in range(max_iter):
-            maxabsRIref = np.max(np.abs(RIref), axis=0)
-            Jstar = argmax_not_in_list(maxabsRIref, prevJstar)
+            
+            #maxabsRIref = np.max(np.abs(RIref), axis=0)
+            maxabsRIref_all = np.maximum.reduce([
+                np.max(np.abs(RIref),  axis=0),
+                np.max(np.abs(RIref1), axis=0),
+                np.max(np.abs(RIref2), axis=0)
+            ])
+            #Jstar = argmax_not_in_list(maxabsRIref, prevJstar)
+            Jstar = argmax_not_in_list(maxabsRIref_all, prevJstar)
 
-            maxabsRJref = np.max(np.abs(RJref), axis=1)
-            Istar = argmax_not_in_list(maxabsRJref, prevIstar)
+            maxabsRJref_all = np.maximum.reduce([
+                np.max(np.abs(RJref),  axis=1),
+                np.max(np.abs(RJref1), axis=1),
+                np.max(np.abs(RJref2), axis=1)
+            ])
+            #maxabsRJref = np.max(np.abs(RJref), axis=1)
+            Istar = argmax_not_in_list(maxabsRJref_all, prevIstar)
 
-            Jstar_val = maxabsRIref[Jstar]
-            Istar_val = maxabsRJref[Istar]
+            # Jstar_val = maxabsRIref[Jstar]
+            # Istar_val = maxabsRJref[Istar]
+            Jstar_val = maxabsRIref_all[Jstar]
+            Istar_val = maxabsRJref_all[Istar]
             #print(f"!!!!!!!!!!!!!!!!!!!!1",flush=True)
             if Istar_val > Jstar_val:
                 out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
                 RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
-                Jstar = argmax_not_in_list(np.abs(RIstar), prevJstar)
+                maxabsRI_all = np.maximum.reduce([
+                    np.abs(RIstar),
+                    np.abs(RIstar1),
+                    np.abs(RIstar2)
+                ])
+                Jstar = argmax_not_in_list(maxabsRI_all, prevJstar)
+                #Jstar = argmax_not_in_list(np.abs(RIstar), prevJstar)
                 out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
                 RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
             else:
                 out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
                 RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
-                Istar = argmax_not_in_list(np.abs(RJstar), prevIstar)
+                maxabsRI_all = np.maximum.reduce([
+                    np.abs(RJstar),
+                    np.abs(RJstar1),
+                    np.abs(RJstar2)
+                ])
+                #Istar = argmax_not_in_list(np.abs(RJstar), prevIstar)
+                Istar = argmax_not_in_list(maxabsRI_all, prevIstar)
                 out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
                 RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
             #print(f"!!!!!!!!!!!!!!!!!!!!2",flush=True)
@@ -820,7 +846,8 @@ class BlockTree:
             
 
             step_size = np.sqrt(np.sum(u_k ** 2) * np.sum((v_k / (alpha+1e-10)) ** 2))
-            #step_size1 = np.sqrt(np.sum(u_k1 ** 2) * np.sum((v_k1 / (alpha1+1e-10)) ** 2))
+            step_size1 = np.sqrt(np.sum(u_k1 ** 2) * np.sum((v_k1 / (alpha1+1e-10)) ** 2))
+            step_size2 = np.sqrt(np.sum(u_k2 ** 2) * np.sum((v_k2 / (alpha2+1e-10)) ** 2))
             iter=k
             #step_size=np.max([step_size,step_size1])
 
@@ -840,6 +867,8 @@ class BlockTree:
             else:
                 #print('2')
                 RIref -= u_k[Iref:Iref+3][:, None] * (v_k / alpha)[None, :]
+                RIref1 -= u_k1[Iref:Iref+3][:, None] * (v_k1 / alpha1)[None, :]
+                RIref2 -= u_k2[Iref:Iref+3][:, None] * (v_k2 / alpha2)[None, :]
             if(scan_all==True):
                 break
             
@@ -851,16 +880,18 @@ class BlockTree:
             else:
                 #print('2')
                 RJref -= (v_k / alpha)[Jref:Jref+3][None, :] * u_k[:, None]
+                RJref1 -= (v_k1 / alpha1)[Jref:Jref+3][None, :] * u_k1[:, None]
+                RJref2 -= (v_k2 / alpha2)[Jref:Jref+3][None, :] * u_k2[:, None]
             if(scan_all==True):
                 break
             
-            if np.abs(alpha) < 1e-4:
+            if max(np.abs(alpha),np.abs(alpha1),np.abs(alpha2)) < 1e-4:
                 if verbose:
                     print(f"Terminated at k={k} due to small pivot.",alpha)
                 #sys.exit()
                 break
 
-            if step_size < eps:
+            if max(step_size,step_size1,step_size2) < eps:
                 break
             
             if k == max_iter - 1:
@@ -869,6 +900,8 @@ class BlockTree:
 
         U_ACA_A1s = np.array(us_A1s).T
         V_ACA_A1s = np.array(vs_A1s)
+        U_ACA_A2s = np.array(us_A2s).T
+        V_ACA_A2s = np.array(vs_A2s)
 
         us_Bs=np.array(us_Bs)
         if not np.all(us_Bs == 0):
@@ -878,129 +911,8 @@ class BlockTree:
             U_ACA_Bs = []
             V_ACA_Bs = []
         
-        #if(step_size1>eps):
-        
-        us_A1s,vs_A1s=[],[]
-        us_A2s,vs_A2s=[],[]
-        us_Bs,vs_Bs=[],[]
-
-        prevIstar, prevJstar = [], []  
-        for k in range(max_iter):
-            maxabsRIref = np.max(np.abs(RIref1), axis=0)
-            Jstar = argmax_not_in_list(maxabsRIref, prevJstar)
-            maxabsRJref = np.max(np.abs(RJref1), axis=1)
-            Istar = argmax_not_in_list(maxabsRJref, prevIstar)
-            Jstar_val = maxabsRIref[Jstar]
-            Istar_val = maxabsRJref[Istar]
-            
-            #print(f"!!!!!!!!!!!!!!!!!!!!1",flush=True)
-            if Istar_val > Jstar_val:
-                out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
-                RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
-                Jstar = argmax_not_in_list(np.abs(RIstar1), prevJstar)
-                out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
-                RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
-            else:
-                out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
-                RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
-                Istar = argmax_not_in_list(np.abs(RJstar1), prevIstar)
-                out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
-                RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
-            #print(f"!!!!!!!!!!!!!!!!!!!!2",flush=True)
-            alpha = RIstar[Jstar]
-            alpha1= RIstar1[Jstar]
-            alpha2 = RIstar2[Jstar]
-
-            if np.abs(alpha1) < 1e-4:
-                if verbose:
-                    print(f"Terminated at k={k} due to small pivot.",alpha1)
-                #sys.exit()
-                break
-
-            prevIstar.append(Istar)
-            prevJstar.append(Jstar)
-
-
-            u_k = RJstar.copy()
-            v_k = RIstar.copy()
-            u_k1 = RJstar1.copy()
-            v_k1 = RIstar1.copy()
-            u_k2 = RJstar2.copy()
-            v_k2 = RIstar2.copy()
-
-            #print(f"!!!!!!!!!!!!!!!!!!!!3",flush=True)
-            us_A1s.append(u_k)
-            vs_A1s.append(v_k/(alpha+1e-16))
-            #print('alpha',alpha)
-            us_A2s.append(u_k1)
-            vs_A2s.append(v_k1/(alpha1+1e-16))
-            us_Bs.append(u_k2)
-            if(abs(alpha2)<1e-10):
-                vs_Bs.append(np.zeros(len(v_k2)))
-            else:
-                vs_Bs.append(v_k2/(alpha2+1e-16))
-            
-
-            #step_size = np.sqrt(np.sum(u_k ** 2) * np.sum((v_k / (alpha+1e-10)) ** 2))
-            step_size1 = np.sqrt(np.sum(u_k1 ** 2) * np.sum((v_k1 / (alpha1+1e-10)) ** 2))
-            iter=k
-            #step_size=np.max([step_size,step_size1])
-
-            if verbose:
-                print(
-                    f"phase2..!!!!!!!!!!,"
-                    f"Siteration:{k},pivot row={Istar:4d}, pivot col={Jstar:4d}, "
-                    f"step size1={step_size1:1.13e}, "
-                    f"np.abs(alpha1)={np.abs(alpha1):1.13e}, "
-                    f"tolerance={eps:1.13e}", flush=True
-                )
-
-            if step_size1 < eps:
-                break
-            
-            if k == max_iter - 1:
-                break
-            #print(f"!!!!!!!!!!!!!!!!!!!!__",flush=True)
-            if Iref <= Istar < Iref + 3:
-                #print('1')
-                RIref,RIref1,RIref2,Iref,scan_all = reset_reference_row(Iref)
-            else:
-                #print('2')
-                RIref -= u_k1[Iref:Iref+3][:, None] * (v_k1 / (alpha1+1e-10))[None, :]
-            if(scan_all==True):
-                break
-            
-            #print(f"!!!!!!!!!!!!!!!!!!!!_",flush=True)
-            if Jref <= Jstar < Jref + 3:
-                #print('1')
-                RJref,RJref1,RJref2,Jref,scan_all = reset_reference_col(Jref)
-                #print(RJref,Jref)
-            else:
-                #print('2')
-                RJref -= (v_k1 / alpha1)[Jref:Jref+3][None, :] * u_k1[:, None]
-            if(scan_all==True):
-                break
-
-
-        U_ACA_A2s = np.array(us_A2s).T
-        V_ACA_A2s = np.array(vs_A2s)
-
-
-
-        # U_ACA_A2s[U_ACA_A2s>1e15]=0
-        # V_ACA_A2s[V_ACA_A2s>1e15]=0
-        # if(len(U_ACA_A2s)>0):
-        #     if(np.max(np.abs(U_ACA_A2s))>1e20):
-                
-        #         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!',np.max(np.abs(U_ACA_A1s)),np.max(np.abs(U_ACA_A2s)))
-        #         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!',step_size,step_size1,iter,scan_all)
-        #         #MPI.Finalize()
-        #         sys.exit()
-        
         
 
-        
-       
 
         trace_data = {
             "U_ACA_A1s": U_ACA_A1s,
@@ -1097,25 +1009,45 @@ class BlockTree:
         RJref,RJref1,RJref2,Jref,scan_all = reset_reference_col(Jref)
         
         for k in range(max_iter):
-            maxabsRIref = np.max(np.abs(RIref), axis=0)
-            Jstar = argmax_not_in_list(maxabsRIref, prevJstar)
+            maxabsRIref_all = np.maximum.reduce([
+                np.max(np.abs(RIref),  axis=0),
+                np.max(np.abs(RIref1), axis=0),
+                np.max(np.abs(RIref2), axis=0)
+            ])
+            Jstar = argmax_not_in_list(maxabsRIref_all, prevJstar)
             
-            maxabsRJref = np.max(np.abs(RJref), axis=1)
-            Istar = argmax_not_in_list(maxabsRJref, prevIstar)
+            maxabsRJref_all = np.maximum.reduce([
+                np.max(np.abs(RJref),  axis=1),
+                np.max(np.abs(RJref1), axis=1),
+                np.max(np.abs(RJref2), axis=1)
+            ])
+            #maxabsRJref = np.max(np.abs(RJref), axis=1)
+            Istar = argmax_not_in_list(maxabsRJref_all, prevIstar)
             #print(f"!!!!!!!!!!!!!!!!!!!!1",flush=True)
-            Jstar_val = maxabsRIref[Jstar]
-            Istar_val = maxabsRJref[Istar]
+            Jstar_val = maxabsRIref_all[Jstar]
+            Istar_val = maxabsRJref_all[Istar]
 
             if Istar_val > Jstar_val:
                 out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
                 RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
-                Jstar = argmax_not_in_list(np.abs(RIstar), prevJstar)
+                maxabsRI_all = np.maximum.reduce([
+                    np.abs(RIstar),
+                    np.abs(RIstar1),
+                    np.abs(RIstar2)
+                ])
+                Jstar = argmax_not_in_list(maxabsRI_all, prevJstar)
                 out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
                 RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
             else:
                 out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
                 RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
-                Istar = argmax_not_in_list(np.abs(RJstar), prevIstar)
+                maxabsRI_all = np.maximum.reduce([
+                    np.abs(RJstar),
+                    np.abs(RJstar1),
+                    np.abs(RJstar2)
+                ])
+                #Istar = argmax_not_in_list(np.abs(RJstar), prevIstar)
+                Istar = argmax_not_in_list(maxabsRI_all, prevIstar)
                 out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
                 RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
             #print(f"!!!!!!!!!!!!!!!!!!!!2",flush=True)
@@ -1151,6 +1083,7 @@ class BlockTree:
 
             step_size = np.sqrt(np.sum(u_k3 ** 2) * np.sum((v_k3 / alpha3) ** 2))
             step_size1 = np.sqrt(np.sum(u_k4 ** 2) * np.sum((v_k4 / alpha4) ** 2))
+            step_size2 = np.sqrt(np.sum(u_k5 ** 2) * np.sum((v_k5 / alpha5) ** 2))
             if verbose:
                 print(
                     f"Diteration:{k},pivot row={Istar:4d}, pivot col={Jstar:4d}, "
@@ -1166,6 +1099,8 @@ class BlockTree:
                 RIref,RIref1,RIref2, Iref,scan_all = reset_reference_row(Iref)
             else:
                 RIref -= u_k3[Iref:Iref+3][:, None] * (v_k3 / alpha3)[None, :]
+                RIref1 -= u_k4[Iref:Iref+3][:, None] * (v_k4 / alpha4)[None, :]
+                RIref2 -= u_k5[Iref:Iref+3][:, None] * (v_k5 / alpha5)[None, :]
             #print(f"!!!!!!!!!!!!!!!!!!!!_",flush=True)
             if(scan_all==True):
                 break
@@ -1174,20 +1109,24 @@ class BlockTree:
                 RJref,RJref1,RJref2, Jref,scan_all = reset_reference_col(Jref)
             else:
                 RJref -= (v_k3 / alpha3)[Jref:Jref+3][None, :] * u_k3[:, None]
+                RJref1 -= (v_k4 / alpha4)[Jref:Jref+3][None, :] * u_k4[:, None]
+                RJref2 -= (v_k5 / alpha5)[Jref:Jref+3][None, :] * u_k5[:, None]
             #print(f"!!!!!!!!!!!!!!!!!!!!0",flush=True)
             if(scan_all==True):
                 break
 
-            if np.abs(alpha3) < 1e-4:
+            if max(np.abs(alpha3),np.abs(alpha4),np.abs(alpha5)) < 1e-4:
                 if verbose:
                     print(f"Terminated at k={k} due to small pivot.")
                 break
             
-            if step_size < eps:
+            if max(step_size,step_size1,step_size2) < eps:
                 break
         
         U_ACA_A1d = np.array(us_A1d).T
         V_ACA_A1d = np.array(vs_A1d)
+        U_ACA_A2d = np.array(us_A2d).T
+        V_ACA_A2d = np.array(vs_A2d)
         us_Bd=np.array(us_Bd)
         if not np.all(us_Bd == 0):
             U_ACA_Bd = us_Bd.T
@@ -1195,111 +1134,7 @@ class BlockTree:
         else:
             U_ACA_Bd = []
             V_ACA_Bd = []
-        
-        us_A1d,vs_A1d=[],[]
-        us_A2d,vs_A2d=[],[]
-        us_Bd,vs_Bd=[],[]
-        prevIstar, prevJstar = [], []
-        
-        for k in range(max_iter):
-            maxabsRIref = np.max(np.abs(RIref1), axis=0)
-            Jstar = argmax_not_in_list(maxabsRIref, prevJstar)
-            
-            maxabsRJref = np.max(np.abs(RJref1), axis=1)
-            Istar = argmax_not_in_list(maxabsRJref, prevIstar)
-            #print(f"!!!!!!!!!!!!!!!!!!!!1",flush=True)
-            Jstar_val = maxabsRIref[Jstar]
-            Istar_val = maxabsRJref[Istar]
-
-            if Istar_val > Jstar_val:
-                out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
-                RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
-                Jstar = argmax_not_in_list(np.abs(RIstar1), prevJstar)
-                out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
-                RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
-            else:
-                out,out1,out2 = calc_residual_cols(Jstar, Jstar + 1)
-                RJstar[:],RJstar1[:],RJstar2[:]=out[:, 0],out1[:, 0],out2[:, 0]
-                Istar = argmax_not_in_list(np.abs(RJstar1), prevIstar)
-                out,out1,out2 = calc_residual_rows(Istar, Istar + 1)
-                RIstar[:],RIstar1[:],RIstar2[:]=out[0],out1[0],out2[0]
-            #print(f"!!!!!!!!!!!!!!!!!!!!2",flush=True)
-            alpha3 = RIstar[Jstar]
-            alpha4= RIstar1[Jstar]
-            alpha5 = RIstar2[Jstar]
-
-            
-
-            prevIstar.append(Istar)
-            prevJstar.append(Jstar)
-            #Istar_list.append(Istar)
-            #Jstar_list.append(Jstar)
-
-            #print(f"!!!!!!!!!!!!!!!!!!!!3",flush=True)
-            u_k3 = RJstar.copy()
-            v_k3 = RIstar.copy()
-            u_k4 = RJstar1.copy()
-            v_k4 = RIstar1.copy()
-            u_k5 = RJstar2.copy()
-            v_k5 = RIstar2.copy()
-
-
-            us_A1d.append(u_k3)
-            vs_A1d.append(v_k3/(alpha3+1e-16))
-            us_A2d.append(u_k4)
-            vs_A2d.append(v_k4/(alpha4+1e-16))
-            us_Bd.append(u_k5)
-            if(abs(alpha5)<1e-10):
-                vs_Bd.append(np.zeros(len(v_k5)))
-            else:
-                vs_Bd.append(v_k5/(alpha5+1e-16))
-
-            step_size = np.sqrt(np.sum(u_k3 ** 2) * np.sum((v_k3 / (alpha3+1e-10)) ** 2))
-            step_size1 = np.sqrt(np.sum(u_k4 ** 2) * np.sum((v_k4 / (alpha4+1e-10)) ** 2))
-            if verbose:
-                print(
-                    f"Diteration:{k},pivot row={Istar:4d}, pivot col={Jstar:4d}, "
-                    f"step size={step_size:1.3e}, "
-                    f"tolerance={eps:1.3e}", flush=True
-                )
-            
-
-            if k == max_iter - 1:
-                break
-
-            if Iref <= Istar < Iref + 3:
-                RIref,RIref1,RIref2, Iref,scan_all = reset_reference_row(Iref)
-            else:
-                RIref -= u_k4[Iref:Iref+3][:, None] * (v_k4 / (alpha4+1e-10))[None, :]
-            #print(f"!!!!!!!!!!!!!!!!!!!!_",flush=True)
-            if(scan_all==True):
-                break
-
-            if Jref <= Jstar < Jref + 3:
-                RJref,RJref1,RJref2, Jref,scan_all = reset_reference_col(Jref)
-            else:
-                RJref -= (v_k4 / alpha4)[Jref:Jref+3][None, :] * u_k4[:, None]
-            #print(f"!!!!!!!!!!!!!!!!!!!!0",flush=True)
-            if(scan_all==True):
-                break
-
-            if np.abs(alpha4) < 1e-4:
-                if verbose:
-                    print(f"Terminated at k={k} due to small pivot.")
-                break
-            
-            if step_size1 < eps:
-                break
-            
-
-        
-
-        U_ACA_A2d = np.array(us_A2d).T
-        V_ACA_A2d = np.array(vs_A2d)
-
-
-        
-        
+ 
        
 
         trace_data = {
@@ -1437,7 +1272,7 @@ class BlockTree:
         # **Initial Task Assignment**
         for worker_rank in range(1, num_workers + 1):
             if(task_id-1<len(self.blocks_to_process)):
-                MPI.COMM_WORLD.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
+                comm.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
                 print(f"Master: assign task {task_id} to Worker {worker_rank}, size: {len(self.blocks_to_process[task_id-1].row_cluster),len(self.blocks_to_process[task_id-1].col_cluster)}", flush=True)
                 task_id += 1
         
@@ -1447,7 +1282,7 @@ class BlockTree:
         while active_workers > 0:
             status = MPI.Status()
             if MPI.COMM_WORLD.Iprobe(source=MPI.ANY_SOURCE, tag=RESULT_TAG, status=status):
-                result = MPI.COMM_WORLD.recv(source=MPI.ANY_SOURCE, tag=RESULT_TAG)
+                result = comm.recv(source=MPI.ANY_SOURCE, tag=RESULT_TAG)
                 
 
                 #print(result)
@@ -1480,7 +1315,7 @@ class BlockTree:
                     # except Exception as e:
                     #     print(f"Cannot pickle block {task_id-1}: {e}")
                     #     raise
-                    MPI.COMM_WORLD.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
+                    comm.send({'task':self.blocks_to_process[task_id-1],'task_id':task_id}, dest=worker_rank, tag=TASK_TAG)
                     print(f"Master: assign task {task_id} to Worker {worker_rank}, size = {len(self.blocks_to_process[task_id-1].row_cluster),len(self.blocks_to_process[task_id-1].col_cluster)}", flush=True)
                     #time.sleep(5)
                     pending_tasks[task_id] = (worker_rank, time.time())
@@ -1491,12 +1326,12 @@ class BlockTree:
                 #     active_workers -= 1
                 #     print(f"active_workers remain {active_workers}", flush=True)
                 #     # **No more tasks, send end signal**
-                #     MPI.COMM_WORLD.send(None, dest=worker_rank, tag=STOP_TAG)
+                #     comm.send(None, dest=worker_rank, tag=STOP_TAG)
                 if(finish_task==tasks_total):
                     for worker_rank in range(1, num_workers + 1):
                         active_workers -= 1
                         print(f"active_workers remain {active_workers}", flush=True)
-                        MPI.COMM_WORLD.send(None, dest=worker_rank, tag=STOP_TAG)   
+                        comm.send(None, dest=worker_rank, tag=STOP_TAG)   
 
         if(save_corefunc==True):
             
@@ -1512,7 +1347,7 @@ class BlockTree:
         while True:
             print(f"[Worker {MPI.COMM_WORLD.Get_rank()}] waiting for task...", flush=True)
             status = MPI.Status()  
-            rectask = MPI.COMM_WORLD.recv(source=0, tag=MPI.ANY_TAG, status=status)
+            rectask = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
 
             # Check whether it is a termination signal through status.tag
             if status.tag == STOP_TAG:
@@ -1547,7 +1382,7 @@ class BlockTree:
                 # **返回结果**
                 #task_comf=1
                 #print(f"Worker {MPI.COMM_WORLD.Get_rank()}: send block result, exit.", flush=True)
-                MPI.COMM_WORLD.send({'worker': MPI.COMM_WORLD.Get_rank(), 'task_id': rectask['task_id'], 'result': block,'jud_already_calsvd':jud_already_calsvd}, dest=0, tag=RESULT_TAG)
+                comm.send({'worker': MPI.COMM_WORLD.Get_rank(), 'task_id': rectask['task_id'], 'result': block,'jud_already_calsvd':jud_already_calsvd}, dest=0, tag=RESULT_TAG)
                 
 
     
