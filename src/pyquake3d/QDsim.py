@@ -1391,7 +1391,7 @@ class QDsim:
 
         values=np.array(values)
         Ncell=self.eleVec.shape[0]
-        self.rake=values[:Ncell,0]
+        self.rake=values[:Ncell,0]/180.0*np.pi
         self.a=values[:Ncell,1]
         self.b=values[:Ncell,2]
         self.dc=values[:Ncell,3]
