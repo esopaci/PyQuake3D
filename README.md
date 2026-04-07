@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/Parallel%20Computing-MPI-orange.svg" alt="MPI">
 
   <!-- Python versions (custom since no PyPI metadata) -->
-  <img src="https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.12-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11-blue.svg" alt="Python">
 
   <!-- CUDA (optional but nice for HPC visibility) -->
   <img src="https://img.shields.io/badge/CUDA-11%2B-green.svg" alt="CUDA">
