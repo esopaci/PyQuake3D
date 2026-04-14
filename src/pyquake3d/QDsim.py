@@ -68,7 +68,7 @@ def find_boundary_edges_and_nodes(triangles):
     edge_count = defaultdict(int)
     boundary_nodes = set()
 
-    # 遍历每个三角形，统计边的出现次数
+    # Iterate over each triangle and count the occurrences of edges
     for tri in triangles:
         edges = [
             tuple(sorted([tri[0], tri[1]])),
@@ -78,7 +78,7 @@ def find_boundary_edges_and_nodes(triangles):
         for edge in edges:
             edge_count[edge] += 1
 
-    # 找到只出现一次的边，并记录边上的节点
+    # Find edges that appear only once and record the nodes on those edges
     boundary_edges = []
     for edge, count in edge_count.items():
         if count == 1:
@@ -91,9 +91,9 @@ from scipy.spatial.distance import cdist
 
 # Calculate the distance between two node coord
 def find_min_euclidean_distance(coords1, coords2):
-    # 使用 scipy.spatial.distance.cdist 计算成对距离
+    # Use scipy.spatial.distance.cdist to compute pairwise distances
     distances = cdist(coords1, coords2, 'euclidean')
-    # 找到最小距离及其对应的索引
+    # Find the minimum distance and its corresponding indices
     min_idx = np.unravel_index(np.argmin(distances), distances.shape)
     min_distance = distances[min_idx]
     return min_distance
@@ -247,7 +247,7 @@ class QDsim:
         
         
         self.state_file='./state.txt'
-        # 第一次打开：用 "w" 模式清空旧文件
+        # First open: use "w" mode to clear the old file
         file = open(self.state_file, "w", encoding="utf-8")
 
         file.write('Program start time: %s\n'%str(datetime.now()))
@@ -398,7 +398,7 @@ class QDsim:
 
 
     def writestate(self, msg: str):
-        # 之后每次写入都用追加模式
+        # For subsequent writes, use append mode
         with open(self.filepath, "a", encoding="utf-8") as f:
             f.write(msg + "\n")
 
@@ -603,7 +603,7 @@ class QDsim:
         # sendbuf = np.array(jud_coredir, dtype='?')  # '?' = MPI_BOOL
         # #  root receive
         # if rank == 0:
-        #     recvbuf_jud_coredir = np.empty(size, dtype='?')  # 接收 size 个 bool
+        #     recvbuf_jud_coredir = np.empty(size, dtype='?')  # Receive size booleans
         # else:
         #     recvbuf_jud_coredir = None
 
@@ -612,7 +612,7 @@ class QDsim:
 
         # # root 
         # if rank == 0:
-        #     #result_list = recvbuf_jud_coredir.tolist()  # 转为 Python list[bool]
+        #     #result_list = recvbuf_jud_coredir.tolist()  # Convert to Python list[bool]
         #     has_false = np.any(~recvbuf_jud_coredir)
             
 
@@ -832,7 +832,7 @@ class QDsim:
         xmin, xmax = -22, 22
         ymin, ymax = -28, -18
 
-        # 生成 N 个随机点
+        # Generate N random points
         N = 25
         np.random.seed(42)
         x_random = np.random.uniform(xmin, xmax, N)*1e3
@@ -952,10 +952,10 @@ class QDsim:
         Xi, Yi = np.meshgrid(xi, yi)
         
 
-        # 插值结果是一个二维数组
-        Si = griddata((self.xg[:,0], self.xg[:,1]), Tno1, (Xi, Yi), method='nearest')  # <<< 这就是 Si
+        # The interpolation result is a 2D array
+        Si = griddata((self.xg[:,0], self.xg[:,1]), Tno1, (Xi, Yi), method='nearest')  # <<< This is Si
 
-        # 之后可用于滤波
+        # It can then be used for filtering
         from scipy.ndimage import gaussian_filter
         smooth_full = gaussian_filter(Si, sigma=4.0)
         #print('smooth_full',np.max(smooth_full))
@@ -1475,18 +1475,18 @@ class QDsim:
         dsigmadt=self.dsigmadt[self.local_index]
         slipv=self.slipv[self.local_index]
 
-        def safe_exp(x, max_value=700):  # 限制指数的最大值
+        def safe_exp(x, max_value=700):  #Limit the maximum value of the exponent
             return np.exp(np.clip(x, -max_value, max_value))
 
-        def safe_cosh(x, max_value=700):  # 使用指数形式的cosh，避免溢出
+        def safe_cosh(x, max_value=700):  # Use the exponential form of cosh to avoid overflow
             x = np.clip(x, -max_value, max_value)
             return (np.exp(x) + np.exp(-x)) / 2
 
-        def safe_sinh(x, max_value=700):  # 使用指数形式的sinh，避免溢出
+        def safe_sinh(x, max_value=700):  # Use the exponential form of sinh to avoid overflow
             x = np.clip(x, -max_value, max_value)
             return (np.exp(x) - np.exp(-x)) / 2
 
-        # 参数与公式
+        # Parameters and formula
         V0 = self.V0
         a = self.a[self.local_index]
         b = self.b[self.local_index]
@@ -1502,7 +1502,7 @@ class QDsim:
 
         #print('Tno-P:',np.max(Tno-P),np.min(Tno-P))
         
-        # 计算公式
+        # Compute the formula
         dV1dtau = 2 * V0 / (a * (Tno-P)) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * (Tno-P)))
         dV2dtau = 2 * V0 / (a * (Tno-P)) * safe_exp(-state / a) * safe_cosh(Tt2o / (a * (Tno-P)))
         dV1dsigma = -2 * V0 * Tt1o / (a * (Tno-P)**2) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * (Tno-P)))
@@ -1709,7 +1709,7 @@ class QDsim:
         
         cart_rank = self.cart_comm.Get_rank()
         row, col = self.cart_comm.Get_coords(cart_rank)
-        # color = 0 if row == col else MPI.UNDEFINED  # 对角线进程 color=0，其他 UNDEFINED
+        # color = 0 if row == col else MPI.UNDEFINED  # Diagonal processes: color=0，others: UNDEFINED
         # diag_comm = comm.Split(color, key=cart_rank)
         #print('start:',self.step,self.Tno.shape,rank,cart_rank)
         slipv1=np.zeros(len(self.slipv1))
@@ -1738,9 +1738,9 @@ class QDsim:
         
         #row_comm = self.cart_comm.Sub(remain_dims=[False, True])
         #print(row,col,cart_rank,row_comm.rank)
-        diag_rank_in_row = 0  # 在行通信器中，对角线进程的局部 rank 就是 row 编号
+        diag_rank_in_row = 0  # In the row communicator, the diagonal process’s local rank is equal to the row index.
         M=len(self.xg)
-        # 接收缓冲区：所有进程都必须提供，但只有 root 用结果
+        # Receive buffer: must be provided by all processes, but only the root uses the result
 
         sendbuf_v1 = np.array(AdotV1, dtype=np.float64)
         sendbuf_v2 = np.array(AdotV2, dtype=np.float64)
@@ -1802,7 +1802,7 @@ class QDsim:
                     
                     else:
                         nrjct=nrjct+1
-                        dtnext = max(0.5 * h, dtnext_raw)  # 提前限制
+                        dtnext = max(0.5 * h, dtnext_raw)  # Apply a pre-emptive constraint
                         h = dtnext
                         
                         #h=0.5*h
@@ -1820,22 +1820,22 @@ class QDsim:
 
                 self.diag_comm.Bcast(bcast_data if cart_rank == 0 else recv_bcast, root=0)
 
-                # 5. 所有对角线进程解析广播
+                # 5. All diagonal processes perform broadcast reduction (parse and broadcast)
                 if cart_rank != 0:
                     dtnext = recv_bcast[0]
                     accept = recv_bcast[1]
 
-                # 6. 所有进程统一判断退出
+                # 6. All processes make a unified decision to exit
                 if accept > 0.5:        # accept == 1.0 → break
                     self.dtnext = dtnext
                     break
-                elif accept < -0.5:     # accept == -1.0 → 错误终止
+                elif accept < -0.5:     # accept == -1.0 → Abort on error
                     if cart_rank == 0:
                         print("Simulation failed: dt too small.")
                     comm.Abort(1)  # stop all pro
                     break
-                else:                   # accept == 0.0 → 拒绝，继续循环
-                    h = dtnext  # 更新步长
+                else:                   # accept == 0.0 → Reject and continue the loop
+                    h = dtnext  # Update step size
             
             self.time=self.time+h
             #if(rank==0):
@@ -2426,10 +2426,10 @@ class QDsim:
         if not fname.endswith(".vtu"):
             fname += ".vtu"
 
-        # 1. 创建非结构化网格
+        # 1. Create an unstructured mesh
         ugrid = vtk.vtkUnstructuredGrid()
 
-        # 2. 点
+        # 2. Point
         points = vtk.vtkPoints()
         for i in range(self.nodelst.shape[0]):
             points.InsertNextPoint(float(self.nodelst[i][0]),
@@ -2437,7 +2437,7 @@ class QDsim:
                                 float(self.nodelst[i][2]))
         ugrid.SetPoints(points)
 
-        # 3. 单元（三角形）
+        # 3. Element (triangle)
         for i in range(self.elelst.shape[0]):
             tri = vtk.vtkTriangle()
             tri.GetPointIds().SetId(0, int(self.elelst[i][0]-1))
@@ -2445,7 +2445,7 @@ class QDsim:
             tri.GetPointIds().SetId(2, int(self.elelst[i][2]-1))
             ugrid.InsertNextCell(tri.GetCellType(), tri.GetPointIds())
 
-        # 4. 写入 CellData
+        # 4. Write CellData
         def add_scalar(name, arr):
             data = vtk.vtkFloatArray()
             data.SetName(name)
@@ -2481,12 +2481,12 @@ class QDsim:
                 add_scalar("shear zone width[m]", self.hs)
             add_scalar("slip_plate[m/s]", self.slipvC)
 
-        # 5. 写文件（binary + zlib 压缩）
+        # 5. Write file (binary + zlib compression)
         writer = vtk.vtkXMLUnstructuredGridWriter()
         writer.SetFileName(fname)
         writer.SetInputData(ugrid)
-        writer.SetDataModeToBinary()      # 二进制
-        writer.SetCompressorTypeToZLib()  # 压缩
+        writer.SetDataModeToBinary()      # Binary
+        writer.SetCompressorTypeToZLib()  # Compression
         writer.Write()
 
         
