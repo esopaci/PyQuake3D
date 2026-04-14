@@ -2413,7 +2413,7 @@ class Hmatrix:
             
 
 
-        # 创建四个子块
+        # Create four sub-blocks
         children = [
             self.create_recursive_blocks(row_cluster_left, col_cluster_left,
                             row_index[:hf_Nindex],col_index[:hf_Nindex],points, plotHmatrix,mini_leaf,depth + 1),
@@ -2489,7 +2489,7 @@ class Hmatrix:
 
 
 
-        # 创建四个子块
+        # Create four sub-blocks
         children = [
             self.create_recursive_truncation_blocks(row_cluster_left, col_cluster_left,
                             row_index[:hf_Nindex],col_index[:hf_Nindex],points, plotHmatrix,maxdepth,mini_leaf,depth + 1),
