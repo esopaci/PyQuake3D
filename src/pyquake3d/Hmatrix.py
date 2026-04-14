@@ -29,13 +29,13 @@ try:
     try:
         from importlib.resources import files
     except ImportError:
-        # Python 3.8 或更早：用回溯包
+        # Python 3.8 Or earlier
         from importlib_resources import files
     _so_path = files("pyquake3d") / "TDstressFS_C.so" 
     lib = ctypes.CDLL(str(_so_path))
     #lib = ctypes.CDLL('src/TDstressFS_C.so')
     #lib = ctypes.CDLL('src/Dll1.dll')
-    # 定义接口参数类型
+    # Define the interface parameter types.
     lib.TDstressFS_C.argtypes = [
         ctypes.POINTER(ctypes.c_double),  # X
         ctypes.POINTER(ctypes.c_double),  # Y
@@ -68,7 +68,7 @@ except AttributeError as e:
 
 TASK_TAG = 1
 RESULT_TAG = 2
-STOP_TAG = 3  # 结束信号
+STOP_TAG = 3  # End signal
 
 
     
@@ -79,8 +79,8 @@ def bounding_box(cluster, points):
     :param points: coordinate,shape (n, d)
     """
     #print(points,cluster)
-    a = np.min(points[cluster], axis=0)  # 计算每个维度上的最小值
-    b = np.max(points[cluster], axis=0)  # 计算每个维度上的最大值
+    a = np.min(points[cluster], axis=0)  # Compute the minimum value along each dimension
+    b = np.max(points[cluster], axis=0)  # Compute the maximum value along each dimension
     return a, b
 
 def diameter(a, b):
@@ -107,7 +107,7 @@ def is_admissible(cluster_tau,cluster_sigma,points, eta=2.0):
     judge if bounding box meet admissible condition
     :param a_tau, b_tau: first bounding box minimun and maximum coord
     :param a_sigma, b_sigma: second bounding box minimun and maximum coord
-    :param eta: admissible condition (通常 0 < η < 3)
+    :param eta: admissible condition (Usually 0 < η < 3)
     :return: admissibility condition
     """
     a_tau, b_tau = bounding_box(cluster_tau, points)
@@ -168,13 +168,13 @@ def build_block_tree(cluster, points,min_size=16,depth=0):
     if len(cluster) <= min_size:
         return TreeNode(cluster,level=depth)  # Leaf node, no longer divided
 
-    d = points.shape[1]  # 维度
+    d = points.shape[1]  # Dimension
     alpha = np.min(points, axis=0)  # Calculate the minimum value of each dimension
     beta = np.max(points, axis=0)   # Calculate the maximum value of each dimension
     #print(alpha,beta)
-    # 选择分裂方向，使得 beta_j - alpha_j 最大
+    # Choose the splitting direction such that beta_j - alpha_j is maximized
     j_max = np.argmax(beta - alpha)
-    # 计算分裂阈值
+    # Compute the splitting threshold
     gamma = (alpha[j_max] + beta[j_max]) / 2
 
     #index1=np.where(points[:, j_max] <= gamma)[0]
@@ -284,17 +284,17 @@ class Block:
             return self.data
         return None
 
-# 子类 CustomBlock
+# Subclass CustomBlock
 class LMBlock(Block):
     def __init__(self, row_cluster: TreeNode, col_cluster: TreeNode, row_index, col_index, children=None, level=0):
-        # 转换为 CustomCluster
+        # Convert to CustomCluster
         if not isinstance(row_cluster, TreeNode):
             row_cluster = row_cluster.indices
         if not isinstance(col_cluster, TreeNode):
             col_cluster = col_cluster.indices
-        # 调用父类 __init__，传入 np.ndarray
+        # Call the parent class __init__，Pass in np.ndarray
         super().__init__(row_cluster.indices, col_cluster.indices, row_index, col_index, children, level)
-        # 重新赋值以保持 CustomCluster 类型
+        # Reassign to preserve the CustomCluster type
         self.row_cluster = row_cluster
         self.col_cluster = col_cluster
 
@@ -1356,7 +1356,7 @@ class BlockTree:
                 break
             
             jud_already_calsvd=False
-            # **执行任务**
+            # **Execute the task**
             if(status.tag == TASK_TAG):
                 #task_comf=0
                 #print('task',task, flush=True)
@@ -1376,10 +1376,10 @@ class BlockTree:
                 #     #    break
                 
                 #print(block.Mf_A1s)
-                #result = task * task  # 假设任务是计算平方
+                #result = task * task  # Assume the task is to compute the square
                 print(f"Worker {MPI.COMM_WORLD.Get_rank()} send the the task result {rectask['task_id']}, size = {len(block.row_cluster),len(block.col_cluster)}", flush=True)
 
-                # **返回结果**
+                # **Return the result**
                 #task_comf=1
                 #print(f"Worker {MPI.COMM_WORLD.Get_rank()}: send block result, exit.", flush=True)
                 comm.send({'worker': MPI.COMM_WORLD.Get_rank(), 'task_id': rectask['task_id'], 'result': block,'jud_already_calsvd':jud_already_calsvd}, dest=0, tag=RESULT_TAG)
@@ -1486,28 +1486,28 @@ class BlockTree:
             num_blocks = len(blocks_to_process)
             print(f'num_blocks: {num_blocks}')
             
-            # 默认：发送给所有进程（包括 0）
+            # Default: send to all processes (including rank 0)
             if target_ranks is None:
-                target_ranks = list(range(size))  # 包括 0
+                target_ranks = list(range(size))  # including 0
             else:
-                # 验证 target_ranks：唯一、有序、在 0~size-1 范围内
+                # Validate target_ranks：unique, sorted, and within the range 0 to 0~size-1 
                 target_ranks = sorted(set(target_ranks))
                 invalid = [r for r in target_ranks if not (0 <= r < size)]
                 if invalid:
                     raise ValueError(f"Invalid target ranks: {invalid} (must be 0 to {size-1})")
             
-            # 总目标进程：target_ranks
+            # Total target processes：target_ranks
             all_targets = target_ranks
             num_total = len(all_targets)
             
             if num_total == 0:
                 raise ValueError("No target ranks specified; nothing to distribute.")
             
-            # 检查是否包含 rank 0
+            # Check whether it includes rank 0
             includes_zero = 0 in target_ranks
             zero_idx = all_targets.index(0) if includes_zero else -1
             
-            # 均匀分配块
+            # Distribute blocks evenly
             counts = [num_blocks // num_total] * num_total
             for i in range(num_blocks % num_total):
                 counts[i] += 1
@@ -1523,19 +1523,19 @@ class BlockTree:
                 local_blocks = task_chunks[zero_idx]
                 print(f'rank {rank} assigned {len(local_blocks)} blocks (self included)')
             else:
-                local_blocks = []  # 不保留
+                local_blocks = []  # Do not retain
                 print(f'rank {rank} assigned 0 blocks (sender only)')
             
-            # 向每个 target_ranks 发送（排除自己，如果包含 0）
+            # Send to each target_ranks (excluding self, if 0 is included).
             for idx, tgt in enumerate(target_ranks):
-                if tgt == 0:  # 跳过发送给自己
+                if tgt == 0:  # Skip sending to self
                     continue
                 chunk = task_chunks[idx]
-                if not chunk:  # 空 chunk 跳过
+                if not chunk:  # Skip empty chunks
                     continue
                 batch_size = max(1, len(chunk) // n_task_per_proc)
                 start = 0
-                base_tag = 77 + tgt * 100  # 独特 tag 基数
+                base_tag = 77 + tgt * 100  # Unique tag cardinality
                 
                 for j in range(n_task_per_proc):
                     end = start + batch_size if j < n_task_per_proc - 1 else len(chunk)
@@ -1550,9 +1550,9 @@ class BlockTree:
                 print(f'rank {tgt} assigned {len(chunk)} blocks')
         
         else:
-            # 非 rank 0：只有 target_ranks 中的进程接收
+            # Non-rank 0: only processes in target_ranks receive
             if target_ranks is None:
-                target_ranks = list(range(size))  # 匹配默认
+                target_ranks = list(range(size))  # Match default
                 
             if rank in target_ranks:
                 local_blocks = []
@@ -1562,7 +1562,7 @@ class BlockTree:
                     try:
                         task = comm.recv(source=0, tag=base_tag + j)
                         local_blocks.extend(task)
-                    except Exception:  # 最后一批可能为空
+                    except Exception:  # The last batch may be empty
                         break
                 #print(f'rank {rank} received {len(local_blocks)} blocks')
             else:
@@ -1574,18 +1574,18 @@ class BlockTree:
             #     received_count = 0
             #     while True:
             #         status = MPI.Status()
-            #         # 探测任何来自 rank 0 的消息
+            #         # Probe for any messages from rank 0 
                     
             #         if not comm.Iprobe(source=0, tag=MPI.ANY_TAG, status=status):
             #             break
 
-            #         # 只接收属于自己的 tag 范围
+            #         # Only receive messages within its own tag range
             #         if base_tag <= status.tag < base_tag + n_task_per_proc:
             #             task = comm.recv(source=0, tag=status.tag, status=status)
             #             local_blocks.extend(task)
             #             received_count += 1
         
-        # 统一打印
+        # Unified printing
         print(f'rank {rank} final Hmatrix sub-blocks number: {len(local_blocks)}')
 
         
@@ -1603,14 +1603,14 @@ class BlockTree:
             assert num_rows == rows, f"blocks_to_process length ({num_rows}) must match rows ({rows})"
             print(f'num_rows: {num_rows}, total blocks per row: {[len(row_blocks) for row_blocks in blocks_to_process]}')
             
-            # 为每一行准备任务分发
+            # Prepare task distribution for each row
             task_chunks_per_row = {}  # dict: row_id -> list of chunks for each col in row
             
             for i in range(rows):
                 # row_blocks = blocks_to_process[i]
                 # num_blocks = len(row_blocks)
                 
-                # # 均匀分发到该行的 cols 个进程
+                # # Evenly distribute to the cols processes for that row
                 # counts = [num_blocks // cols] * cols
                 # for j in range(num_blocks % cols):
                 #     counts[j] += 1
@@ -1624,15 +1624,15 @@ class BlockTree:
                 task_chunks_per_row[i] = task_chunks
                 print(f'Row {i}: chunks lengths: {[len(c) for c in task_chunks]}')
             
-            # Rank 0 保留自己的 chunk (row 0, col 0)
+            # Rank 0 keeps its own chunk (row 0, col 0)
             local_blocks = task_chunks_per_row[0][0]
             
-            # 发送到其他进程：按行发送到该行的所有进程（跳过自己）
+            # Send to other processes: for each row, send to all processes in that row (skip itself)
             for i in range(rows):
                 for j in range(cols):
                     target_rank = i * cols + j
                     if target_rank == 0:
-                        continue  # 跳过自己
+                        continue  # Skip self
                     
                     target_chunks = task_chunks_per_row[i][j]
                     batch = int(len(target_chunks) / n_task_per_proc)
@@ -1643,16 +1643,16 @@ class BlockTree:
                         else:
                             chunk = target_chunks[start:]
                         
-                        # 发送 chunk，并附加行ID以便接收方验证（可选）
+                        # Send the chunk and optionally attach the row ID so the receiver can verify it
                         send_data = {'row': i, 'chunk': chunk}
                         comm.send(send_data, dest=target_rank, tag=77 + k)
                         start += batch
             
-            # 可选：保存所有chunks用于plot
+            # Optional: save all chunks for plotting
             self.task_chunks_per_row = task_chunks_per_row
         
         else:
-            # 非零进程：根据自己的 row 接收数据
+            # Non-zero processes: receive data according to their own row
             local_blocks = []
             batch_received = 0
             for j in range(n_task_per_proc):
@@ -1663,9 +1663,9 @@ class BlockTree:
                 local_blocks.extend(chunk)
                 batch_received += 1
             
-            # 如果最后一批不足 n_task_per_proc，会在最后 tag 接收剩余
-            # 但由于发送方总是发 n_task_per_proc 次（即使最后空），这里假设发送方调整
-            # 实际中，可用 status 检查，但简化假设固定循环
+            # If the last batch has fewer than n_task_per_proc，the remaining items are received using the final tag
+            # However, since the sender always sends n_task_per_proc times (even if the last batch is empty), we assume the sender has been adjusted accordingly
+            # In practice, status can be used for checking, but we simplify by assuming a fixed loop.
         
         #print(f'Rank {rank} (row {row}, col {col}): Hmatrix sub-blocks number {len(local_blocks) if local_blocks is not None else 0}')
         
@@ -1685,7 +1685,7 @@ class BlockTree:
                 x_ = xvector[blk.col_cluster]
                 if blk.judsvd:
                     tmp = np.dot(blk.Vt_1s, x_)   # r × 1
-                    tmp *= blk.S_1s               # 原地乘法
+                    tmp *= blk.S_1s               # In-place multiplication
                     Ax_rsvd = np.dot(blk.U_1s, tmp)
                 elif hasattr(blk, 'judaca') and blk.judaca:
                     tmp = np.dot(blk.ACA_dictS['V_ACA_A1s'], x_)
@@ -2287,21 +2287,21 @@ class Hmatrix:
             #print('start to plot.')
             FIXED_SHAPE = (5, 2)
             ELEMENTS_PER_ARRAY=FIXED_SHAPE[0] * FIXED_SHAPE[1]
-            # 步骤 2：提取元数据
+            # Step 2: Extract metadata
             data=np.array(self.plotrec,dtype=np.int32)
             
-            num_arrays = len(data)  # 每个进程的数组数量
-            sendcount = num_arrays * ELEMENTS_PER_ARRAY  # 总元素数 = 数组数量 * 每个数组的元素数
-            sendbuf = np.concatenate([arr.ravel() for arr in data])  # 拼接为连续缓冲区
+            num_arrays = len(data)  # Number of arrays per process
+            sendcount = num_arrays * ELEMENTS_PER_ARRAY  # Total number of elements = number of arrays * number of elements per array
+            sendbuf = np.concatenate([arr.ravel() for arr in data])  # Concatenate into a contiguous buffer
 
-            # 步骤 3：收集元数据
-            # (1) 收集每个进程的 num_arrays
+            # Step 3: Gather metadata
+            # (1) Collect num_arrays from each process
             num_arrays_all = cart_comm.gather(num_arrays, root=0)
 
-            # (2) 收集每个进程的 sendcount
+            # (2) Collect sendcount from each process
             recvcounts = cart_comm.gather(sendcount, root=0)
 
-            # 步骤 4：计算偏移量并分配接收缓冲区
+            # Step 4: Compute offsets and allocate the receive buffer
             if rank == 0:
                 displs = [0] * size
                 total_count = recvcounts[0]
@@ -2311,9 +2311,9 @@ class Hmatrix:
                 recvbuf = np.empty(total_count, dtype=np.int32)
             else:
                 recvbuf = None
-                displs = None  # 为非根进程定义 displs，避免 UnboundLocalError
+                displs = None  # Define displs for non-root processes to avoid UnboundLocalError
 
-            # 步骤 5：使用 Gatherv 收集数据
+            # Step 5: Use Gatherv to gather data
             comm.Gatherv(sendbuf, [recvbuf, recvcounts, displs, MPI.INT], root=0)
             
             if rank == 0:
