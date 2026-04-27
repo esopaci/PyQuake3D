@@ -14,5 +14,6 @@ src/pyquake3d/readmsh.py
 src/pyquake3d.egg-info/PKG-INFO
 src/pyquake3d.egg-info/SOURCES.txt
 src/pyquake3d.egg-info/dependency_links.txt
+src/pyquake3d.egg-info/entry_points.txt
 src/pyquake3d.egg-info/requires.txt
 src/pyquake3d.egg-info/top_level.txt

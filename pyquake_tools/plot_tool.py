@@ -1,0 +1,1242 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 10 17:16:59 2025
+
+
+PyQuake3D Visualization Utilities
+
+This module provides tools for visualizing and analyzing
+PyQuake3D simulation outputs, including:
+
+- Time series plots of maximum slip rate
+- 2D and 3D animations of fault slip
+- Automatic earthquake event detection
+- Slip statistics and seismic moment calculations
+
+
+
+@author: eyup
+"""
+
+import pyvista as pv
+import pandas as pd 
+import os 
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm, Normalize, BoundaryNorm
+import matplotlib.animation as animation
+from matplotlib.animation import FuncAnimation
+import numpy as np
+import traceback
+from scipy.integrate import simpson
+from scipy.interpolate import LinearNDInterpolator
+
+
+class Ptool:
+    """
+    Visualization and analysis toolkit for PyQuake3D outputs.
+    
+    Parameters
+    ----------
+    path : str
+        Path to the simulation directory containing output files.
+    
+    Notes
+    -----
+    The tool expects the following directory structure:
+    
+        simulation/
+        ├── state.txt
+        ├── out_vtu/
+        │   ├── step0.vtu
+        │   ├── step1.vtu
+        │   └── ...
+    """
+    
+    # ------------------------------------------------------------------
+    # Physical constants
+    # ------------------------------------------------------------------
+    G = 32038120320                 # Shear Modulus
+    rho = 2670                      # Density of the rocth
+    c_s = 0.5*(G/rho)**(1/2)        # Shear Wave Velocity
+    V_dyn = 1e-2    ## Dynamic slip rate, when elastodynamic effects dominate
+    t_yr = 365*3600*24  # year to second converion
+
+    # ------------------------------------------------------------------
+    # Plot configuration
+    # ------------------------------------------------------------------
+    
+    var = 'V'       # Variable to be plotted. 
+    t_min = 0       # Minimum time to be plotted 
+    t_max = 1e100       # Maximum time to be plotted 
+    V_min = -8       # Minimum slip rate to be plotted (LOG10 SCALE)
+    V_max = 0        # Maximum slip rate to be plotted (LOG10 SCALE)
+    Omega_min = -1       # Minimum Omega to be plotted (LOG10 SCALE)
+    Omega_max = 1        # Maximum Omega to be plotted (LOG10 SCALE)
+    theta_min = 0      # Minimum theta to be plotted (LOG10 SCALE)
+    theta_max = 1        # Maximum theta to be plotted (LOG10 SCALE)
+    normal_min = 10        # Minimum effective normal stress to be plotted (LOG10 SCALE)
+    normal_max = 100        # Maximum effective normal stress  to be plotted (LOG10 SCALE)
+    azimuth = -80        # Azimuth angle for 3D plot
+    elevation = 15       # Elevation angle for 3D plot
+    interval = 10        # Interval of reading outputs for animations
+    depth = 10e3        # Depth for event plot 
+    event_no = 3        # Event number to be plotted
+    next_event = 0      # This number is used for plotting how manu number of events
+
+
+    # ------------------------------------------------------------------
+    # Output fields
+    # ------------------------------------------------------------------
+
+    field = [
+        "Normal_[MPa]",
+        "Pore_pressure[MPa]",
+        "Shear_[MPa]",
+        "Shear_1[MPa]",
+        "Shear_2[MPa]",
+        "rake[Degree]",
+        "state",
+        "Slipv[m/s]",
+        "Slipv1[m/s]",
+        "Slipv2[m/s]",
+        "a",
+        "b",
+        "a-b",
+        "dc",
+        "fric",
+        "slip",
+        "slip1",
+        "slip2",
+        "slip_plate",
+    ]
+    
+    '''
+    ['Normal_[MPa]', 
+     'Shear_[MPa]', 
+     'Shear_1[MPa]', 
+     'Shear_2[MPa]', 
+     'rake[Degree]', 
+     'state', 'Slipv[m/s]', 
+     'Slipv1[m/s]', 
+     'Slipv2[m/s]', 
+     'fric', 
+     'slip[m]', 
+     'slip1[m]', 
+     'slip2[m]', 
+     'Pore_pressure[MPa]', 
+     'Porosity[Degree]', 
+     'Temperature[Degree]']
+    '''
+    
+
+    def __init__(self, path):
+    
+        """Initialize the visualization tool."""
+
+        self.path = path
+
+        out_vtu = os.path.join(path, "out_vtu")
+        out_vtk = os.path.join(path, "out_vtk")
+
+        if os.path.isdir(out_vtu):
+            self.out_folder = out_vtu
+            self.extension = ".vtu"
+        elif os.path.isdir(out_vtk):
+            self.out_folder = out_vtk
+            self.extension = ".vtu"
+        else:
+            raise FileNotFoundError(
+                f"No output folder found. Checked: {out_vtu} and {out_vtk}"
+            )
+
+        files = [
+            int(f.split(self.extension)[0][4:])
+            for f in os.listdir(self.out_folder)
+            if f.endswith(self.extension)
+        ]
+
+        self.steps = np.sort(files)
+        self.N_steps = len(self.steps)
+
+        self.state_file = os.path.join(path, "state.txt")
+        
+        
+        '''
+        This function reads the initial variables and frictional parameters
+        Returns
+        -------
+        Saves to the class object.
+
+        '''
+        init_mesh = pv.read(
+            os.path.join(self.path, 'Init.vtu')
+            )
+        self.Init_mesh = init_mesh
+        
+        # Get data
+        cells = init_mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
+        triangles = cells[:, 1:]         # drop the "3"
+        points = init_mesh.points[triangles]  # shape (n_cells, 3, 3)
+        points = np.mean(points, axis = 1 )
+        
+        ## Center of the trinages in X, Y, Z 
+        self.x, self.y, self.z = points[:,0],points[:,1], points[:,2]  
+        
+        self.x_min = self.x.min() 
+        self.x_max = self.x.max() 
+        self.x_mean= self.x.mean() 
+
+        self.y_min = self.y.min() 
+        self.y_max = self.y.max() 
+        self.y_mean= self.y.mean() 
+        
+        self.z_min = self.z.min() 
+        self.z_max = self.z.max() 
+        self.z_mean= self.z.mean()         
+        
+        
+    # ----------------------------------------------------------------------- #
+    #                           HELPER FUNCTIONS                              #
+    # ----------------------------------------------------------------------- #
+
+    def read_mesh(self, step):
+        """Load mesh for a given simulation step."""
+        return pv.read(os.path.join(self.out_folder, f"step{step}.vtu"))
+
+            
+    
+    def read_statefile(self):
+        
+        def filter_columns(bad_line):
+        # bad_line is a list of strings split by the delimiter
+        # Return None to skip the line entirely
+            if len(bad_line) != 5:  # Example: Skip if NOT exactly 5 columns
+                return None
+            return bad_line
+        
+        skip_count = 0
+        
+        # Find how many lines to skip
+        with open(self.state_file, 'r') as f:
+            for i, line in enumerate(f):
+                if line.startswith('iteration'):
+                    skip_count = i
+                    break
+                
+        footer_count = 0
+        # Read lines in reverse to find non-numeric footers
+        with open(self.state_file, 'r') as f:
+            lines = f.readlines()
+            for line in reversed(lines):
+                # Check if the first character is NOT a digit
+                if line.strip() and not line.strip()[0].isdigit():
+                    footer_count += 1
+                else:
+                    break
+        
+        
+        vmax = pd.read_csv(
+        self.state_file,
+        sep = '\\s+', low_memory=True, 
+        skipfooter=footer_count, 
+        skiprows= skip_count+1,
+        names=['Iteration', 'dt', 'slipv1', 'slipv2', 'time(s)', 'time(h)'],
+        engine='python',
+        on_bad_lines=filter_columns
+                )
+        
+    
+        return vmax
+    
+    def seismic_moment(self, time, MO_dot):
+        '''
+        
+
+        Parameters
+        ----------
+        time : TYPE
+            DESCRIPTION.
+        M0_dot : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+
+        # Compute seismic moment and 
+        M0 = np.abs(simpson(MO_dot, x=time))
+        Mw = 2/3 * (np.log10(M0) - 9.1)
+        M0_dot_mean = 10**np.mean(np.log10(MO_dot))
+        
+        return (M0, Mw, M0_dot_mean)
+    
+    def plot_timeseries(self):
+        '''
+        This module plots time vs variable
+        VARIABLES:
+            'V'             : maximum slip rate
+            'theta'         : state variable of frictional restrengthening
+                                Psi = f_0 + b ln(theta/theta_0)
+            'shear'         : Shear stress 
+            'normal'        : Effective normal stress
+            'fric'          : Friction: shear/normal 
+            'porosity'      : Pororsity degree (if applicable)
+            'temperature'   : Temperatre degree (if applicable)
+
+        Returns
+        -------
+        Saves the figure into the simulation directory.
+
+        '''
+
+        
+        fig,ax = plt.subplots(1,1, figsize = (10,6), clear=True)
+        
+        ax.set_xlabel('time [yr]')
+
+        vmax = self.read_statefile()
+        
+        
+        mesh0 = pv.read(os.path.join(self.path,'Init.vtu') )
+        asp_index = mesh0.cell_data["a-b"] < 0
+ 
+        if self.var == 'V':
+            vmax['Slipv[m/s]'] = np.sqrt(vmax['slipv1']**2 + vmax['slipv2']**2)
+            V = vmax['Slipv[m/s]']
+            ax.semilogy(vmax['time(s)']/self.t_yr, 
+                        V)
+            ax.set_ylabel('log($V_{max}$) [m/s]')
+
+        if self.var == 'theta':
+            
+            theta_1 = np.empty(self.N_steps)
+            theta_2 = np.empty(self.N_steps)
+
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                theta_1[i] = mesh.cell_data['state'][asp_index].mean()
+                theta_2[i] = mesh.cell_data['state'][~asp_index].mean()
+
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.plot(time/self.t_yr, 
+                        theta_1, label = 'VW (a-b<0)')
+            ax.plot(time/self.t_yr, 
+                        theta_2, label = 'VS (a-b>0')
+            ax.set_ylabel('$f_0 + b ln (\\frac{\\theta}{\\theta_0})$')
+
+            ax.legend()
+            
+            
+        if self.var == 'shear':
+            
+            tau_1 = np.empty(self.N_steps)
+            tau_2 = np.empty(self.N_steps)
+
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                tau_1[i] = mesh.cell_data['Shear_[MPa]'][asp_index].mean()
+                tau_2[i] = mesh.cell_data['Shear_[MPa]'][~asp_index].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('$\\tau$ [MPa]')
+            ax.plot(time/self.t_yr, 
+                        tau_1, label = 'VW (a-b<0)')
+            ax.plot(time/self.t_yr, 
+                        tau_2, label = 'VW (a-b<0)')
+            
+            
+        if self.var == 'fric':
+            
+            fric = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                fric[i] = mesh.cell_data['fric'].mean()
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('\\mu')
+            ax.plot(time/self.t_yr, 
+                        fric)
+            
+            
+        if self.var == 'normal':
+            normal = np.empty(self.N_steps)
+            P = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                
+                normal[i] = mesh.cell_data['Normal_[MPa]'].mean()
+                
+                if 'Pore_pressure[MPa]' in mesh.cell_data.keys():
+                    P[i] = mesh.cell_data['Pore_pressure[MPa]'].mean()
+                else :
+                    P[i] = 1e-6
+               
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('[MPa]')
+            ax.semilogy(time/self.t_yr, 
+                        normal - P, label = '$\\sigma_n-P$')
+            ax.semilogy(time/self.t_yr, 
+                        P, label = 'P$')
+            
+            ax.legend()
+            
+            
+        if self.var == 'porosity':
+            porosity = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                
+                if 'Porosity[Degree]' in mesh.cell_data.keys():
+                    porosity[i] = mesh.cell_data['Porosity[Degree]'].mean()
+                else :
+                    porosity[i] = 0
+
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('Porosity')
+            ax.plot(time/self.t_yr, 
+                        porosity)
+            
+            
+        if self.var == 'temperature':
+            temperature = np.empty(self.N_steps)
+            time = np.empty(self.N_steps)
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                if 'Temperature[Degree]' in mesh.cell_data.keys():
+                    temperature[i] = mesh.cell_data['porosity'].mean()
+                else :
+                    temperature[i] = 1e-6
+
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('T Degrees')
+            ax.plot(time/self.t_yr, 
+                        temperature)
+            
+            
+        if self.var == 'slip':
+            slip_1 = np.empty(self.N_steps)
+            slip_2 = np.empty(self.N_steps)
+            slip_3 = np.empty(self.N_steps)
+
+            time = np.empty(self.N_steps)
+            
+            for i in range(self.N_steps):
+                step = self.steps[i]
+                mesh = self.read_mesh(step = step)
+                slip_1[i] = mesh.cell_data['slip[m]'].mean()
+                slip_2[i] = mesh.cell_data['slip[m]'][asp_index].mean()
+                slip_3[i] = mesh.cell_data['slip[m]'][~asp_index].mean()
+
+                time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            ax.set_ylabel('slip [m]')
+            ax.plot(time/self.t_yr, 
+                        slip_1, label = 'Total mean slip on fault')
+            ax.plot(time/self.t_yr, 
+                        slip_2, label = 'Total mean slip on the asperity')
+            
+            ax.plot(time/self.t_yr, 
+                        slip_3, label = 'Total creep',
+                        ls ='--', color = 'black')
+            
+            ax.legend()
+
+        fig.savefig(os.path.join(self.path,f'time_series_{self.var}.pdf'), 
+                    dpi = 150, bbox_inches='tight')
+        
+
+
+    def plot_timeseries2(self):
+        '''
+        This module plots time vs maximum slip rate for each the output 
+        time steps
+
+        Returns
+        -------
+        Saves the figure into the simulation directory.
+
+        '''
+
+        mesh = self.Init_mesh.cell_data 
+
+        a_min_b = mesh['a-b']
+        
+        # index of asperity
+        ind = a_min_b<0
+        
+        a = mesh['a'][ind]
+        b = mesh['b'][ind]
+        dc = mesh['dc'][ind]
+        V_0 =  mesh['Slipv[m/s]'][ind]
+        
+
+
+        # read max file
+        vmax = self.read_statefile()
+        
+        # read Event file 
+        event = pd.read_csv(
+            os.path.join(self.path, 'events.txt'), sep = '\\s+'
+            )
+        
+        event_no2 = self.event_no+self.next_event
+        s_event1 = event[event['Evnt'] == self.event_no]
+        s_event2 = event[event['Evnt'] == event_no2]
+
+        
+        I_start = s_event1['I_start'].values[0]
+        
+        I_finish = s_event2['I_finish'].values[0]
+        
+        selected_steps = self.steps[(self.steps>=I_start) & 
+                                    (self.steps<I_finish)]
+        
+        V_max = np.empty(selected_steps.size)
+        V_mean = np.empty(selected_steps.size)
+        V_mean2 = np.empty(selected_steps.size)
+
+
+        # Psi = np.empty(selected_steps.size)
+        theta = np.empty(selected_steps.size)
+
+        Fric = np.empty(selected_steps.size)
+
+        P_max = np.empty(selected_steps.size)
+        P_mean = np.empty(selected_steps.size)
+        tau = np.empty(selected_steps.size)
+
+        Por = np.empty(selected_steps.size)
+
+        S = np.empty(selected_steps.size)
+        T = np.empty(selected_steps.size)
+        Time = np.empty(selected_steps.size)
+
+        i = 0
+        
+        for step in selected_steps:
+            
+            Time[i] = vmax[vmax.Iteration==step]['time(s)'].values[0]
+
+            vtu_file = f'{self.out_folder}/step{step}{self.extension}'
+            
+            mesh_v = pv.read(vtu_file)
+            
+            V_max[i] = mesh_v.cell_data["Slipv[m/s]"][ind].max()
+            V_mean[i] = mesh_v.cell_data["Slipv[m/s]"][ind].mean()
+            # V_mean2[i] = mesh_v.cell_data["Slipv[m/s]"][~ind].mean()
+     
+            Psi = mesh_v.cell_data["state"][ind]
+            theta[i] = (dc/V_0 * np.exp((Psi-0.6)/b)).mean()
+            
+            Fric[i] = mesh_v.cell_data["fric"][ind].mean()
+
+            tau[i] = mesh_v.cell_data['Shear_[MPa]'][ind].mean()
+
+
+            S[i] = mesh_v.cell_data['Normal_[MPa]'][ind].mean()
+            
+            try:
+                P_mean[i] = mesh_v.cell_data['Pore_pressure[MPa]'][ind].mean()
+                Por[i] = mesh_v.cell_data['Porosity[Degree]'][ind].mean()
+                T[i] = mesh_v.cell_data['Temperature[Degree]'][ind].mean()
+            except Exception as e:
+                print(e)
+                print('Plotting continues')
+
+            i+=1
+                
+        Time = Time/365/3600/24
+        fig,(ax,ax1,ax2) = plt.subplots(3,1, figsize = (10,12), sharex =True, clear=True)
+        
+        
+        ax.set_ylabel('V')
+        ax1.set_ylabel('$\\theta$')
+        ax2.set_ylabel('[MPa]')
+        ax2.set_xlabel('Time [year]')
+        
+        ax.semilogy(Time, V_max, label='V_max')
+        ax.semilogy(Time, V_mean, label='V_mean - VW')
+        # ax.semilogy(Time, V_mean2, label='V_mean - VS')
+
+        
+        # ax1.plot(Time, Fric, label='friction')
+        ax1.plot(Time,  theta/ 365/ 3600/24, label='Healing [yr]')
+        ax2.semilogy(Time, tau, label= '$\\tau$ [MPa]')
+        
+        try: 
+            ax2.semilogy(Time, S-P_max, label='$\\sigma_n - P_{max}$ [MPa]')
+            ax4 = ax1.twinx()
+            ax4.semilogy(Time, T, color = 'k', lw = 0.8, 
+                         ls = '--', label='Temperature [Degree]')
+            ax4.set_ylabel('Temperature')
+            ax4.set_ylim(top=10)
+        except Exception as e:
+            print(e)
+            ax2.semilogy(Time, S, label='$\\sigma_n - P_{max}$ [MPa]')
+
+
+        ax.legend()
+        ax1.legend()
+        ax2.legend()
+        
+        fig.savefig(os.path.join(self.path, f'ts2_{self.event_no}-{event_no2}.jpg'), 
+                    dpi = 300, bbox_inches='tight')
+        
+
+
+
+        
+        
+    def animation2D_scatter(self):
+        '''
+        
+
+        Parameters
+        ----------
+        Returns
+        -------
+        Animation saved to your simulation folder
+        '''
+        px='XZ'
+        
+        # --- Plot with Matplotlib ---
+        # We have two subplots: 
+        # Top : Slip rate plotted with the scatter on PX domain
+        # Bottom : Maximim slip rate plot.
+        fig,(ax,ax1) = plt.subplots(2,1, figsize = (8,6))
+        
+
+            
+        # Read maximum slip rate file
+        df = self.read_statefile()
+        df['slipv'] = np.sqrt(df['slipv1']**2+df['slipv2']**2)
+
+        # This is plot for the maximum slip rate
+        ax1.set_xlabel('time [yr]')
+        ax1.set_ylabel('V [m/s]')
+        ax1.semilogy(df['time(s)']/self.t_yr, 
+                    df['slipv'], 
+                    lw = 1)
+        
+          
+        
+        # A red dot shows the maximum slip rate (bottom subplot), that is 
+        # synchronized with the upper scatter plot, colored with slip rates.
+        
+        
+        
+        line, = ax1.semilogy(df['time(s)'].iloc[0]/self.t_yr, 
+                    df['slipv'].iloc[0], color = 'r', marker = 'o')
+        
+        # This is the time information
+        timetext = ax1.text(0.0,1.0, 
+                "Y{:0>5.0f} D{:0>3.0f}-{:0>2.0f}:{:0>2.0f}:{:0>2.0f}".format(0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0),
+                           horizontalalignment='left',
+                            verticalalignment='bottom',
+                            transform = ax.transAxes)
+
+        
+        mesh = self.read_mesh(step=0)
+        
+        cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
+        triangles = cells[:, 1:]         # drop the "3"
+        points = mesh.points[triangles]  # shape (n_cells, 3, 3)
+        points = np.mean(points, axis = 1 )
+        Z = points[:,2]
+        
+        V = mesh.cell_data['Slipv[m/s]']
+
+        if px=='XZ':
+            X = points[:,0]
+            ax.set_xlabel('X[km]')
+            ax.set_ylabel('Z[km]')
+        else:
+            X = points[:,1]
+            ax.set_xlabel('Y[km]')
+            ax.set_ylabel('Z[km]')     
+            
+        log_norm = LogNorm(vmin=10**self.V_min, vmax=10**self.V_max)
+        
+        sctr = ax.scatter(X*1e-3, Z*1e-3, c=V, cmap='magma', norm=log_norm, 
+                          s = 5, edgecolor='none',
+                          )
+        
+        cbar = fig.colorbar(sctr, ax=ax, label='V [m/s]', shrink = 0.5)
+
+        def update(i):
+            
+            step = int(self.steps[i])
+            print(step)
+            
+            mesh = self.read_mesh(step = step)
+            
+            V = mesh.cell_data['Slipv[m/s]']
+
+            sctr.set_array(V)
+
+            temp = df[df.Iteration==int(self.steps[i])]
+            time = temp['time(s)'].iloc[0]
+            sliprate = temp['slipv'].iloc[0]
+            
+            line.set_data([time/self.t_yr], [sliprate])
+
+                        
+            timetext.set_text(
+                "Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format( time/(365*3600*24),
+                                                  (time/3600/24)%(365),
+                                                  (time/3600)%24,
+                                                  (time/60)%60,
+                                                  time%60)
+                        )
+
+            return sctr, timetext, line
+        
+        anim = FuncAnimation(fig, update, frames=np.arange(2,self.N_steps,self.interval), 
+                             blit=True, )
+        writer = animation.PillowWriter(fps=10)
+
+        anim.save(os.path.join(self.path,"animation2D.gif"), writer = writer)        
+        
+        
+    def animation3D(self):
+        
+
+        # --- Plot with Matplotlib ---
+        fig = plt.figure(figsize=(10,8))
+        
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_position([0.05, 0.35, 0.9, 0.7])
+        ax.view_init(elev=self.elevation, azim=self.azimuth) 
+        ax.set_box_aspect([1.6, 0.8, 0.6]) 
+        ax1 = fig.add_subplot(611)
+        ax1.set_position([0.1, 0.05, 0.85, 0.2])
+        
+        df = self.read_statefile()
+        df = df.loc[(df['time(s)']/self.t_yr<self.t_max)]
+        df = df.loc[(df['time(s)']/self.t_yr>self.t_min)]
+	
+        step_min = df.Iteration.min()
+        step_max = df.Iteration.max() 
+        
+        # Filter steps 
+        
+        steps_filtered = self.steps[(self.steps>step_min) & (self.steps<step_max)]
+        N_steps = len(steps_filtered)
+        
+        
+        ax1.set_xlabel('time [yr]')
+        ax1.set_ylabel('V [m/s]')
+        ax1.semilogy(df['time(s)']/self.t_yr, 
+                    df['slipv1'], lw = 1)
+        
+        line, = ax1.semilogy(df['time(s)'].iloc[0]/self.t_yr, 
+                    df['slipv1'].iloc[0], color = 'r', marker = 'o')
+        
+        timetext = ax1.text(0.0,0.8, "Y{:0>5.0f} D{:0>3.0f}-{:0>2.0f}:{:0>2.0f}:{:0>2.0f}".format(0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0),
+                           horizontalalignment='left',
+                            verticalalignment='bottom',
+                            transform = ax.transAxes)
+
+
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        
+        mesh = self.read_mesh(step = 0)
+
+
+        # Extract vertex coordinates
+        points = mesh.points
+        x, y, z = points[:, 0], points[:, 1], points[:, 2]
+
+        tri_cells = mesh.extract_cells(np.where(mesh.celltypes == pv.CellType.TRIANGLE)[0])
+        triangles = tri_cells.cells.reshape(-1, 4)[:, 1:4]  # skip the first '3' entry
+        
+        
+        
+        surf = ax.plot_trisurf(
+            x*1E-3, y*1E-3, z*1E-3,
+            triangles=triangles,
+            # linewidth=0.05,
+            edgecolor="none",
+            alpha=1.0
+        )
+        
+        
+        
+        if self.var =='V':
+            
+            label = 'V [m/s]'
+            cmap = 'magma'
+            dummy = 'Slipv[m/s]'
+            data = mesh.cell_data[f'{dummy}']
+            surf.set_array(data)
+
+            norm = LogNorm(vmin=10**self.V_min, 
+                           vmax=10**self.V_max)
+
+            surf.set_norm(norm)
+            
+        elif self.var =='Omega':
+            label = '$\\Omega$ [-]'
+            cmap = 'seismic'
+            data = mesh.cell_data['Slipv[m/s]'] * mesh.cell_data['state'] / mesh.cell_data['dc']
+            surf.set_array(data)
+
+            norm = LogNorm(vmin=10**self.Omega_min, 
+                           vmax=10**self.Omega_max)
+            surf.set_norm(norm)
+            
+        elif self.var =='theta':
+            label = '$\\phi$ [-]'
+            dummy = 'state'
+            data = mesh.cell_data['state']
+            surf.set_array(data)
+            # norm = LogNorm(vmin=1e-5, 
+            #                vmax=1)
+            # boundaries = np.linspace(self.thet
+            # norm = LogNorm(vmin=self.theta_min, 
+            #                vmax=self.theta_max)
+            boundaries = np.linspace(0.1,1, 
+                                     num=100,endpoint=True)
+            norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
+            cmap = 'plasma_r'
+            surf.set_cmap(cmap)
+            surf.set_norm(norm)   
+            
+        elif self.var =='normal':
+            label = '$\\sigma_n-P$ [-]'
+            dummy = 'Normal_[MPa]'
+            data = mesh.cell_data[f'{dummy}']
+            surf.set_array(data)
+
+            
+            norm = LogNorm(vmin=self.normal_min, 
+                           vmax=self.normal_max)
+            # boundaries = np.linspace(0.1,1, 
+                                     # num=100,endpoint=True)
+            # norm = BoundaryNorm(boundaries, ncolors=256, extend= 'both')
+            cmap = 'plasma_r'
+            surf.set_cmap(cmap)
+            surf.set_norm(norm)   
+
+        fig.colorbar(surf, ax=ax, shrink=0.3, 
+                     label=f"{label}", 
+                     orientation = 'vertical',
+                     location='right', pad = 0.1,
+                     extend='both',
+                     norm=norm
+                     )
+        
+        
+        def update(i):
+
+            step = steps_filtered[i]
+            temp = df[df.Iteration==step]
+            time = temp['time(s)'].iloc[0]
+            print(f'step: {step:<10.0f} time: {np.floor(time/self.t_yr):<10.0f}')
+            
+            mesh = self.read_mesh(step = step)
+            
+            if self.var !='Omega':
+                data = mesh.cell_data[f'{dummy}']
+            else:
+                data = mesh.cell_data['Slipv[m/s]'] * mesh.cell_data['state'] / mesh.cell_data['dc']
+            
+            
+            sliprate = temp['slipv1'].iloc[0]            
+            line.set_data([time/self.t_yr], [sliprate])
+                        
+            timetext.set_text("Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format( np.floor(time/(365*3600*24)),
+                                                  (time/3600/24)%(365),
+                                                  (time/3600)%24,
+                                                  (time/60)%60,
+                                                  time%60)
+                        )
+            
+            surf.set_array(data)
+
+            return surf, timetext, line
+
+        
+        anim = FuncAnimation(fig, update, 
+                             frames=np.arange(0,N_steps,self.interval), 
+                             blit=True)
+        
+        writer = animation.PillowWriter(fps=20)
+
+        anim.save(os.path.join(self.path, f"animation_{self.var}.gif"), 
+                  writer = writer)
+        plt.close()
+        
+        
+    def extract_slip_info(self):
+        '''
+        This module reads PyQuake3D results recursively finds the slip events,
+        then extract information about the slip event. 
+        
+        Returns
+        -------
+        None.
+
+        '''        
+        dt_crit = 1e3 # critical time to distinguish slip events
+
+        df = self.read_statefile()
+        df['slip_v'] = np.sqrt(df.slipv1**2+df.slipv2**2)
+                
+        df1 = df[df.slip_v>self.V_dyn]
+        
+        dtime = np.diff(df1['time(s)'].to_numpy(), prepend=0)
+        dtime = np.append(dtime, dt_crit)
+
+        ind_temp = np.argwhere(dtime>=dt_crit).flatten()
+        Nevents = ind_temp.size
+        
+        i_steps = self.steps
+        
+        event_string=f'{"Evnt":10}{"I_start":10}{"I_finish":10}{"Year":10}{"Day":10}{"Hour":10}{"Min":10}{"Duration":10}{"Nuc_X":10}{"Nuc_y":10}{"Nuc_z":10}{"X_min":10}{"X_max":10}{"Y_min":10}{"Y_max":10}{"Z_min":10}{"Z_max":10}{"slip_mean":10}{"slip_max":10}{"State_drop":16}{"Stress_drop":16}{"M0":16}{"M0_dot_mean":16}{"Mw":16}\n'
+        
+        ## Loop over events
+        for i in range(Nevents-1):
+            
+            print(f'event {i+1}')
+            # Finding indcies of the slip events form maximum slip rate file
+            ind1 = int(ind_temp[i])
+            ind2 = int(ind_temp[i+1]) - 1  
+            
+            # Find the iteration step number 
+            iter1 = df1.iloc[ind1].Iteration
+            iter2 = df1.iloc[ind2].Iteration
+            
+            # earthquake_ind = df[(df.Iteration>=iter1) & (df.Iteration<=iter1)]['slip_v'].argmax()
+            
+            # Get the indices of the event
+            iter_indices = ((i_steps>=iter1) & (i_steps<=iter2))
+            step_min = self.steps[iter_indices].min() # Start index of the event
+            step_max = self.steps[iter_indices].max() # Finish index of the event
+            N_iter = self.steps[iter_indices].size
+            
+            X_min = []
+            X_max = []
+            Y_min = []
+            Y_max = []
+            Z_min = []
+            Z_max = []
+            
+            
+            MO_dot = np.empty(N_iter)
+            time = np.empty(N_iter)
+            # V_event = np.empty(N_iter)
+
+            try:
+                ## Loop during the event
+                for ii in range(N_iter):  
+                    step = self.steps[iter_indices][ii]
+
+                    # Get time
+                    time[ii] = df[df.Iteration==step]['time(s)'].values
+                    # V_event[ii] == df[df.Iteration==step]['slip_v'].values
+                    # read the output file depending on the iteration step
+                    
+                    mesh = self.read_mesh(step = step)
+
+                    # Get data
+                    cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
+                    triangles = cells[:, 1:]         # drop the "3"
+                    points = mesh.points[triangles]  # shape (n_cells, 3, 3)
+                    points = np.mean(points, axis = 1 )
+                    
+                    mesh_with_areas = mesh.compute_cell_sizes(area=True, volume=False)
+                    
+                    V = mesh.cell_data['Slipv[m/s]']
+                    A = mesh_with_areas.cell_data['Area']
+                    
+                    # Seismic moment release rate
+                    MO_dot[ii] = np.abs(np.sum(A*V*self.G))
+                                    
+                    # Find the index of slip rate exceeds dynamic slip rate
+                    ind_Vdyn = (V > self.V_dyn)
+                                        
+                    
+                    X_min1 = points[ind_Vdyn,0].min()
+                    X_min.append(X_min1)
+                    X_max1 = points[ind_Vdyn,0].max()
+                    X_max.append(X_max1)
+                    Y_min1 = points[ind_Vdyn,1].min()
+                    Y_min.append(Y_min1)
+                    Y_max1 = points[ind_Vdyn,1].max()
+                    Y_max.append(Y_max1)
+                    Z_min1 = points[ind_Vdyn,2].min()
+                    Z_min.append(Z_min1)
+                    Z_max1 = points[ind_Vdyn,2].max()
+                    Z_max.append(Z_max1)
+                    
+                    if ii == 0:
+                        # Nucleation Point
+                        Nuc = ((X_min1+X_max1)*0.5, (Y_min1+Y_max1)*0.5, (Z_min1+Z_max1)*0.5)
+                        
+                        # beginning of slip
+                        # Find the index of maximum state. At the end of the 
+                        # rupture we will compare the stress drop
+
+                        # max_state_ind = mesh.cell_data['state'].argmax()
+                        slip_ini = mesh.cell_data['slip[m]']
+                        shear_ini = mesh.cell_data['Shear_[MPa]']
+                        state_ini = mesh.cell_data['state']
+            
+                    elif ii == N_iter - 1 :
+                        # beginning of slip
+                        slip_end = mesh.cell_data['slip[m]']
+                        shear_end = mesh.cell_data['Shear_[MPa]']
+                        state_end = mesh.cell_data['state']
+            
+                    
+                # Seismic moment info
+                (M0, Mw, M0_dot_mean) = self.seismic_moment(time, MO_dot)
+                
+                
+                slip_max = (slip_end - slip_ini).max() 
+                slip_mean = (slip_end - slip_ini).mean()                    
+                state_drop = (state_end - state_ini).mean()
+                stress_drop = (shear_end - shear_ini).mean() 
+                
+                X_min = np.min(X_min)
+                X_max = np.max(X_max)
+                Y_min = np.min(Y_min)
+                Y_max = np.max(Y_max)
+                Z_min = np.min(Z_min)
+                Z_max = np.max(Z_max)
+                
+                
+                # ttime = time[vv.argmax()]
+                ttime0 = time[0]
+                ttime1 = time[-1]
+                t_year = ttime0 // self.t_yr 
+                t_day  = (ttime0 / 3600 / 24 ) % 365
+                t_hour = (ttime0 / 3600 ) % 24
+                t_min  = (ttime0 / 60 ) % 60
+                t_dur = ttime1 - ttime0
+                
+                event_string += f'{i:5.0f}{step_min:10.0f}{step_max:10.0f}{t_year:10.0f}{t_day:10.0f}{t_hour:10.0f}{t_min:10.2f}{t_dur:10.2f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_drop:16.6E}{stress_drop:16.6E}{M0:16.6E}{M0_dot_mean:16.6E}{Mw:16.3f}\n'
+
+                
+            except Exception as e:
+                print(e)
+                print(traceback.print_exc()) # Prints the full traceback to stderr
+
+                pass
+            
+            
+        with open(os.path.join(self.path, "events.txt"), "w") as file:
+            file.write(event_string)
+            
+            
+    def phase_plot(self):
+        '''
+        This is a phase plot Velocity versus Psi
+        Psi=f_0 + b * ln(theta V_0/dc)
+
+        Returns
+        -------
+        Plot.
+
+        '''
+        
+        
+        # read max file
+        vmax = self.read_statefile()
+        
+        # read Event file 
+        event = pd.read_csv(
+            os.path.join(self.path, 'events.txt'), sep = '\\s+'
+            )
+        
+        event0 = self.event_no
+        event1 = self.event_no + self.next_event
+        
+        s_event0 = event[event['Evnt'] == event0]
+        s_event1 = event[event['Evnt'] == event1]
+
+        I_start = s_event0['I_start'].values[0]
+        I_finish = s_event1['I_finish'].values[0]
+        
+        selected_steps = self.steps[(self.steps>=I_start) & 
+                                    (self.steps<=I_finish)]
+        
+        print(selected_steps)
+        
+        mesh_init = pv.read(os.path.join(self.path, 'Init.vtu'))
+        a_min_b = mesh_init.cell_data['a-b']
+        
+        ind_VW = a_min_b < 0
+        
+        
+        fig,ax = plt.subplots(1,1)
+        ax.set_xlabel('V [m/s]')
+
+        
+        Vmean_data = np.empty(self.N_steps)
+        y_data = np.empty(self.N_steps)
+
+
+        i = 0
+        
+        if self.var == 'Omega':
+            dc = mesh_init['dc'][ind_VW].mean()
+            V_0 =  mesh_init['Slipv[m/s]'][ind_VW].mean()
+            Psi_0 =  mesh_init['state'][ind_VW].mean()
+            b = mesh_init['b'][ind_VW].mean()
+
+            theta_0 = dc/V_0
+            
+            # a = mesh_init.cell_data['a'] 
+            # b = mesh_init.cell_data['b'] 
+
+            for step in selected_steps :
+                mesh = self.read_mesh(step)
+                V = mesh.cell_data['Slipv[m/s]'][ind_VW].mean()
+                Vmean_data[i] = V
+                Psi = mesh.cell_data['state'].mean()    
+                theta = np.exp((Psi - Psi_0)/b) * theta_0
+                Omega = V*theta/dc 
+                y_data[i] = Omega
+                i+=1   
+            ax.axhline(y=1, color = 'b', ls = ':' )
+            ax.set_ylabel('$\\Omega$')
+                
+
+                
+        if self.var == 'fric':
+            for step in selected_steps :
+                mesh = self.read_mesh(step)
+                V = mesh.cell_data['Slipv[m/s]'].mean()
+                Vmean_data[i] = V
+                y_data[i] = mesh.cell_data['fric'].mean()    
+                i+=1   
+            ax.set_ylabel('$\\mu$')
+
+            
+        else:
+        
+            for step in selected_steps :
+                # print(step)
+                mesh = self.read_mesh(step)
+                Vmean_data[i] = mesh.cell_data['Slipv[m/s]'].mean()
+                y_data[i] = mesh.cell_data['state'].mean()    
+                i+=1         
+                
+            ax.set_ylabel('$\\Psi$')
+
+
+        ax.loglog(Vmean_data, y_data, color = 'k', lw = 0.8) 
+        ax.scatter(Vmean_data[0], y_data[0], color = 'k', marker = '+') 
+
+        fig.savefig(os.path.join(self.path,f'phase_plot_{self.var}_{event0}-{event1}.jpg'), 
+                dpi = 300, bbox_inches='tight')
+
+
+    def event_plot(self):
+        
+        # read max file
+        vmax = self.read_statefile()
+        
+        # read Event file 
+        event = pd.read_csv(
+            os.path.join(self.path, 'events.txt'), sep = '\\s+'
+            )
+        
+        s_event = event[event['Evnt'] == self.event_no]
+        
+        I_start = s_event['I_start'].values[0]
+        
+        I_finish = s_event['I_finish'].values[0]
+        
+        selected_steps = self.steps[(self.steps>=I_start) & 
+                                    (self.steps<I_finish)]
+        
+        pp = np.stack([self.x,self.z]).T
+        
+        x_fine = np.linspace(self.x_min+10,self.x_max-10,1000, 
+                             endpoint=True)
+        
+        # Depth to be plotted!
+        z_depth = -self.depth
+        
+        V_m = np.empty((selected_steps.size, x_fine.size))
+        time_m = np.empty((selected_steps.size)).flatten()
+        
+        i = 0
+        
+        for step in selected_steps:
+            
+            vtu_file = f'{self.out_folder}/step{step}{self.extension}'
+            
+            time = vmax[vmax.Iteration==step]['time(s)'].values[0]
+            print(time, step)
+            
+            mesh_v = pv.read(vtu_file)
+            slip_rate = mesh_v.cell_data["Slipv[m/s]"]
+            
+            p_fine = np.stack([x_fine, np.ones(x_fine.size)*z_depth]).T 
+            
+            interp = LinearNDInterpolator(pp, slip_rate)
+            
+            V_m[i,:] = interp(p_fine)
+                
+            time_m[i] = time   
+            
+            i+=1
+        
+        V_m[:,0] = V_m[:,1] 
+        
+        
+        fig, ax = plt.subplots(layout='constrained')
+        ax.set_xlabel('Position [km]')
+        ax.set_ylabel('Time [s]')
+        
+        t1 = np.arange(0,10) 
+        x1 = t1*self.c_s
+        
+        levs = np.logspace(-8, 1, 50)
+        
+        
+        # ax.set_ylim(bottom = 60)
+        cs = ax.contourf(x_fine*1e-3, time_m, V_m, levels=levs, 
+                         norm=LogNorm(), cmap='Reds') 
+        ax.plot( (self.x_mean + x1) * 1e-3, t1 + time_m.min()+5,ls = '--', color = 'k')
+        ax.plot( (self.x_mean - x1) * 1e-3, t1 + time_m.min()+5,ls = '--', color = 'k')
+        
+        cbar = fig.colorbar(cs, format='%.0e', 
+                            shrink = 0.5, 
+                            label = 'Slip rate [m/s]') 
+
+
+        fig.savefig(os.path.join(self.path,f'event_{self.event_no}_depth{self.depth*1e-3:.0f}.jpg'), 
+                    dpi = 200, bbox_inches='tight' )

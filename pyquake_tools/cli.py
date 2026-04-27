@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+PyQuake3D Plot Tool CLI
+
+Command-line interface for visualizing and analyzing PyQuake3D simulations.
+"""
+
+import argparse
+
+from pyquake_tools.plot_tool import Ptool
+
+
+# -----------------------------------------------------------
+# Argument parser
+# -----------------------------------------------------------
+
+def create_parser():
+
+    parser = argparse.ArgumentParser(
+        description="Visualization tool for PyQuake3D simulation outputs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    # Required
+    parser.add_argument(
+        "--path",
+        type=str,
+        required=True,
+        help="Path to the simulation directory",
+    )
+
+    # Operations
+    parser.add_argument("--ts", action="store_true", help="Plot time series")
+    parser.add_argument("--ts2", action="store_true", help="Plot time series2")
+
+    parser.add_argument("--a2", action="store_true", help="Create 2D animation")
+    parser.add_argument("--a3", action="store_true", help="Create 3D animation")
+    parser.add_argument("--event", action="store_true", help="Extract earthquake events")
+    parser.add_argument("--phase", action="store_true", help="Generates phase plot (V vs Psi)")
+    parser.add_argument("--event_plot", action="store_true", help="Generates rupture prop. in xvs time")
+
+    # Visualization parameters
+    parser.add_argument("--var", type=str, help="Variable to plot (V, Omega, state)")
+    parser.add_argument("--t_min", type=float, help="Minimum time")
+    parser.add_argument("--t_max", type=float, help="Maximum time")
+
+    parser.add_argument("--V_min", type=float)
+    parser.add_argument("--V_max", type=float)
+
+    parser.add_argument("--Omega_min", type=float)
+    parser.add_argument("--Omega_max", type=float)
+
+    parser.add_argument("--theta_min", type=float)
+    parser.add_argument("--theta_max", type=float)
+    
+    parser.add_argument("--normal_min", type=float, help = "minimum normal stress to be plotted")
+    parser.add_argument("--normal_max", type=float, help = "maximum normal stress to be plotted")
+
+    parser.add_argument("--azimuth", type=float, help = "azimuth angle for 3D plot")
+    parser.add_argument("--elevation", type=float, help = "elevation angle for 3D plot")
+
+    parser.add_argument("--interval", type=int, help = "Interval for snapshots for animation plot")
+    
+    parser.add_argument("--event_no", type=int, help ='Required for event_plot')
+    parser.add_argument("--next_event", type=int, help ='Required for ts2 plot')
+
+    parser.add_argument("--depth",  type=float, help ='Required for event_plot')
+
+    # Physics parameters
+    parser.add_argument("--V_dyn", type=float, help ='Dynamic slip rate')
+    parser.add_argument("--G", type=float, help ='Shear modulus')
+    parser.add_argument("--rho", type=float, help ='Rock density')
+
+    return parser
+
+
+# -----------------------------------------------------------
+# Apply CLI parameters
+# -----------------------------------------------------------
+
+def apply_parameters(tool, args):
+
+    parameters = [
+        "var",
+        "t_min",
+        "t_max",
+        "V_min",
+        "V_max",
+        "Omega_min",
+        "Omega_max",
+        "theta_min",
+        "theta_max",
+        "normal_min",
+        "normal_max",
+        "theta_max",
+        "azimuth",
+        "elevation",
+        "interval",
+        "V_dyn",
+        "G",
+        "rho",
+        "depth",
+        "event_no",
+        "next_event"
+    ]
+
+    for param in parameters:
+
+        value = getattr(args, param)
+
+        if value is not None:
+            setattr(tool, param, value)
+
+
+# -----------------------------------------------------------
+# Main
+# -----------------------------------------------------------
+
+def main():
+
+    parser = create_parser()
+    args = parser.parse_args()
+
+    tool = Ptool(args.path)
+
+    apply_parameters(tool, args)
+
+    if args.ts:
+        tool.plot_timeseries()
+        
+    if args.ts2:
+        tool.plot_timeseries2()
+
+    if args.event:
+        tool.extract_slip_info()
+
+    if args.a2:
+        tool.animation2D_scatter()
+
+    if args.a3:
+        tool.animation3D()
+        
+    # if args.a3_2:
+    #     tool.animation2D_scatter()
+        
+    if args.phase:
+        tool.phase_plot()
+
+    if args.event_plot:
+        tool.event_plot()
+
+if __name__ == "__main__":
+    main()
