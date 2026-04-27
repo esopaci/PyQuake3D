@@ -463,7 +463,7 @@ class QDsim:
         #self.Init_mpi_local_variables()
         self.init_mpi_local_variables()
         self.monitor_total_memory(comm, prefix=f"Init:")
-        file.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(h)\n')
+        file.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(d)\n')
         for i in range(totaloutputsteps):
         #for i in range(0):
             self.step=i
