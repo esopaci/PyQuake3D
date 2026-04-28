@@ -1876,13 +1876,10 @@ class QDsim:
                 self.slipv[indexmin]=1e-30
             #self.maxslipv0=np.max(self.slipv)
             #print(self.Tno.shape,rank,cart_rank)
-
+            self.slip1=self.slip1+self.slipv1*h
+            self.slip2=self.slip2+self.slipv2*h
+            self.slip=np.sqrt(self.slip1*self.slip1+self.slip2*self.slip2)
             if(self.step%self.Para0['outsteps']==0):
-                #update slip
-                self.slip1=self.slip1+self.slipv1*h
-                self.slip2=self.slip2+self.slipv2*h
-                self.slip=np.sqrt(self.slip1*self.slip1+self.slip2*self.slip2)
-                
                 self.Tno[:]=0
                 self.Tt1o[:]=0
                 self.Tt2o[:]=0
@@ -2014,7 +2011,10 @@ class QDsim:
         dtnext=None
 
         while running:
+            t0 = MPI.Wtime()
             Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk=self.RungeKutte_solve_Dormand_Prince_(h)
+            t1 = MPI.Wtime()
+            self.RK_time += (t1 - t0)
             global_Relerrormax1 = comm.allreduce(self.Relerrormax1, op=MPI.MAX)
             global_Relerrormax2 = comm.allreduce(self.Relerrormax2, op=MPI.MAX)
             # global_Relerrormax1=comm.bcast(global_Relerrormax1, root=0)

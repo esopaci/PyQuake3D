@@ -457,12 +457,11 @@ class QDsim_gpumpi(QDsim.QDsim):
                 self.slipv[indexmin]=1e-30
             #self.maxslipv0=np.max(self.slipv)
             #print(self.Tno.shape,rank,cart_rank)
-
+            #update slip
+            self.slip1=self.slip1+self.slipv1*h
+            self.slip2=self.slip2+self.slipv2*h
+            self.slip=np.sqrt(self.slip1*self.slip1+self.slip2*self.slip2)
             if(self.step%self.Para0['outsteps']==0):
-                #update slip
-                self.slip1=self.slip1+self.slipv1*h
-                self.slip2=self.slip2+self.slipv2*h
-                self.slip=np.sqrt(self.slip1*self.slip1+self.slip2*self.slip2)
                 
                 self.Tno[:]=0
                 self.Tt1o[:]=0
