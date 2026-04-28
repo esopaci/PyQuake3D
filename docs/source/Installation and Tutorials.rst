@@ -21,6 +21,7 @@ How to install PyQuake3D
 #. After installation, create a new environment: ``conda create -n PyQuake3D python=3.12``
 #. Activate the environment: ``conda activate PyQuake3D``
 #. Install Jupyter notebook using: ``conda install jupyter notebook``
+#. Install MPI via conda: ``conda install -c conda-forge openmpi``
 
 **Step 2: Install Python Dependencies**
 
@@ -502,6 +503,9 @@ MPI-Based Execution on Linux
 
    ``wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh``
 
+    If you use iOS system, using following instead:
+
+    ``curl -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh``
 2. Install Miniconda with the following command:
 
    ``bash miniconda.sh -b -u -p ~/miniconda3``
@@ -532,6 +536,8 @@ MPI-Based Execution on Linux
 
    ``conda activate PyQuake3D``
 
+8. Install openmpi via conda:
+   ``conda install -c conda-forge openmpi``
 
 .. note::
 
