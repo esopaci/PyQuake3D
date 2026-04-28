@@ -723,7 +723,9 @@ Post-Processing
 
 **Visualization**
 
-Results `vtu` files in dir `out_vtu` can be visualized with `PyVista` and `Paraview`.
+Results `vtu` files in dir `out_vtu` can be visualized with `PyVista` and `Paraview`. We provide the `pyquake_tools` code package, which 
+is useful for visualizing the results of PyQuake3D, including plotting slip rate, stress, and other variables, as well as creating animations. 
+You don't need to install it, just copy the code in `pyquake_tools` to your working directory and import it in your script. 
 
 **Simulation time**
 
