@@ -547,7 +547,7 @@ MPI-Based Execution on Linux
    - ``sudo yum install wget``  (For CentOS/RHEL)
 
 
-**Step 2: Install Python and C++ Dependencies**
+**Step 2: Install PyQuake3D and C++ Dependencies**
 
 1. Download from https://github.com/Computational-Geophysics/PyQuake3D
 
