@@ -561,7 +561,7 @@ class QDsim_gpumpi(QDsim.QDsim):
         totaloutputsteps=int(self.Para0['totaloutputsteps']) #total time steps
         file = open(self.state_file, "a", encoding="utf-8")
         self.monitor_total_memory(comm, prefix=f"Init:")
-        file.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(h)\n')
+        file.write('iteration time_step(s) maximum_slip1_rate(m/s) maximum_slip2_rate(m/s) time(s) time(d)\n')
         
         for i in range(totaloutputsteps):
             self.step=i

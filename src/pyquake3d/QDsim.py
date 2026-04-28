@@ -137,6 +137,7 @@ class QDsim:
         last_backslash_index = fnamePara.rfind('/')
         self.compute_time = 0.0
         self.comm_time = 0.0
+        self.RK_time=0.0
         # get Parameter file name
         if last_backslash_index != -1:
             self.dirname = fnamePara[:last_backslash_index]
@@ -536,10 +537,12 @@ class QDsim:
             print(f"Program run time: {end_time - start_time:.6f} sec")
             print(f"communication time: {self.comm_time:.6f} sec")
             print(f"Matrix product computation time: {self.compute_time:.6f} sec")
+            print(f"Rugger-Kutta iteration time: {self.RK_time:.6f} sec")
             timetake=end_time - start_time
             file.write(f"Program run time: {end_time - start_time:.6f} sec")
             file.write(f"communication time: {self.comm_time:.6f} sec")
             file.write(f"Matrix product computation time: {self.compute_time:.6f} sec")
+            file.write(f"Rugger-Kutta iteration time: {self.RK_time:.6f} sec")
             file.write('Program end time: %s\n'%str(datetime.now()))
             #file.write("Time taken: %.2f seconds\n"%timetake)
             file.close()
@@ -1777,7 +1780,10 @@ class QDsim:
         if(col == 0):
             
             while running:
+                t0 = MPI.Wtime()
                 Tno_yhk,Tt1o_yhk,Tt2o_yhk,state_yhk=self.RungeKutte_solve_Dormand_Prince_(h)
+                t1 = MPI.Wtime()
+                self.RK_time += (t1 - t0)
                 
                 recvbuf_Relerror1 = np.zeros(1, dtype=np.float64) if cart_rank == 0 else np.empty(1, dtype=np.float64)
                 recvbuf_Relerror1 = np.ascontiguousarray(recvbuf_Relerror1)
