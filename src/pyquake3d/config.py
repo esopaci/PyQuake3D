@@ -30,7 +30,7 @@ def init_cart(dims, periods=None, reorder=True):
 
 def get_cart():
     if _cart_comm is None:
-        raise RuntimeError("cart_comm 未初始化！请先调用 init_cart()")
+        raise RuntimeError("cart_comm not initialized. Please call init_cart() first.")
     return _cart_comm
 
 def readPara0(fname):
@@ -63,6 +63,8 @@ def readPara(data_dir):
 
     Para['Batch_size']=int(Para0['Batch_size'])
     Para['GPU']=Para0['GPU']=='True'
+    if(Para0['GPU']=='True'):
+        Para['GPU_cores']=int(Para0['GPU_cores'])
 
     Para['Lame constants']=float(Para0['Lame constants'])
     Para['Shear modulus']=float(Para0['Shear modulus'])
