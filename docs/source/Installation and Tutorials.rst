@@ -668,7 +668,7 @@ MPI-Based Execution on Linux
         sim0.start()                                                                #Start forward simulation
         
 
-**MPI parallel running (recommended for large problems):**
+**MPI parallel running:**
 
 For large-scale simulations using the MPI-parallel H-matrix version, use the following command (not necessary in the root directory):
 
@@ -684,7 +684,7 @@ For example, using 10 parallel mpi processes on BP5-QD model:
    mpirun-np 10 python -m pyquake3d.main_mpi -g examples/BP5-QD/bp5t.msh-p examples/BP5-QD/parameter.txt
 
 
-**MPI-Based multi-GPU Execution on Linux (recommended for large problems)**
+**MPI-Based multi-GPU Execution on Linux**
 ------------------------------------------------------------------------------------
 First, ensure that you have CUDA correctly installed. Please refer to the GPU acceleration section for detailed instructions.
 The startup process for multi-MPI-based multi-GPU versions is basically the same as that for MPI-based CPU versions, 
