@@ -37,6 +37,8 @@ def create_parser():
 
     parser.add_argument("--a2", action="store_true", help="Create 2D animation")
     parser.add_argument("--a3", action="store_true", help="Create 3D animation")
+    parser.add_argument("--a3_1", action="store_true", help="Create 3D animation")
+
     parser.add_argument("--event", action="store_true", help="Extract earthquake events")
     parser.add_argument("--phase", action="store_true", help="Generates phase plot (V vs Psi)")
     parser.add_argument("--event_plot", action="store_true", help="Generates rupture prop. in xvs time")
@@ -141,6 +143,9 @@ def main():
 
     if args.a3:
         tool.animation3D()
+        
+    if args.a3_1:
+        tool.animation3D_1()
         
     # if args.a3_2:
     #     tool.animation2D_scatter()

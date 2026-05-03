@@ -52,7 +52,7 @@ We welcome contributions to the project—please follow the contribution guideli
 
 For questions, suggestions, or collaboration opportunities, feel free to reach out:
 
--  rongjiang@csj.uestc.edu.cn  
+-  rongjiang.tang@ntu.edu.sg 
 -  luca.dalzilio@ntu.edu.sg
 
 Please refer to the [Code Manual](https://pyquake3d.readthedocs.io/en/latest/) for more details.
@@ -98,7 +98,7 @@ PyQuake3D supports Python 3.8 and above, so there is no need to specify any vers
 
   Use pip for the quick installation:
 ```bash
-pip install -e .
+python -m pip install -e .
 ```
 Install cupy if you want to use GPU acceleration, we recommened to use conda (e.g. CUDA 11.8):conda install -c conda-forge cupy cudatoolkit=11.8
 
@@ -120,7 +120,7 @@ Ensure you modify the input parameter (`parameter.txt`) as follows:
 ## For MPI version, use the following command:
 To run the PyQuake3D MPI script, use the following command at root directory:
 ```bash
-mpirun -np 10 python main.py -g --inputgeo <input_geometry_file> -p --inputpara <input_parameter_file>
+mpirun -n <N> python -m pyquake3d.main_mpi -g <input_geometry_file> -p <input_parameter_file>
 ```
 Where 10 is the number of virtual cpus. Note that using the mpiexec instead in Windows environment.
 
@@ -129,17 +129,17 @@ For example:
 To execute benchmarks like BP5-QD, use:
 ```bash
 In the PyQuake3D root directory, To run the BP5-QD benchmark:
-mpirun -np 10 python src/main_mpi.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
+mpirun -n 10 python -m pyquake3d.main_mpi -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
 
 
 To run the HF-model:
-mpirun -np 10 python src/main_mpi.py -g examples/HF-model/HFmodel.msh -p examples/HF-model/parameter.txt
+mpirun -n 10 python -m pyquake3d.main_mpi -g examples/HF-model/HFmodel.msh -p examples/HF-model/parameter.txt
 
 To run the  EAFZ-model:
-mpirun -np 10 python src/main_mpi.py -g examples/EAFZ-model/turkey.msh -p examples/EAFZ-model/parameter.txt
+mpirun -n 10 python -m pyquake3d.main_mpi -g examples/EAFZ-model/turkey.msh -p examples/EAFZ-model/parameter.txt
 
 To run the  Lab-model:
-mpirun -np 10 python src/main_mpi.py -g examples/Lab-model/lab.msh -p examples/Lab-model/parameter.txt
+mpirun -n 10 python -m pyquake3d.main_mpi -g examples/Lab-model/lab.msh -p examples/Lab-model/parameter.txt
 ```
 
 

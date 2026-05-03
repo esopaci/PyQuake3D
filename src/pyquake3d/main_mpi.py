@@ -84,8 +84,11 @@ if __name__ == "__main__":
     
     sim0.calc_greenfuncs_mpi()
     
-    
-    
+#    if(rank==0):
+#        for i in range(len(sim0.eleVec)):
+#            if not sim0.blocks_to_process[i].judaca:
+#                print(np.max(sim0.blocks_to_process[i].Mf_A1s))    
+#    
     sim0.start()
     
 
