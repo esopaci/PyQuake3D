@@ -865,155 +865,149 @@ class Ptool:
 
 
     def animation3D_1(self):
-
-        # --- Plot with Matplotlib ---
-        fig, (ax,ax1) = plt.subplots(2,1, figsize=(10, 8))
-
-
+    
+        fig, (ax, ax1) = plt.subplots(2, 1, figsize=(10, 8))
+    
         df = self.read_statefile()
-        df = df.loc[(df['time(s)']/self.t_yr < self.t_max)]
-        df = df.loc[(df['time(s)']/self.t_yr > self.t_min)]
-
+        df = df.loc[(df['time(s)'] / self.t_yr < self.t_max)]
+        df = df.loc[(df['time(s)'] / self.t_yr > self.t_min)]
+    
         step_min = df.Iteration.min()
         step_max = df.Iteration.max()
-
-        # Filter steps
-
-        steps_filtered = self.steps[(
-            self.steps > step_min) & (self.steps < step_max)]
+    
+        steps_filtered = self.steps[
+            (self.steps > step_min) & (self.steps < step_max)
+        ]
         N_steps = len(steps_filtered)
-
+    
+        # --- Bottom plot ---
         ax1.set_xlabel('time [yr]')
         ax1.set_ylabel('V [m/s]')
-        ax1.semilogy(df['time(s)']/self.t_yr,
-                     df['slipv1'], lw=1)
-
-        line, = ax1.semilogy(df['time(s)'].iloc[0]/self.t_yr,
-                             df['slipv1'].iloc[0], color='r', marker='o')
-
-        timetext = ax1.text(0.95, -0.15, 
-        "Y{:0>5.0f} D{:0>3.0f}-{:0>2.0f}:{:0>2.0f}:{:0>2.0f}".format(0,
-                                                                      0,
-                                                                      0,
-                                                                      0,
-                                                                      0),
-                            horizontalalignment='left',
-                            verticalalignment='bottom',
-                            transform=ax.transAxes)
-
+        ax1.semilogy(df['time(s)'] / self.t_yr, df['slipv1'], lw=1)
+    
+        line, = ax1.semilogy(
+            df['time(s)'].iloc[0] / self.t_yr,
+            df['slipv1'].iloc[0],
+            color='r', marker='o'
+        )
+    
+        timetext = ax1.text(
+            0.75, -0.15,
+            "Y00000 D000-00:00:00",
+            transform=ax1.transAxes  # FIXED (was ax.transAxes)
+        )
+    
+        # --- Mesh setup ---
         ax.set_xlabel("X")
         ax.set_ylabel("Z")
-        # ax.set_zlabel("Z")
-
+    
         mesh = self.read_mesh(step=0)
-
-        cells = mesh.cells.reshape(-1, 4)   # 3 + node IDs for triangles
-        triangles = cells[:, 1:]         # drop the "3"
-        points = mesh.points[triangles]  # shape (n_cells, 3, 3)
+    
+        cells = mesh.cells.reshape(-1, 4)
+        triangles = cells[:, 1:]
+        points = mesh.points[triangles]
         points = np.mean(points, axis=1)
-        xi,yi = points[:,0], points[:,2]
-
-
+    
+        xi, yi = points[:, 0], points[:, 2]
+    
         triang = tri.Triangulation(xi, yi)
-        res = 500
-        x, y = np.meshgrid(np.linspace(xi.min(), xi.max(), res), 
-                           np.linspace(yi.min(), yi.max(), res))
-
-
-        label = 'V [m/s]'
+    
+        res = 600
+        x, y = np.meshgrid(
+            np.linspace(xi.min(), xi.max(), res),
+            np.linspace(yi.min(), yi.max(), res)
+        )
+    
         dummy = 'Slipv[m/s]'
-        data = mesh.cell_data[f'{dummy}']
-        
-        # Interpolate
+        data = mesh.cell_data[dummy]
+    
         interpolator = tri.LinearTriInterpolator(triang, data)
         z = interpolator(x, y)
+    
+        # --- Color scale ---
+        ticks = [10**self.V_min, 1e-6, 1e-3, 1]
+        tickslabels = ['0.01\n$\\mu m/s$', '$\\mu m/s$', '$mm/s$', '$m/s$']
+    
+        norm = LogNorm(vmin=10**self.V_min, vmax=10**self.V_max)  # FIXED
+    
+        x_min, x_max = x.min(), x.max()
+        y_min, y_max = y.min(), y.max()
+    
+        # --- Image ---
+        self.im = ax.imshow(
+            z,
+            extent=[x_min*1e-3, x_max*1e-3, y_min*1e-3, y_max*1e-3],
+            origin='lower',
+            norm=norm,
+            cmap='magma',
+            interpolation='bilinear',
+            aspect='auto'
+        )   
+    
+        # --- Colorbar FIX ---
+        cbar = plt.colorbar(
+            self.im,   
+            ax=ax,
+            shrink=0.7,
+            orientation='vertical',
+            ticks=ticks,
+            pad=0.1,
+            extend='both'
+        )
+        cbar.ax.set_yticklabels(tickslabels)  # FIXED (was ax0)
         
-        # Levels must be defined for the entire range of expected data
-        levels = np.logspace(self.V_min, self.V_max, 256) 
-        ticks = [10**self.V_min, 10**-6,10**-4, 10**-2, 10**self.V_max]
-        
-        cmap = plt.get_cmap('magma')
-        norm = BoundaryNorm(levels, ncolors=cmap.N)
-
-        x_min,x_max,y_min,y_max = x.min(), x.max(), y.min(), y.max()
-        self.im = ax.imshow(z, 
-                       extent=[x_min*1e-3,x_max*1e-3,y_min*1e-3,y_max*1e-3], 
-                       origin='lower', 
-               norm=norm, cmap=cmap, 
-               interpolation='bilinear',
-               aspect='auto',)
-            
-
+     
+        # --- Update function ---
         def update(i):
-            
-            # if self.im is not None:
-            #     self.im.remove()
-       
-
             step = steps_filtered[i]
             temp = df[df.Iteration == step]
+    
             time = temp['time(s)'].iloc[0]
-            print(f'step: {step:<10.0f} time: {
-                  np.floor(time/self.t_yr):<10.0f}')
-
+    
+            print(f"step: {step:<10.0f} time: {np.floor(time/self.t_yr):<10.0f}")
+    
             mesh = self.read_mesh(step=step)
-
-            data = mesh.cell_data[f'{dummy}']
-                    
+            data = mesh.cell_data[dummy]
+    
             interpolator = tri.LinearTriInterpolator(triang, data)
             z = interpolator(x, y)
-            # Update the plot with the same norm and levels
-            # cf = ax.contourf(x, y, z, 
-            #                levels=levels, norm=norm,
-            #                cmap='magma', extend='both')
-            
+    
             self.im.set_data(z)
-            self.im.set_norm(norm)
-            # self.im = ax.imshow(z, 
-            #                extent=[x_min,x_max,y_min,y_max], 
-            #                origin='lower', 
-            #        norm=norm, cmap=cmap, 
-            #        interpolation='bilinear',
-            #        aspect='auto',)
-            
-            sliprate = np.sqrt(temp['slipv1'].iloc[0]**2 + temp['slipv2'].iloc[0]**2)
-            line.set_data([time/self.t_yr], [sliprate])
-
-            timetext.set_text("Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format(np.floor(time/(365*3600*24)),
-                                                                                             (time/3600/24) % (
-                                                                                                 365),
-                                                                                             (time/3600) % 24,
-                                                                                             (time/60) % 60,
-                                                                                             time % 60)
-                              )
-
-            
-
-            return [self.im, timetext, line] # Return self.im
-
-        cbar = fig.colorbar(self.im, ax=ax,
-                     shrink=0.7,
-                     label=f"{label}",
-                     orientation='vertical',
-                     location='right',
-                     extend='both',
-                     ticks=ticks,
-                     pad = 0.1
-                     )
-        
-        cbar.ax.yaxis.set_major_formatter(ticker.LogFormatterSciNotation()
-                     )
-
-        anim = FuncAnimation(fig, update,
-                             frames=np.arange(0, N_steps, self.interval),
-                             blit=False)
-
+    
+            sliprate = np.sqrt(
+                temp['slipv1'].iloc[0]**2 +
+                temp['slipv2'].iloc[0]**2
+            )
+    
+            line.set_data([time / self.t_yr], [sliprate])
+    
+            timetext.set_text(
+                "Y{:0>5.0f} D{:0>3.0f} - {:0>2.0f}:{:0>2.0f}:{:0>4.2f}".format(
+                    np.floor(time / (365*24*3600)),
+                    (time / (24*3600)) % 365,
+                    (time / 3600) % 24,
+                    (time / 60) % 60,
+                    time % 60
+                )
+            )
+    
+            return [self.im, timetext, line]
+    
+        anim = FuncAnimation(
+            fig,
+            update,
+            frames=np.arange(0, N_steps, self.interval),
+            blit=False
+        )
+    
         writer = animation.PillowWriter(fps=20)
-
-        anim.save(os.path.join(self.path, f"animation_trisurf_{self.var}.gif"),
-                  writer=writer)
+    
+        anim.save(
+            os.path.join(self.path, f"animation_trisurf_{self.var}.gif"),
+            writer=writer
+        )
+    
         plt.close()
-
 
 
 
