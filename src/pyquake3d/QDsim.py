@@ -1188,7 +1188,7 @@ class QDsim:
         self.slipv1=np.zeros(N)
         self.slipv2=np.zeros(N)
         #self.slipv=np.ones(N)*self.Vpl_con
-        self.slipv=self.slipvC
+        self.slipv=np.copy(self.slipvC)
         self.slip1=np.zeros(N)
         self.slip2=np.zeros(N)
         self.slip=np.zeros(N)
