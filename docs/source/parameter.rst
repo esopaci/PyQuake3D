@@ -34,25 +34,28 @@ in :numref:`Stress and Friction Settings` and :numref:`Nucleation Settings`. :nu
      - True
      - If True, coordinates are scaled up by 1000 (modeled in km, suitable for natural earthquakes); otherwise remain in meters (suitable for laboratory earthquakes).
    * - Hmatrix_mpi_plot
-     - False (MPI only)
+     - False
      - Draw H-matrix structure diagram; different colors represent sub-matrices calculated by different processes.
    * - Lattice Matrice
-     - False (MPI only)
+     - False
      - Using Lattice H-Matrice
    * - Lattice Partitioning depth
-     - 2 (MPI only)
+     - 2
      - The initial Lattice partitioning depth.
    * - Using C++ green function
-     - True (MPI only)
+     - True
      - If True, use C++ to calculate stress Green's functions; otherwise use Python.
    * - GPU
-     - False (CPU/GPU only)
-     - If True, enable GPU parallel acceleration (using cupy).
+     - False (GPU only)
+     - If True, enable GPU parallel acceleration (using ``pytorch``).
+   * - GPU_cores
+     - 2 (GPU only)
+     - Number of GPUs for parallel acceleration (using ``pytorch``).
    * - Max thread workers
-     - 50 (CPU/GPU only)
+     - 50 (single CPU/GPU version only and not updated any more)
      - Number of processors in ProcessPoolExecutor to parallelize Green's function calculations.
    * - Batch_size
-     - 1000 (CPU/GPU only)
+     - 1000 (single CPU/GPU version only and not updated any more)
      - Number of batches in ProcessPoolExecutor to parallelize Green's function calculations.
    * - Input Hetoparamter
      - False

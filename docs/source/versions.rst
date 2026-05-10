@@ -152,3 +152,21 @@ where:
    - **Thermal pressurization** increases temperature → raises pore pressure → weakens the fault.  
 
    These processes compete, producing a fundamental stability trade-off in fault mechanics.
+
+
+
+v1.0.3 (2026-4-28)
+-------------------
+## **What's Changed**
+
+1. **New implementation of MPI-based multi-GPU backend**: We implemented a hybrid computing framework where CPUs orchestrate 
+   workload distribution, Rugge-Kutta iteration, and communication, while GPUs are dedicated to accelerating computationally 
+   intensive numerical kernels (e.g., large-scale Hmatrix operations). To optimize performance, the H-matrix structure 
+   undergoes a series of specialized transformations for GPU compatibility. This module provides native support for both standard 
+   and Lattice H-matrices.
+
+2. **Pyquake_tools**: The pyquake_tools in the root dir provides tools for visualizing and analyzing PyQuake3D simulation outputs, including:
+ - Time series plots of maximum slip rate
+ - 2D and 3D animations of fault slip
+ - Automatic earthquake event detection
+ - Slip statistics and seismic moment calculations

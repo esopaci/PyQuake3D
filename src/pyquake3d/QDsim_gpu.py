@@ -58,7 +58,7 @@ def find_boundary_edges_and_nodes(triangles):
     edge_count = defaultdict(int)
     boundary_nodes = set()
 
-    # 遍历每个三角形，统计边的出现次数
+    # Iterate over each triangle and count the occurrences of edges
     for tri in triangles:
         edges = [
             tuple(sorted([tri[0], tri[1]])),
@@ -68,7 +68,7 @@ def find_boundary_edges_and_nodes(triangles):
         for edge in edges:
             edge_count[edge] += 1
 
-    # 找到只出现一次的边，并记录边上的节点
+    # Find edges that appear only once and record the nodes on those edges
     boundary_edges = []
     for edge, count in edge_count.items():
         if count == 1:
@@ -80,9 +80,9 @@ def find_boundary_edges_and_nodes(triangles):
 from scipy.spatial.distance import cdist
 
 def find_min_euclidean_distance(coords1, coords2):
-    # 使用 scipy.spatial.distance.cdist 计算成对距离
+    # Use scipy.spatial.distance.cdist to compute pairwise distances
     distances = cdist(coords1, coords2, 'euclidean')
-    # 找到最小距离及其对应的索引
+    # Find the minimum distance and its corresponding indices
     min_idx = np.unravel_index(np.argmin(distances), distances.shape)
     min_distance = distances[min_idx]
     return min_distance
@@ -123,7 +123,7 @@ class QDsim:
 
         last_backslash_index = fnamePara.rfind('/')
 
-        # 获取最后一个反斜杠之前的所有内容
+        # Get everything before the last backslash
         if last_backslash_index != -1:
             self.dirname = fnamePara[:last_backslash_index]
         else:
@@ -231,7 +231,7 @@ class QDsim:
             jud_coredir=False
 
 
-        # 检查目录是否存在
+        # Check whether the directory exists
         if(jud_coredir==True):
             #print('exit!!!')
             print('Start to load core functions...')
@@ -277,7 +277,7 @@ class QDsim:
         xmin, xmax = -22, 22
         ymin, ymax = -25, -18
 
-        # 生成 N 个随机点
+        # Generate N random points
         N = 10
         np.random.seed(42)
         x_random = np.random.uniform(xmin, xmax, N)*1e3
@@ -792,18 +792,18 @@ class QDsim:
         dPdt=self.dPdt0
 
 
-        def safe_exp(x, max_value=700):  # 限制指数的最大值
+        def safe_exp(x, max_value=700):  # Limit the maximum value of the exponent
             return np.exp(np.clip(x, -max_value, max_value))
 
-        def safe_cosh(x, max_value=700):  # 使用指数形式的cosh，避免溢出
+        def safe_cosh(x, max_value=700):  # Use the exponential form of cosh to avoid overflow
             x = np.clip(x, -max_value, max_value)
             return (np.exp(x) + np.exp(-x)) / 2
 
-        def safe_sinh(x, max_value=700):  # 使用指数形式的sinh，避免溢出
+        def safe_sinh(x, max_value=700):  # Use the exponential form of sinh to avoid overflow
             x = np.clip(x, -max_value, max_value)
             return (np.exp(x) - np.exp(-x)) / 2
 
-        # 参数与公式
+        # Parameters and formula
         V0 = self.V0
         a = self.a
         b = self.b
@@ -815,7 +815,7 @@ class QDsim:
         #slipv_gpu=np.sqrt(slipv1*slipv1+slipv2*slipv2)
         
 
-        # 计算公式
+        # Compute the formula
         # dV1dtau = 2 * V0 / (a * Tno) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * Tno))
         # dV2dtau = 2 * V0 / (a * Tno) * safe_exp(-state / a) * safe_cosh(Tt2o / (a * Tno))
         # dV1dsigma = -2 * V0 * Tt1o / (a * Tno**2) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * Tno))
@@ -857,18 +857,18 @@ class QDsim:
         # dVdstate=-2*self.V0/self.a*np.exp(-state1/self.a)*np.sinh(Tt/(self.a*Tno))
         # dstatedt=self.b/self.dc*(self.V0*np.exp((self.f0-state1)/self.b)-np.abs(self.slipv))
 
-        def safe_exp(x, max_value=700):  # 限制指数的最大值
+        def safe_exp(x, max_value=700):  # Limit the maximum value of the exponent
             return cp.exp(cp.clip(x, -max_value, max_value))
 
-        def safe_cosh(x, max_value=700):  # 使用指数形式的cosh，避免溢出
+        def safe_cosh(x, max_value=700):  # Use the exponential form of cosh to avoid overflow
             x = cp.clip(x, -max_value, max_value)
             return (cp.exp(x) + cp.exp(-x)) / 2
 
-        def safe_sinh(x, max_value=700):  # 使用指数形式的sinh，避免溢出
+        def safe_sinh(x, max_value=700):  # Use the exponential form of sinh to avoid overflow
             x = cp.clip(x, -max_value, max_value)
             return (cp.exp(x) - cp.exp(-x)) / 2
 
-        # 参数与公式
+        # Parameters and formula
         V0 = self.V0
         a = self.a_gpu
         b = self.b_gpu
@@ -879,7 +879,7 @@ class QDsim:
         # slipv_gpu=cp.sqrt(slipv1*slipv1+slipv2*slipv2)
 
 
-        # 计算公式
+        # Compute the formula
         dV1dtau = 2 * V0 / (a * (Tno-P)) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * (Tno-P)))
         dV2dtau = 2 * V0 / (a * (Tno-P)) * safe_exp(-state / a) * safe_cosh(Tt2o / (a * (Tno-P)))
         dV1dsigma = -2 * V0 * Tt1o / (a * (Tno-P)**2) * safe_exp(-state / a) * safe_cosh(Tt1o / (a * (Tno-P)))
@@ -1436,8 +1436,8 @@ class QDsim:
         process = psutil.Process()
 
         def print_memory_usage(label=""):
-            # 打印内存占用情况
-            memory_usage = process.memory_info().rss / (1024 ** 2)  # 转换为 MB
+            # Print memory usage
+            memory_usage = process.memory_info().rss / (1024 ** 2)  # Convert to MB
             print(f"{label} Memory Usage: {memory_usage:.2f} MB")
         
         N = self.xg.shape[0]
@@ -1446,7 +1446,7 @@ class QDsim:
         batches = [nums[i:i + batch_size] for i in range(0, len(nums), batch_size)]
         print(f"Total batches: {len(batches)}, Shape of elelst: {self.elelst.shape}")
 
-        # 初始化空的结果矩阵，准备接收多进程的计算结果
+        # Initialize an empty result matrix to receive results from multiple processes
         A1s = np.zeros([N, N])
         A2s = np.zeros([N, N])
         Bs = np.zeros([N, N])
@@ -1454,20 +1454,20 @@ class QDsim:
         with ProcessPoolExecutor(max_workers=self.num_process) as executor:
             futures = [executor.submit(self.worker1, batch) for batch in batches]
             
-            # 累计每个批次的结果
+            # Accumulate results from each batch
             for K, future in enumerate(futures):
                 res1, res2, res3 = future.result()
                 
-                # 把批次的结果添加到整体矩阵中
+                # Append each batch result into the global matrix
                 A1s[:, K*batch_size:(K+1)*batch_size] = np.array(res1).T
                 A2s[:, K*batch_size:(K+1)*batch_size] = np.array(res2).T
                 Bs[:, K*batch_size:(K+1)*batch_size] = np.array(res3).T
                 
                 print(f"Batch {K + 1}/{len(batches)} completed")
-                # 打印每个批次完成后的内存占用
+                # Print memory usage after each batch completes
                 print_memory_usage(f"After processing batch {K + 1}")
 
-        # 释放内存
+        # Free memory
         gc.collect()
 
         return A1s, A2s, Bs
@@ -1512,17 +1512,17 @@ class QDsim:
 
         Ts, Ss, Ds = 0, 1, 0
         for i in batch:
-            # 获取每个节点的位置信息
+            # Get the position information of each node
             P1 = np.copy(self.nodelst[self.elelst[i, 0] - 1])
             P2 = np.copy(self.nodelst[self.elelst[i, 1] - 1])
             P3 = np.copy(self.nodelst[self.elelst[i, 2] - 1])
 
-            # 计算应力
+            # Compute stress
             Stress, _ = SH_greenfunction.TDstressHS(
                 self.xg[:, 0], self.xg[:, 1], self.xg[:, 2], P1, P2, P3, Ss, Ds, Ts, self.mu, self.lambda_
             )
             
-            # 计算牵引力并提取各列数据
+            # Compute traction force and extract each column of data
             Tra = self.GetTtstress(Stress)
             result1.append(Tra[:, 0])
             result2.append(Tra[:, 1])
@@ -1538,7 +1538,7 @@ class QDsim:
         batches = [nums[i:i + batch_size] for i in range(0, len(nums), batch_size)]
         print(f"Total batches: {len(batches)}, Shape of elelst: {self.elelst.shape}")
 
-        # 初始化空的结果矩阵，准备接收多进程的计算结果
+        # Initialize an empty result matrix to receive results from multiple processes
         A1d = np.zeros([N, N])
         A2d = np.zeros([N, N])
         Bd = np.zeros([N, N])
@@ -1546,18 +1546,18 @@ class QDsim:
         with ProcessPoolExecutor(max_workers=self.num_process) as executor:
             futures = [executor.submit(self.worker2, batch) for batch in batches]
             
-            # 累计每个批次的结果
+            # Accumulate results from each batch
             for K, future in enumerate(futures):
                 res4, res5, res6 = future.result()
                 
-                # 把批次的结果添加到整体矩阵中
+                # Append each batch result into the global matrix
                 A1d[:, K*batch_size:(K+1)*batch_size] = np.array(res4).T
                 A2d[:, K*batch_size:(K+1)*batch_size] = np.array(res5).T
                 Bd[:, K*batch_size:(K+1)*batch_size] = np.array(res6).T
                 
                 print(f"Batch {K + 1}/{len(batches)} completed")
 
-        # 释放内存
+        # Free memory
         gc.collect()
 
         return A1d, A2d, Bd
@@ -1602,17 +1602,17 @@ class QDsim:
 
         Ts, Ss, Ds = 0, 0, 1
         for i in batch:
-            # 获取每个节点的位置信息
+            # Get the position information of each node
             P1 = np.copy(self.nodelst[self.elelst[i, 0] - 1])
             P2 = np.copy(self.nodelst[self.elelst[i, 1] - 1])
             P3 = np.copy(self.nodelst[self.elelst[i, 2] - 1])
 
-            # 计算应力
+            # Compute stress
             Stress, _ = SH_greenfunction.TDstressHS(
                 self.xg[:, 0], self.xg[:, 1], self.xg[:, 2], P1, P2, P3, Ss, Ds, Ts, self.mu, self.lambda_
             )
             
-            # 计算牵引力并提取各列数据
+            # Compute traction force and extract each column of data
             Tra = self.GetTtstress(Stress)
             result4.append(Tra[:, 0])
             result5.append(Tra[:, 1])
@@ -1635,7 +1635,7 @@ class QDsim:
     #         P3=np.copy(self.nodelst[self.elelst[i,2]-1])
 
     #         Stress,_=SH_greenfunction.TDstressHS(self.xg[:,0],self.xg[:,1],self.xg[:,2],P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
-    #         Tra=self.GetTtstress(Stress)   #第i个源在所有单元上产生的牵引力
+    #         Tra=self.GetTtstress(Stress)   #Traction force generated by the i-th source on all elements
     #         result1.append(Tra[:,0])
     #         result2.append(Tra[:,1])
     #         result3.append(Tra[:,2])
@@ -1656,7 +1656,7 @@ class QDsim:
     #         P3=np.copy(self.nodelst[self.elelst[i,2]-1])
 
     #         Stress,_=SH_greenfunction.TDstressHS(self.xg[:,0],self.xg[:,1],self.xg[:,2],P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
-    #         Tra=self.GetTtstress(Stress)   #第i个源在所有单元上产生的牵引力
+    #         Tra=self.GetTtstress(Stress)   #Traction force generated by the i-th source on all elements
     #         result4.append(Tra[:,0])
     #         result5.append(Tra[:,1])
     #         result6.append(Tra[:,2])
@@ -1671,7 +1671,7 @@ class QDsim:
     #     Bs=np.zeros([N,N])
     #     nums = list(range(len(self.elelst)))
 
-    #     batch_size = self.Batch_size  # 每个批处理1000个任务
+    #     batch_size = self.Batch_size  # Each batch processes 1000 tasks
     #     batches = [nums[i:i + batch_size] for i in range(0, len(nums), batch_size)]
     #     print(len(batches),self.elelst.shape)
 
@@ -1691,7 +1691,7 @@ class QDsim:
     #             K=K+1
 
     #     finally:
-    #         executor.shutdown(wait=True)  # 确保资源在异常情况下也能正常关闭
+    #         executor.shutdown(wait=True)  # Ensure resources are properly closed even in case of exceptions
         
     #     gc.collect()
     #     result1_=[]
@@ -1719,7 +1719,7 @@ class QDsim:
     #     Bd=np.zeros([N,N])
     #     nums = list(range(len(self.elelst)))
 
-    #     batch_size = self.Batch_size  # 每个批处理1000个任务
+    #     batch_size = self.Batch_size  # Each batch processes 1000 tasks
     #     batches = [nums[i:i + batch_size] for i in range(0, len(nums), batch_size)]
     #     print(len(batches),self.elelst.shape)
 
@@ -1739,7 +1739,7 @@ class QDsim:
     #             K=K+1
 
     #     finally:
-    #         executor.shutdown(wait=True)  # 确保资源在异常情况下也能正常关闭
+    #         executor.shutdown(wait=True)  # Ensure resources are properly closed even in case of exceptions
         
     #     gc.collect()
     #     result4_=[]
@@ -1778,7 +1778,7 @@ class QDsim:
                 Stress,Strain=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
             else:
                 Stress,Strain=SH_greenfunction.TDstressFS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
-            Tra=self.GetTtstress(Stress)   #第i个源在所有单元上产生的牵引力
+            Tra=self.GetTtstress(Stress)   #Traction force generated by the i-th source on all elements
             result1.append(Tra[:,0])
             result2.append(Tra[:,1])
             result3.append(Tra[:,2])
@@ -1793,7 +1793,7 @@ class QDsim:
                 Stress,Strain=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
             else:
                 Stress,Strain=SH_greenfunction.TDstressFS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
-            Tra=self.GetTtstress(Stress)   #第i个源在所有单元上产生的牵引力
+            Tra=self.GetTtstress(Stress)   #Traction force generated by the i-th source on all elements
             result4.append(Tra[:,0])
             result5.append(Tra[:,1])
             result6.append(Tra[:,2])
@@ -1811,7 +1811,7 @@ class QDsim:
         Bd=np.zeros([N,N])
         nums = list(range(len(self.elelst)))
 
-        batch_size = self.Batch_size  # 每个批处理1000个任务
+        batch_size = self.Batch_size  # Each batch processes 1000 tasks
         batches = [nums[i:i + batch_size] for i in range(0, len(nums), batch_size)]
         #print(len(batches),self.elelst.shape)
 
@@ -1835,7 +1835,7 @@ class QDsim:
                 result5.append(res5)
                 result6.append(res6)
         finally:
-            executor.shutdown(wait=True)  # 显式调用shutdown
+            executor.shutdown(wait=True)  # Explicitly call shutdown
 
         
         result1_=[]
@@ -1917,7 +1917,7 @@ class QDsim:
             P3=np.copy(self.nodelst[self.elelst[i,2]-1])
 
             Stress,Strain=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
-            Tra=self.GetTtstress(Stress)   #第i个源在所有单元上产生的牵引力
+            Tra=self.GetTtstress(Stress)   #Traction force generated by the i-th source on all elements
             print(Tra[:10,0])
             A1s[:,i]=Tra[:,0]
             A2s[:,i]=Tra[:,1]
@@ -1930,7 +1930,7 @@ class QDsim:
             P2=np.copy(self.nodelst[self.elelst[i,1]-1])
             P3=np.copy(self.nodelst[self.elelst[i,2]-1])
             Stress,Strain=SH_greenfunction.TDstressHS(X,Y,Z,P1,P2,P3,Ss,Ds,Ts,self.mu,self.lambda_)
-            Tra=self.GetTtstress(Stress)   #第i个源在所有单元上产生的牵引力
+            Tra=self.GetTtstress(Stress)   #Traction force generated by the i-th source on all elements
             A1d[:,i]=Tra[:,0]
             A2d[:,i]=Tra[:,1]
             Bd[:,i]=Tra[:,2]
@@ -2192,6 +2192,6 @@ class QDsim:
         #self.readdata(fname)
         #a=self.external_header_length
         #self.data = data
-        # 在这里可以进行一些初始化操作
+        # Some initialization can be performed here
         
     

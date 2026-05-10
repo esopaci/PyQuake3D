@@ -2,7 +2,11 @@ Installation and Tutorials
 ====================================
 We provides a step-by-step guide to use **PyQuake3D**. We'll cover installation, compilation, setup, and running a simple simulation. 
 
-Standard Execution single GPU/CPU version on Windows. The same guide from jupyter-based tutorials are available from:
+The core code of PyQuake3D no longer supports running on Windows, focusing instead on MPI parallel multi-CPU or GPU operation. However, 
+to facilitate use by beginners, we retain the Standard Execution single GPU/CPU version on Windows, 
+but this version will no longer be updated. You may test it if you only have Windows system, but we recommend using Linux for better performance and more features.
+
+We first show the Standard Execution single GPU/CPU version on Windows. The same guide from jupyter-based tutorials are available from:
 
 https://github.com/Computational-Geophysics/PyQuake3D/blob/main/tutorials
 
@@ -17,13 +21,14 @@ How to install PyQuake3D
 #. After installation, create a new environment: ``conda create -n PyQuake3D python=3.12``
 #. Activate the environment: ``conda activate PyQuake3D``
 #. Install Jupyter notebook using: ``conda install jupyter notebook``
+#. Install MPI via conda: ``conda install -c conda-forge openmpi``
 
 **Step 2: Install Python Dependencies**
 
 #. Download from https://github.com/Computational-Geophysics/PyQuake3D
 #. Install PyQuake3D in conda Prompt using pip:
 
-   *pip install -e .*
+   *python -m pip install -e .*
 
    (make sure PyQuake3D environment is activated)
 
@@ -37,6 +42,7 @@ How to install PyQuake3D
     * imageio
     * pyvista
     * mpi4py
+    * torch
 
 .. note::
    PyQuake3D supports Python 3.8 and above, so there is no need to specify a specific version when installing the library.
@@ -57,10 +63,11 @@ You can also run the BP5-QD example case in the terminal:
 
 .. code-block:: bash
 
-   python src/main_mpi.py -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
+   python -m src.main_gpu -g examples/BP5-QD/bp5t.msh -p examples/BP5-QD/parameter.txt
 
 .. note::
-   The CPU/GPU version only supports the regular seismic cycle simulation, without adding fluid-related properties, and is not suitable for larger models with cells exceeding 40,000.
+   The single CPU/GPU version only supports the regular seismic cycle simulation, without adding fluid-related properties, 
+   and is not suitable for larger models with cells exceeding 40,000. It does not update anymore.
 
 
 **Initial: Import all sub-functions and libraries**
@@ -487,7 +494,7 @@ Reading model and parameters is the same as CPU.
                    sim0.ouputVTK(fname)
 
 MPI-Based Execution on Linux
-----------------------------
+----------------------------------------------------------------------------------------
 
 
 **Step 1: Set Up Conda environment**
@@ -496,6 +503,9 @@ MPI-Based Execution on Linux
 
    ``wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh``
 
+    If you use iOS system, using following instead:
+
+    ``curl -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh``
 2. Install Miniconda with the following command:
 
    ``bash miniconda.sh -b -u -p ~/miniconda3``
@@ -526,6 +536,8 @@ MPI-Based Execution on Linux
 
    ``conda activate PyQuake3D``
 
+8. Install openmpi via conda:
+   ``conda install -c conda-forge openmpi``
 
 .. note::
 
@@ -535,7 +547,7 @@ MPI-Based Execution on Linux
    - ``sudo yum install wget``  (For CentOS/RHEL)
 
 
-**Step 2: Install Python and C++ Dependencies**
+**Step 2: Install PyQuake3D and C++ Dependencies**
 
 1. Download from https://github.com/Computational-Geophysics/PyQuake3D
 
@@ -656,9 +668,9 @@ MPI-Based Execution on Linux
         sim0.start()                                                                #Start forward simulation
         
 
-**MPI parallel running (recommended for large problems):**
+**MPI parallel running:**
 
-For large-scale simulations using the MPI-parallel H-matrix version, use the following command in the root directory:
+For large-scale simulations using the MPI-parallel H-matrix version, use the following command (not necessary in the root directory):
 
 .. code-block:: bash
 
@@ -672,12 +684,48 @@ For example, using 10 parallel mpi processes on BP5-QD model:
    mpirun-np 10 python -m pyquake3d.main_mpi -g examples/BP5-QD/bp5t.msh-p examples/BP5-QD/parameter.txt
 
 
+**MPI-Based multi-GPU Execution on Linux**
+------------------------------------------------------------------------------------
+First, ensure that you have CUDA correctly installed. Please refer to the GPU acceleration section for detailed instructions.
+The startup process for multi-MPI-based multi-GPU versions is basically the same as that for MPI-based CPU versions, 
+but with the following differences:the parameters in ``parameter.txt`` must ensure ``GPU:True``, 
+and the number of ``GPU_cores`` must not be less than the number of CPU processes. You don't need to specify the 
+Max thread workers and Batch_size, as it is only used by the single CPU/GPU version.
+
+For MPI-Based multi-GPU version, use the following command (not necessary in the root directory):
+
+.. code-block:: bash
+
+    mpirun -n <N> python -m pyquake3d.main_gpu_mpi -g <input_geometry_file> -p <input_parameter_file>
+
+
+For example, using 10 parallel mpi processes on BP5-QD model:
+
+.. code-block:: bash
+
+   mpirun-np 10 python -m pyquake3d.main_gpu_mpi -g examples/BP5-QD/bp5t.msh-p examples/BP5-QD/parameter.txt
+
+
+.. note::
+   - Memory Overhead: To run H-Matrix on a GPU, matrices and vectors must be flattened. 
+     The MPI-GPU version requires at least twice the memory of the CPU version due to repeated vector elements.
+
+   - VRAM Allocation: Please verify your GPU's VRAM capacity before starting. 
+     PyQuake3D automatically balances the memory load across all detected GPUs to minimize the risk of overflow.
+
+   - Compatibility: PyQuake3D fully supports both multi-GPU and single-GPU acceleration.
+  
+   - The MPI-based multi-GPU version does not utilize GPU acceleration for fluid-related calculations, but this part of the code is still usable.
+
+
 Post-Processing
----------------
+------------------------------------------------------------------------------------------
 
 **Visualization**
 
-Results `vtu` files in dir `out_vtu` can be visualized with `PyVista` and `Paraview`.
+Results `vtu` files in dir `out_vtu` can be visualized with `PyVista` and `Paraview`. We provide the `pyquake_tools` code package, which 
+is useful for visualizing the results of PyQuake3D, including plotting slip rate, stress, and other variables, as well as creating animations. 
+You don't need to install it, just copy the code in `pyquake_tools` to your working directory and import it in your script. 
 
 **Simulation time**
 
@@ -688,4 +736,5 @@ The total number of rows in ``state.txt`` equals the number of the time steps.Ea
 
 .. code-block:: bash
 
-    iteration time_step(s) maximum_strike_slip_rate(m/s) maximum_dip_slip_rate(m/s) time(s) time(h)
+    iteration time_step(s) maximum_strike_slip_rate(m/s) maximum_dip_slip_rate(m/s) time(s) time(d)
+

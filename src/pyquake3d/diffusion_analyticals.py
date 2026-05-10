@@ -10,8 +10,8 @@ from mpi4py import MPI
 from scipy.linalg import lu_factor, lu_solve
 
 plt.rcParams.update({
-    'font.family': 'Arial',   # 设置字体为 Arial
-    'font.size': 16           # 字体大小，根据需要修改
+    'font.family': 'Arial',   # Set font to Arial
+    'font.size': 16           # Font size, modify as needed
 })
 
 c=0.00001
@@ -97,18 +97,18 @@ def Calc_T_implicit_mpi(Temp1,dt,slipv1,trac1):
 # Qana_tmin=1.0/(2.0*cth*sqrt(np.pi))*(np.sqrt(4*cth*tmin+2.0*w*w)-np.sqrt(4*cth*(tmin-tmin)+2*w*w))
 # print(Qana_tmin,term)
 
-# 预因子（不变）
+# Prefactor (constant)
 prefactor = 1.0 / (2.0 * cth * np.sqrt(np.pi))
 
-# Qana 的理性化形式
-alpha = 4.0 * cth  # 系数
+# Rationalized form of Qana 
+alpha = 4.0 * cth  # Coefficient
 beta = 2.0 * w * w
 A = alpha * t + beta
 B = alpha * (t - tmin) + beta
-diff_ab = alpha * tmin  # a - b = 4 * cth * tmin，常数
+diff_ab = alpha * tmin  # a - b = 4 * cth * tmin，Constant
 Qana = prefactor * (diff_ab / (np.sqrt(A) + np.sqrt(B)))
 
-# Qana_tmin 的理性化形式（t = tmin 的特例）
+# Rationalized form of Qana_tmin （special case at t = tmin）
 C = alpha * tmin + beta
 Qana_tmin = prefactor * (diff_ab / (np.sqrt(C) + np.sqrt(beta)))  # beta = 2 w^2
 

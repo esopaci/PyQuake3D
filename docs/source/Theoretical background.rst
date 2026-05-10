@@ -32,14 +32,14 @@ The kernels :math:`k_{ij}^s` and :math:`k_{ij}^N` represent the shear and normal
 matrices, respectively. The last term in Equation :eq:`forcebalance` captures radiation
 damping and approximates inertial effects, which is adopted to avoid the unbounded slip
 velocity that would otherwise develop as a consequence of instability in a quasi-static
-model :cite:`rice1993spatio`.
+model :cite:p:`rice1993spatio`.
 
 To compute :math:`k_{ij}^s` and :math:`k_{ij}^N`, we employ analytical formulas for static
 stress induced by triangular dislocations in a homogeneous elastic full-space and
 half-space, as described by :cite:`nikkhoo2015triangular`. Since our objective is to
 simulate three-dimensional complex non-planar fault geometries, optimizations specific to
 planar faults, such as constructing the stiffness matrix in the Fourier domain
-:cite:`rice1993spatio` and leveraging translational invariance to compute stresses as
+:cite:p:`rice1993spatio` and leveraging translational invariance to compute stresses as
 convolutions using the Fast Fourier Transform, are not applicable. Instead, we utilize
 CPU-based multiprocessing or MPI to accelerate the computation of Green's functions
 required for generating the stiffness matrix.
@@ -792,7 +792,7 @@ Singular value decomposition (SVD) is an extremely efficient approximation, but 
 The most useful solution for our setting is the adaptive cross approximation (ACA) method :cite:`bebendorf2000approximation,rjasanow2007approximation`, but most real-world application use either *ACA with partial pivoting* or the *ACA+* algorithm :cite:`grasedyck2005adaptive`. The basic idea of ACA+ is to approximate a matrix with a rank 1 outer product of one row and one column of that same matrix, and then iteratively use this process to construct an approximation of arbitrary precision. ACA+ uses orthogonal projections and recompression to better control the error and avoid poor pivot choices, and improves the stability and accuracy of the standard ACA.
 
 Parallelization of H-matrix Construction and Matrix-Vector Multiplication with MPI
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We construct the cluster tree, block cluster tree, and establish the overall H-matrix framework. This includes the initial distribution of the index sets and the assignment of matrix blocks. Once the hierarchical structure is built, the matrix blocks are distributed across different MPI processes for parallel computation of elements (e.g., ``MPI_send``, ``MPI_recv``). We adopt a dynamic task allocation strategy in MPI to mitigate load imbalance issues that may arise from static task assignment  (:numref:`Hmatrix_MPI` d).
 
@@ -801,17 +801,37 @@ Each process is responsible for computing the entries of its assigned matrix blo
 During matrix-vector multiplication, each process independently computes the product of its local matrix blocks with the corresponding 
 portion of the input vector. The final global result vector is then obtained by summing the local contributions across all processes (``MPI_reduce``) (:numref:`Hmatrix_MPI` e).
 
-Lattice H-matrix
-~~~~~~~~~~~~~~~~
+H-matrix and Lattice H-matrix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-At each time step, the submatrix of H-matrix must be dotted with the slip rates, followed by an ``MPI_reduce`` operation to sum all resulting dot products across all processes. Subsequently, the slip rates—updated via Runge-Kutta iterations in each process—require another ``MPI_reduce`` to compute the global slip rates, which are then used for the submatrix dot products in the next step. As a result, with a large number of processes, the MPI communication overhead becomes prohibitively high.
+In the conventional H-matrix approach, the MPI_Allreduce (or the Reduce-Broadcast cycle) acts as a "stop-the-world" barrier, where communication costs eventually outpace the actual floating-point math as you scale up.
 
-In contrast, the Lattice H-matrix employs a 2D MPI layout, where summation and updating of dot product results occur only within row processes. This is feasible because time integration in each row process proceeds independently. At the end of each iteration, slip rates need to be summed solely on the diagonal processes. Consequently, the Lattice matrix reduces the overall complexity from :math:`O(n^2)` in the conventional H-matrix to :math:`O(n)`.
+The transition to a Lattice H-matrix (or 2D-topology H-matrix) effectively localizes these communications. Here is the completion of the comparison, detailing the structural and algorithmic differences:
 
-Definition of strike-slip and dip-slip direction
-------------------------------------------------
+1. H-Matrix (1D/Global Layout):In a standard implementation, the matrix-vector multiplication (H-Matvec) often treats the slip rate vector as a global entity. Every process involved in the dot product must contribute its local result to a global sum.
+   
+   Scope: Global. Every process communicates with every other process.
 
-The rake angle is defined as the angle between the fault slip vector and the fault strike direction within the fault plane. In seismology, the strike direction is conventionally defined: when facing the dip direction of the fault plane, the strike is taken to be to the observer’s right—this follows the right-hand rule. In *PyQuake3D*, the strike direction is determined by the ordering of the element's nodes—either clockwise or counterclockwise.
+   Barrier: The MPI_Reduce involves all P processes, creating a massive synchronization overhead that scales poorly with high core counts. 
+   
+2. Lattice H-Matrix (2D/Local Layout):By adopting a 2D MPI Cartesian grid, the Lattice approach partitions the workload such that processes are grouped into row communicators and column communicators.
+   
+   Scope: Sub-communicators. Summation is restricted to :math:`P_{row}` processes.
+
+   Feasibility: Because the physical domain is discretized into a lattice, the interaction between sub-blocks is localized. Slip rate updates only need to be synchronized across diagonal processes or specific neighbors, rather than the entire cluster.
+
+.. _HM_LHM:
+.. figure:: _static/HM_LHM.png
+   :alt: Construction of hierarchical matrix speed up by MPI
+   :align: center
+   :width: 800px
+
+   Comparison of structure of H-Matrix and Lattice H-Matrix.(**a**) H-Matrix. All processes participate in the global decomposition of the H-matrix. (**b**) Lattice H-Matrix. The Lattice H-Matrix partitions the matrix into sub-blocks that are distributed across a 2D grid of MPI processes, allowing for more localized communication patterns and improved scalability.Balance the distribution of H-submatrices across all processes within each row communicator.
+
+Definitions of Slip Directions and Coordinate Systems
+------------------------------------------------------------------------------------------------
+
+The rake angle is defined as the angle between the fault slip vector and the fault strike direction within the fault plane. In seismology, the strike direction is conventionally defined: when facing the dip direction of the fault plane, the strike is taken to be to the observer’s right—this follows the right-hand rule. In *PyQuake3D*, Based on the code you provided, here is a clear explanation of how you are building a Local Coordinate System for a triangular fault element, which is determined by the ordering of the element's nodes—either clockwise or counterclockwise.
 
 To get the defined strike-slip direction for each element, we first calculate the normal vector of the element in the global coordinate system by
 
@@ -819,37 +839,29 @@ To get the defined strike-slip direction for each element, we first calculate th
 
    \vec{e}_3 = \vec{v}_{ab} \times \vec{v}_{ac}
 
-Based on the geometric relationship of :math:`\vec{e}_1` and :math:`\vec{e}_3` (:numref:`strike_vector` b,c), the three component of strike-slip direction of the fault cell (x-direction of the local coordinate system) can be obtained by
+By crossing the vertical unit vector :math:`\vec{e}_z` with the fault normal :math:`\vec{e}_3`(:numref:`strike_vector`), the code finds a vector that is both in the plane (perpendicular to the normal) and horizontal (perpendicular to :math:`\vec{e}_z`), which is defined as the strike-slip direction. Then the local coordinate system can be obtained by
+
 
 .. math::
-
-   \begin{aligned}
-   \text{e}_{11} &= \text{e}_{32} \\
-   \text{e}_{12} &= -\text{e}_{31} \\
-   \text{e}_{13} &= 0
-   \end{aligned}
-
-Then we can easily get the last direction (dip-slip direction) of the fault element get by
-
-.. math::
-
+   \vec{e}_1 = \vec{e}_{z} \times \vec{e}_{3}\\
    \vec{e}_2 = \vec{e}_{3} \times \vec{e}_{1}
 
-:numref:`strike_vector` b、d and e and d show that the definition of strike slip and dip slip directions obviously depends on the ordering of nodes, so when modeling, we need to first clarify the ordering direction of nodes, and then determine the definition of fault slip direction.
+:numref:`strike_vector` b and c show that the definition of strike slip and dip slip directions obviously depends on the ordering of nodes, so when modeling, we need to first clarify the ordering direction of nodes, and then determine the definition of fault slip direction.
 
 .. _strike_vector:
-.. figure:: _static/strike_vector.png
+.. figure:: _static/vector_define1.png
    :alt: Construction of hierarchical matrix speed up by MPI
    :align: center
    :width: 800px
 
-   Definition of strike-slip and dip-slip direction.(**a**) Calculation of normal vector or z-vector in element local coordinate system :math:`\vec{e_3}`.(**b**) Projection of :math:`\vec{e_3}` on XY plane :math:`\vec{e_3^{\prime}}`.
-   (**c**) Conversion between :math:`\vec{e_3^{\prime}}` and :math:`\vec{e_1}`.(**d**) Looking from the negative direction of the z-axis, the unit nodes are counterclockwise, and the element normal is outwards. The strike-slip direction is defined as the positive x direction, and the y direction can be obtained by cross-producting the z and x unit vectors.
-   (**e**) Looking from the negative direction of the z-axis, the unit nodes are clockwise, and the element normal is inwards. The strike-slip direction is defined as the negative x direction.
+   Definition of strike-slip and dip-slip direction.(**a**) Calculation of normal vector or z-vector in element local coordinate system :math:`\vec{e}_3`. By crossing the vertical unit vector :math:`\vec{e}_Z` with the fault normal :math:`\vec{e}_3`, the code finds a vector that is both in the plane (perpendicular to the normal) and horizontal (perpendicular to :math:`\vec{e}_Z`)
+   (**b**) Looking from the negative direction of the z-axis, the unit nodes are counterclockwise, and the element normal is outwards. The strike-slip direction is defined as the negative x direction, and the y direction can be obtained by cross-producting the z and x unit vectors.
+   (**c**) Looking from the negative direction of the z-axis, the unit nodes are clockwise, and the element normal is inwards. The dip-slip direction is defined as the down dip direction.
 
 
 Coordinate system
------------------
+--------------------------------------------------------------------
+
 
 In post-processing, we need to do transforms between local and global coordinates for some vector results, such as slip direction. Base on the relationship in :numref:`strike_vector` d and e, the transform from local coordinates to global coordinates can be obtained by coordinate rotation.
 
