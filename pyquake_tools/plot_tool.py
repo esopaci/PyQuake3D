@@ -944,7 +944,6 @@ class Ptool:
             aspect='auto'
         )   
     
-        # --- Colorbar FIX ---
         cbar = plt.colorbar(
             self.im,   
             ax=ax,
@@ -954,7 +953,7 @@ class Ptool:
             pad=0.1,
             extend='both'
         )
-        cbar.ax.set_yticklabels(tickslabels)  # FIXED (was ax0)
+        cbar.ax.set_yticklabels(tickslabels) 
         
      
         # --- Update function ---
