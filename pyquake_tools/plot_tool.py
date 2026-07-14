@@ -1078,7 +1078,7 @@ class Ptool:
 
                     # Get time
                     time[ii] = df[df.Iteration == step]['time(s)'].values
-                    V_event[ii] == df[df.Iteration==step]['slip_v'].values
+                    #V_event[ii] == df[df.Iteration==step]['slip_v'].values
                     # read the output file depending on the iteration step
 
                     mesh = self.read_mesh(step=step)
@@ -1094,6 +1094,7 @@ class Ptool:
                         area=True, volume=False)
 
                     V = mesh.cell_data['Slipv[m/s]']
+		    V_event[ii] = V.max()
                     A = mesh_with_areas.cell_data['Area']
 
                     # Seismic moment release rate
@@ -1160,7 +1161,7 @@ class Ptool:
                 t_dur = ttime1 - ttime0
 
                 event_string += f'{i:5.0f}{step_min:10.0f}{step_max:10.0f}{t_year:10.0f}{t_day:10.0f}{t_hour:10.0f}{t_min:10.2f}{t_dur:10.2f}{Nuc[0]:10.1f}{Nuc[1]:10.1f}{Nuc[2]:10.1f}{X_min:10.1f}{
-                    X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_drop:16.6E}{stress_drop:16.6E}{M0:16.6E}{M0_dot_mean:16.6E}{Mw:16.3f}{V_event.max():16.3f}\n'
+                    X_max:10.1f}{Y_min:10.1f}{Y_max:10.1f}{Z_min:10.1f}{Z_max:10.1f}{slip_mean:10.3f}{slip_max:10.3f}{state_drop:16.6E}{stress_drop:16.6E}{M0:16.6E}{M0_dot_mean:16.6E}{Mw:16.3f}{V_event.max():16.4E}\n'
 
             except Exception as e:
                 print(e)
