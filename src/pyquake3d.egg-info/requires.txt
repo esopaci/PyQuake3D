@@ -7,3 +7,4 @@ joblib
 mpi4py
 h5py
 psutil
+torch

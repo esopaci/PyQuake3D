@@ -16,6 +16,7 @@ Requires-Dist: joblib
 Requires-Dist: mpi4py
 Requires-Dist: h5py
 Requires-Dist: psutil
+Requires-Dist: torch
 
 <p align="center">
   <img src="https://github.com/Computational-Geophysics/PyQuake3D/raw/main/images/logo/PyQuake3D_grey.png" alt="PyQuake3D logo" style="width:100%;">

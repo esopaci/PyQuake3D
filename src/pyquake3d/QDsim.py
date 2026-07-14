@@ -2049,7 +2049,7 @@ class QDsim:
 
         #if(rank==0):
         #update slip rate and rake
-        Tno_yhk[Tno_yhk<0.1]=0.1 #constrain normal stress above 0.1 MPa
+        Tno_yhk[Tno_yhk<0.1]=5 #constrain normal stress above 0.1 MPa ES edited (0.1->5)
         self.Tno_local=Tno_yhk
         
         self.Tt1o_local=Tt1o_yhk
@@ -2074,9 +2074,9 @@ class QDsim:
         #print(np.max(self.slipv))
         #self.rake=np.arctan2(self.Tt2o,self.Tt1o)
         
-        indexmin=np.where(self.slipv<1e-30)[0]
-        if(len(indexmin)>0):
-            self.slipv[indexmin]=1e-30
+        #indexmin=np.where(self.slipv<1e-30)[0]
+        #if(len(indexmin)>0):
+        #    self.slipv[indexmin]=1e-30
         #self.maxslipv0=np.max(self.slipv)
         #update slip
         self.slip1=self.slip1+self.slipv1*h
