@@ -1094,7 +1094,7 @@ class Ptool:
                         area=True, volume=False)
 
                     V = mesh.cell_data['Slipv[m/s]']
-		    V_event[ii] = V.max()
+					V_event[ii] = V.max()
                     A = mesh_with_areas.cell_data['Area']
 
                     # Seismic moment release rate
