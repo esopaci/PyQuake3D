@@ -32,7 +32,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import traceback
 from scipy.integrate import simpson
-from scipy.interpolate import LinearNDInterpolator, griddata
+from scipy.interpolate import LinearNDInterpolator, griddata, NearestNDInterpolator
 
 
 class Ptool:
@@ -86,6 +86,7 @@ class Ptool:
     elevation = 15       # Elevation angle for 3D plot
     interval = 10        # Interval of reading outputs for animations
     depth = 10e3        # Depth for event plot
+    plot2Daxis = 0
     event_no = 3        # Event number to be plotted
     next_event = 0      # This number is used for plotting how manu number of events
 
@@ -203,6 +204,8 @@ class Ptool:
     def read_mesh(self, step):
         """Load mesh for a given simulation step."""
         return pv.read(os.path.join(self.out_folder, f"step{step}.vtu"))
+
+
 
     def read_statefile(self):
 
@@ -864,6 +867,156 @@ class Ptool:
         plt.close()
 
 
+    def slip_profile(self):
+        
+        ## READING STATE FILES ##
+        
+        df = self.read_statefile()
+        df = df.loc[(df['time(s)']/self.t_yr < self.t_max)]
+        df = df.loc[(df['time(s)']/self.t_yr > self.t_min)]
+
+        step_min = df.Iteration.min()
+        step_max = df.Iteration.max()
+
+        # Filter steps
+
+        steps_filtered = self.steps[(
+            self.steps > step_min) & (self.steps < step_max)]
+        N_steps = len(steps_filtered)
+        
+        
+        ## GENERATING DATA VECTORS ##
+        
+        # Unique values of x and  z
+        
+        if self.plot2Daxis == 0:
+            
+            xx = np.unique(self.x)
+        else:
+            xx = np.unique(self.y)
+
+        # zz = np.uniqe(self.z)
+        Nx = xx.size
+
+        SLIP = np.empty((Nx, N_steps))
+        RATE = np.empty_like(SLIP)
+        XMAT = np.empty_like(SLIP)
+        
+        # Query points
+        query_points = np.column_stack((
+            xx,
+            np.full(Nx, self.depth)
+            ))   
+        
+        
+        ## GENERATING ARRAYS FOR PLOT
+        for i in range(N_steps):
+            step = steps_filtered[i]
+            mesh = self.read_mesh(step=step)
+
+            cells = mesh.cells.reshape(-1, 4)
+            triangles = cells[:, 1:]
+            points = mesh.points[triangles]
+            points = np.mean(points, axis=1)
+            
+            # print(points[:,0].mean(),points[:,1].mean(), points[:,2].mean())
+            # Project the mesh onto x-z coordinates
+            # if self.plot2Daxis == 0:
+            points_2d = points[:,[0,2]]
+            
+            
+            ## Slip rates
+            # Build linear interpolator
+            rate_temp = LinearNDInterpolator(
+                points_2d,
+                mesh.cell_data['Slipv[m/s]']
+            )
+        
+            # Evaluate at query points
+            rate_values = rate_temp(query_points)
+        
+            # Identify NaN and Inf
+            invalid_mask = ~np.isfinite(rate_values)
+        
+            if np.any(invalid_mask):
+        
+                # Nearest-neighbour interpolator
+                interp_nearest = NearestNDInterpolator(
+                    points_2d,
+                    mesh.cell_data['Slipv[m/s]']
+                )
+        
+                # Replace NaN and Inf
+                rate_values[invalid_mask] = interp_nearest(
+                    query_points[invalid_mask]
+                )
+        
+
+            
+            ## Slip 
+            # Build linear interpolator
+            slip_temp = LinearNDInterpolator(
+                points_2d,
+                mesh.cell_data['slip[m]']
+            )
+        
+            # Evaluate at query points
+            slip_values = slip_temp(query_points)
+        
+            # Identify NaN and Inf
+            invalid_mask = ~np.isfinite(slip_values)
+        
+            if np.any(invalid_mask):
+        
+                # Nearest-neighbour interpolator
+                interp_nearest = NearestNDInterpolator(
+                    points_2d,
+                    mesh.cell_data['slip[m]']
+                )
+        
+                # Replace NaN and Inf
+                slip_values[invalid_mask] = interp_nearest(
+                    query_points[invalid_mask]
+                )
+        
+            # Store results
+            SLIP[:, i] = slip_values
+            RATE[:, i] = rate_values
+            XMAT[:,i] = xx*1e-3
+        
+        vmin = -9
+        vmax = -1
+        
+        
+        fig, ax = plt.subplots(1,1)
+        CS = ax.contourf( XMAT, SLIP, RATE,
+                    levels=np.logspace(vmin,vmax,50), norm = LogNorm(),
+                                     cmap="cividis", 
+                                     vmin =10**vmin, vmax=10**vmax, 
+                                     extend = 'both')
+        
+        
+        CB = fig.colorbar(
+            CS,
+            ax=ax,
+            orientation='vertical',
+            location='right',
+            ticks=[1e-9, 1e-6, 1e-3],
+            format='%.0e'
+        )
+        CB.set_label('Slip rate [m/s]')
+        
+        ax.set_xlabel('X [km]')
+        ax.set_ylabel('Accumulated slip [m]')
+
+        
+        fig.savefig(
+            os.path.join(self.path, f'slip_profile{self.depth*1e-3:.1f}.jpg'),
+                    dpi = 200, bbox_inches='tight',
+                    )
+
+        
+
     def animation3D_1(self):
     
         fig, (ax, ax1) = plt.subplots(2, 1, figsize=(10, 8))
@@ -1094,7 +1247,7 @@ class Ptool:
                         area=True, volume=False)
 
                     V = mesh.cell_data['Slipv[m/s]']
-					V_event[ii] = V.max()
+                    V_event[ii] = V.max()
                     A = mesh_with_areas.cell_data['Area']
 
                     # Seismic moment release rate

@@ -38,6 +38,7 @@ def create_parser():
     parser.add_argument("--a2", action="store_true", help="Create 2D animation")
     parser.add_argument("--a3", action="store_true", help="Create 3D animation")
     parser.add_argument("--a3_1", action="store_true", help="Create 3D animation")
+    parser.add_argument("--sp", action="store_true", help="Slip profile of the given depth")
 
     parser.add_argument("--event", action="store_true", help="Extract earthquake events")
     parser.add_argument("--phase", action="store_true", help="Generates phase plot (V vs Psi)")
@@ -69,6 +70,7 @@ def create_parser():
     parser.add_argument("--next_event", type=int, help ='Required for ts2 plot')
 
     parser.add_argument("--depth",  type=float, help ='Required for event_plot')
+    parser.add_argument("--plot2Daxis",  type=float, help ='Required for 2D slip profile axis')
 
     # Physics parameters
     parser.add_argument("--V_dyn", type=float, help ='Dynamic slip rate')
@@ -105,7 +107,8 @@ def apply_parameters(tool, args):
         "rho",
         "depth",
         "event_no",
-        "next_event"
+        "next_event",
+        "plot2Daxis"
     ]
 
     for param in parameters:
@@ -147,8 +150,8 @@ def main():
     if args.a3_1:
         tool.animation3D_1()
         
-    # if args.a3_2:
-    #     tool.animation2D_scatter()
+    if args.sp:
+        tool.slip_profile()
         
     if args.phase:
         tool.phase_plot()
