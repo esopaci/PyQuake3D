@@ -872,8 +872,8 @@ class Ptool:
         ## READING STATE FILES ##
         
         df = self.read_statefile()
-        df = df.loc[(df['time(s)']/self.t_yr < self.t_max)]
-        df = df.loc[(df['time(s)']/self.t_yr > self.t_min)]
+        df = df.loc[(df['time(s)'] < self.t_max * self.t_yr)]
+        df = df.loc[(df['time(s)'] > self.t_min * self.t_yr)]
 
         step_min = df.Iteration.min()
         step_max = df.Iteration.max()
@@ -984,14 +984,14 @@ class Ptool:
             RATE[:, i] = rate_values
             XMAT[:,i] = xx*1e-3
         
-        vmin = -9
-        vmax = -1
+        vmin = self.V_min
+        vmax = self.V_max
         
         
         fig, ax = plt.subplots(1,1)
         CS = ax.contourf( XMAT, SLIP, RATE,
-                    levels=np.logspace(vmin,vmax,50), norm = LogNorm(),
-                                     cmap="cividis", 
+                    levels=np.logspace(vmin,vmax,100), norm = LogNorm(),
+                                     cmap="gnuplot2", 
                                      vmin =10**vmin, vmax=10**vmax, 
                                      extend = 'both')
         
@@ -1001,7 +1001,7 @@ class Ptool:
             ax=ax,
             orientation='vertical',
             location='right',
-            ticks=[1e-9, 1e-6, 1e-3],
+            ticks=[1e-9, 1e-6, 1e-3, 1],
             format='%.0e'
         )
         CB.set_label('Slip rate [m/s]')
