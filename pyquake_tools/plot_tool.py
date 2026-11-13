@@ -23,11 +23,12 @@ import pyvista as pv
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm, Normalize, BoundaryNorm
+from matplotlib.colors import LogNorm, Normalize, BoundaryNorm, LinearSegmentedColormap
 import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 import matplotlib.tri as tri
 import matplotlib.ticker as ticker
+
 
 import numpy as np
 import traceback
@@ -869,6 +870,19 @@ class Ptool:
 
     def slip_profile(self):
         
+        rgb_points = [
+            (0.0, (0.865, 0.865, 0.865)),
+            (0.4, (0.3,   0.45,  0.65)),
+            (0.7, (0.75,  0.65,  0.35)),
+            (1.0, (0.65,  0.2,   0.2)),
+        ]
+
+        cmap = LinearSegmentedColormap.from_list(
+            "Adjusted_Subdued_Map",
+            rgb_points
+        )
+        
+        
         ## READING STATE FILES ##
         
         df = self.read_statefile()
@@ -988,10 +1002,10 @@ class Ptool:
         vmax = self.V_max
         
         
-        fig, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1,1, figsize = (8,6))
         CS = ax.contourf( XMAT, SLIP, RATE,
-                    levels=np.logspace(vmin,vmax,100), norm = LogNorm(),
-                                     cmap="gnuplot2", 
+                    levels=np.logspace(vmin,vmax,40), norm = LogNorm(),
+                                     cmap=cmap, 
                                      vmin =10**vmin, vmax=10**vmax, 
                                      extend = 'both')
         
